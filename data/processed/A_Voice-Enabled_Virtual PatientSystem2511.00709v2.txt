@@ -1,0 +1,408 @@
+A Voice-Enabled Virtual Patient System for Interactive Training in
+Standardized Clinical Assessment
+Veronica Bossio-Botero1,2, Vijay Yadav1,3, Jacob Ouyang1, Anzar Abbas1, Michelle Worthington1,4
+1Brooklyn Health, Brooklyn, NY, United States
+2Columbia University, Zuckerman Institute, New York, NY, United States
+3School of Psychology, University of New South Wales, Sydney, Australia
+4Yale University School of Medicine, Department of Psychiatry, New Haven, CT, United States
+
+Abstract
+Background: Training mental health clinicians to conduct standardized clinical assessments is challenging due to
+a lack of scalable, realistic practice opportunities. Traditional methods often fail to prepare trainees for the
+variability and complexity of real-world patient interactions, potentially impacting data quality in clinical trials.
+This paper introduces a novel approach to address this training gap using large language model (LLM)-based
+interview simulations.
+Objective: This study aims to develop and validate a voice-enabled virtual patient simulation system as a proof-
+of-concept. We describe the development of the system and evaluate whether it can generate virtual patients that
+(1) accurately adhere to pre-defined clinical profiles, (2) maintain a coherent and consistent narrative, and (3)
+produce dialogue that is perceived as realistic.
+Methods: We implemented a system that uses a LLM to simulate patients with specified symptom profiles,
+demographic backgrounds, and distinct communication styles. The system’s performance was analyzed through a
+mixed-methods evaluation, which included a formal assessment by 5 experienced clinical raters who conducted
+simulated structured MADRS interviews on 4 virtual patient personas, scored them on the scale and provided
+qualitative feedback on the system's clinical plausibility, narrative cohesion and dialogue realism.
+Results: Across a total 20 interviews, the virtual patients demonstrated strong adherence to their configured
+clinical profiles, with human raters scoring the patients with high accuracy against their predefined score
+configurations. The mean item difference between MADRS rater scores and configured scores was 0.52 (SD =
+0.75); Inter-rater reliability across items was 0.90 (95% CI =0.68-0.99). Expert raters consistently gave average
+ratings of “Agree” to “Strongly Agree” when asked to evaluate the qualitative realism and cohesion of the virtual
+patients.
+Conclusions: LLM-powered virtual patient simulations promise a viable and scalable new tool for training
+clinicians in standardized clinical assessment. This pilot study demonstrates the system’s ability to produce high-
+fidelity, clinically relevant practice scenarios.
+Keywords: Virtual Patient; Large Language Models; Clinical Simulation; Medical Education; Psychiatry;
+Depression; Artificial Intelligence.
+2
+
+Introduction
+The clinical interview is a fundamental tool in psychiatric assessment and serves as a primary endpoint in clinical
+trials for central nervous system (CNS) disorders. Because most psychiatric conditions lack objective biomarkers,
+the field relies on subjective clinical evaluations. The validity of clinical trials, and consequently, the development
+of new therapeutics, thus fundamentally depends on the quality of these assessments. Despite its critical role, the
+development of consistent interviewing skills remains a significant challenge, as conventional training methods
+frequently fail to provide the scalable and realistic practice environments for this complex task.
+High inter-rater reliability in clinical assessments is essential for minimizing data noise and identifying the true
+effects of treatment. However, extensive evidence indicates that conventional clinical rater training approaches,
+such as peer role-play, are insufficient for achieving this standard, showing little to no improvement in the validity
+of trainee assessments [1-3]. Even when initial training is successful, rater scores often shift over the course of a
+trial, a phenomenon known as “rater drift”, which can further compromise data quality [2,4-6]. At the core of this
+issue is a fundamental methodological gap: the lack of scalable, on-demand, and standardized “patient stimuli” to
+calibrate and maintain rater performance over time.
+Current methods for clinical interview training include watching pre-recorded videos or conducting role-play with
+peers, both of which fail to replicate the realism and interactive nature of real clinical scenarios. The certification
+process for clinical trial raters introduces a further systemic obstacle. Sponsors typically require raters to meet
+strict criteria, often including a minimum number of completed scale administrations. Because uncertified raters
+cannot access opportunities to conduct assessments, they cannot meet the experience thresholds required for
+certification. This circular barrier limits the pool of trained raters and perpetuates poor measurement practices.
+The use of simulation to bridge the gap between training and clinical practice has been an important tool in
+medical education for decades, with applications in many specialties [7-10]. Standardized Patients (SPs)—
+individuals trained to consistently portray specific clinical scenarios—provide a more realistic alternative to peer
+role-play for teaching communication and diagnostic skills. However, they have significant limitations as they are
+expensive and difficult to scale, which limits the repeated practice opportunities that are essential for skill
+development [11]. Moreover, the human variability in SP performance can compromise the very standardization
+they aim to achieve [12,13].
+To address these limitations, the field has developed successive generations of virtual patients—computer systems
+designed to simulate clinical scenarios. While virtual patients evolved from simple branching narratives to being
+capable of processing free-text input, their reliance on matching user inputs to a fixed database of pre-scripted
+responses was a fundamental limitation [14-17]. Consequently, the trade-off between the scalability of automated
+systems and the realism of SPs has persisted.
+Large language models (LLMs) offer a solution to this long-standing challenge by shifting the mechanism of
+simulation from information retrieval to generation of novel content. By synthesizing context-aware language in
+real-time, these models are able to simulate standardized clinical scenarios while maintaining flexibility and
+realism. Emerging empirical evidence supports this utility: randomized trials show that LLM-based simulations
+achieve high dialogue authenticity ratings and reduce trainee anxiety compared to live observation, providing an
+accessible environment for skill development [18-22]. As Zeng and colleagues note in a 2025 scoping review
+3
+
+[23], while LLM-based virtual patients are still in early stages of development, they hold significant potential for
+improving medical training.
+Here, we describe the development and initial evaluation of a voice-enabled virtual patient system designed
+specifically for CNS clinical trials. The system uses a full speech-to-speech pipeline to simulate highly interactive
+and realistic clinical assessments. As an initial evaluation of the system, we tested the alignment of expert-rated
+symptom severity scores on the Montgomery-Asberg Depression Rating Scale (MADRS) [24] with pre-defined
+scores for virtual patient personas. The primary objectives of this pilot study are to determine if the system can
+generate virtual patients that: (1) adhere to pre-configured clinical profiles with sufficient accuracy for expert
+raters to score them reliably (2) maintain a coherent and consistent narrative throughout an interview; and (3)
+produce dialogue that clinical experts perceive as realistic.
+Methods
+System design
+Our system provides a simulated clinical encounter where a user can practice conducting an interview-based
+clinical assessment on a virtual patient using a speech-to-speech pipeline. The system’s architecture (Figure 1) is
+composed of two primary components: a patient profile engine for constructing clinically plausible and
+narratively coherent personas dynamically, and an interactive voice pipeline that animates these personas through
+real-time, spoken dialogue.
+Patient Profile Generation
+The core of each profile is a randomly generated set of scores for the symptoms defined by the MADRS, which
+collectively define the clinical presentation. Importantly, this random generation was constrained by logical
+consistency checks to ensure the co-occurrence of symptoms is clinically plausible and representative of actual
+presentations [25]. For example, a high score for suicidal ideation must be accompanied by a high score for
+depressed mood.
+In addition to the clinical profile, each virtual patient is assigned a specific communication style that modulates
+how their symptoms are communicated. The styles are: cooperative, a baseline style where responses are designed
+to provide clear and scorable information and guarded, which reflects the communication barriers often present in
+depression where a patient may be reluctant to disclose details. Finally, each profile is contextualized within a
+unique demographic and situational narrative, including a name, age, and personal history.
+The target item scores and their corresponding behavioral descriptions are combined with the demographic
+information and the communication style into a detailed system prompt. This prompt serves as the complete
+specification for the virtual patient’s persona and is provided to the core large language model (Anthropic’s
+Claude Sonnet 3.7 [26]) to guide its dialogue generation throughout the interview, ensuring each interaction is
+grounded in a consistent and clinically valid profile.
+Interactive Voice Pipeline
+4
+
+The interactive dialogue is driven by a real-time speech-to-speech pipeline. The loop begins with the clinician’s
+spoken input, which is captured and transcribed using Amazon Transcribe’s streaming speech-to-text (STT)
+service [27]. The resulting text is then passed to the language model, which generates a response based on the
+patient profile and the evolving conversation history.
+This response is then converted back into speech using a text-to-speech (TTS) model. The system supports several
+high-fidelity TTS providers—including Amazon Polly, ElevenLabs, and Cartesia—allowing for flexible control
+over vocal characteristics and degrees of realism. The interview continues until the clinician determines they have
+sufficient information for a clinical assessment, at which point their scores, qualitative feedback, and the interview
+transcript are recorded.
+Figure 1. System architecture and interaction workflow. The clinician’s speech is transcribed by a speech-to-text
+(STT) module. The resulting text is processed by an LLM, which generates a response grounded in a detailed
+system prompt (defined by the patient’s symptoms, background, and style). A text-to-speech (TTS) model
+synthesizes the LLM’s response into audio, completing the real-time, turn-based dialogue loop.
+User study
+To evaluate the system’s performance and perceived quality, we conducted a user study with trained clinicians
+who had extensive experience administering the MADRS. The study was designed to assess the virtual patients’
+adherence to their clinical profiles by testing the alignment of the rater-assigned MADRS scores with the pre-
+defined MADRS scores and to gather expert feedback on the realism and coherence of the simulated dialogue.
+This study was reviewed by the Biomedical Research Alliance of New York (BRANY) Review Board and was
+determined to be exempt from review (protocol #25-196-2265).
+5
+
+Participants
+A group of expert raters (N=5) was recruited through our professional network. Participants were required to have
+a master's degree or higher in psychology, psychiatry, social work or a related field and have prior experience
+administering the MADRS.
+Materials
+We created a fixed set of four virtual patient personas for the study. The personas were balanced for gender (two
+male, two female) and communication style (two cooperative, two guarded). The underlying preconfigured
+profiles were designed to span a wide range of symptom severities as defined by the MADRS, with total scores
+ranging from 15 (mild) to 39 (severe). All expert raters interacted with the same four virtual patients to ensure
+consistency and allow for inter-rater reliability analysis.
+The core dialogue engine was driven by Anthropic’s Claude Sonnet 3.7 large language model [26]. Speech-to-text
+(STT) transcription was handled by Amazon Transcribe [27], and speech synthesis (TTS) was generated using
+ElevenLabs voice models [28].
+Procedure
+The study was conducted remotely via video call. After providing informed consent, each participant received a
+brief onboarding to demonstrate the system’s voice-based interface and to review the study tasks. Participants
+were instructed to administer the MADRS for each virtual patient, following the Structured Interview Guide for
+the MADRS (SIGMA) methodology [29].
+For each of the four personas, the procedure was as follows:
+1. The expert rater conducted the full voice-based interview with the virtual patient using the speech-to-
+speech system.
+2. Immediately following the interview, the rater was directed to a post-interview survey using a link where
+de-identified responses were collected.
+3. In the survey, the rater first provided their clinical scores for the virtual patient on each of the 10 MADRS
+items.
+4. After submitting their scores, the rater was presented with a comparison chart showing their ratings
+alongside the virtual patient’s pre-programmed profile to inform the rater's assessment of adherence to
+clinical profile. They were then asked to complete the qualitative feedback portion of the survey.
+Measures
+Clinical scoring: Raters scored the virtual patient on each of the 10 items of the MADRS based on the evidence
+gathered during the interview.
+6
+
+Qualitative ratings: Raters indicated their agreement on a 7-point Likert scale (1-Strongly Disagree to 5-
+Strongly Agree) with three statements assessing:
+● Profile consistency: “The behavior of the virtual patient during the interview was consistent with the
+symptom profile it was configured to exhibit.”
+As this question was presented after raters saw the pre-configured scores, it was not designed to re-
+evaluate scoring alignment (which was captured by the quantitative “clinical scoring”), but rather as a
+meta-assessment of portrayal quality. Its purpose was to determine whether any observed discrepancies
+between the expert’s initial score and the simulation configuration were still perceived as falling within a
+clinically plausible range.
+● Dialogue realism: “The dialogue produced by the virtual patient was realistic and natural in terms of
+language structure and vocabulary.”
+● Character cohesion: “The virtual patient maintained a coherent character throughout the interview,
+without factual or behavioral contradictions.”
+The qualitative part of the survey also included space for optional open-ended comments on the Likert ratings.
+Results
+Alignment of pre-defined and rater-scored MADRS scores
+Across all MADRS items, which are each rated on a 0-6 scale, the mean difference between rater and
+preconfigured scores was 0.52 (SD = 0.75). The distributions of these item-level score differences were clustered
+around zero but exhibited a consistent rightward skew (Figure 2), indicating that raters tend to assign slightly
+higher scores than the target scores. This trend was stable across all four personas, with mean item score
+differences of 0.60, 0.60, 0.66 and 0.46 respectively (SD of means = 0.07) (Figure 3).
+Figure 2. Histograms illustrate the distribution of score differences (clinician score minus pre-configured score)
+for each item of the MADRS.
+7
+
+Figure 3. Average score differences between clinician score and pre-configured score for each MADRS item,
+shown for the four patient personas. Error bars represent the standard error of the mean across raters.
+The cumulative effect of these small but systematic overestimations at the item level resulted in a consistent
+difference in the total MADRS score (the overall sum of the item-level scores). While the mean total MADRS
+scores assigned by raters tracked the intended severity across all personas (Figure 4), clinicians scores averaged
+moderately higher than the configured ground truths (mean absolute error = 5.80 ± 0.73 s.d.).
+8
+
+Figure 4. Total MADRS score from the virtual patient configuration (light green) versus total MADRS score
+assigned by the clinicians (dark green) for each of the four patient personas.
+Inter-rater reliability across expert raters
+The virtual patients elicited consistent ratings across the raters in the study. Inter-rater reliability for the total
+MADRS score was high, with an intraclass correlation coefficient (ICC) of 0.90 based on a two-way random
+effects model for a single rater’s absolute agreement (ICC(2,1)). Reliability for individual items was variable,
+ranging from excellent for items such as ‘Lassitude’ (ICC = 0.98) and ‘Reduced Appetite’ (ICC = 0.96) to fair for
+‘Inner Tension’ (ICC = 0.63) and ‘Concentration Difficulties’ (ICC = 0.69).
+9
+
+Figure 5. Intraclass correlation coefficients between raters for each item score (dark green) and for the total score
+(bright green) of the MADRS. Error bars represent 95% confidence intervals.
+Assessing profile consistency, coherence, and realism
+Qualitative ratings for the 20 interviews indicated broadly favorable perceptions of the system’s performance.
+When asked if the patient's behavior was consistent with its configured profile, the ratings for all interviews were
+positive, including ‘Strongly Agree’ (n=5), ‘Agree’ (n=14), and ‘Somewhat Agree’ (n=1). In 19 out of the 20
+interviews, the character cohesion was judged favorably, with ratings to the statement “The virtual patient
+maintained a coherent character throughout the interview, without factual or behavioral contradictions” including
+‘Strongly Agree’ (n=11), ‘Agree’ (n=4), and ‘Somewhat Agree’ (n=4). One rating was ‘Somewhat Disagree’
+(n=1), with the rater commenting that the virtual patient was factually consistent but at times behaviorally
+inconsistent. Ratings for linguistic naturalness were also high, with 19 of 20 responses being positive: ‘Strongly
+Agree’ (n=9), ‘Agree’ (n=9), and ‘Somewhat Agree’ (n=1). One interview received a rating of ‘Somewhat
+Disagree’ (n=1), for which the rater commented that the virtual patient was unrealistically verbose compared to a
+severely depressed person.
+Figure 6. Likert-scale responses to the three qualitative questions across expert raters and interviews.
+Discussion
+The results of this pilot study suggest that a voice-enabled virtual patient system based on a LLM can produce
+cohesive and clinically plausible simulations of interview-based clinical assessments. The primary findings show
+that experienced clinicians scored a set of virtual patients with high fidelity to their pre-defined symptom profiles
+and that inter-rater reliability point estimates were promising. These results provide initial evidence that LLM-
+based simulations can serve as a standardized and scalable tool to address critical gaps in clinical interview
+training, particularly for CNS clinical trials.
+10
+
+A notable finding in our study was the slight but systematic tendency for expert raters to score the virtual patients’
+symptoms as moderately more severe than their predefined parameters. This may suggest that the LLM, in its
+current configuration, produces richer or more evocative symptom descriptions than what is minimally required to
+meet a given scoring threshold, which could lead raters to “round up” when making a judgment. This presents a
+clear avenue for model refinement, possibly through modifications to the system’s prompting or by fine-tuning
+the model on a corpus of expert-scored interview transcripts to more precisely capture the subtle nuances of
+symptom expression at each severity level.
+Our quantitative analysis revealed a high point estimate for the inter-rater reliability for the total MADRS score
+(0.90) which is a promising, albeit preliminary, indicator of the system's ability to portray symptoms consistently.
+This estimate is comparable to the total ICC of 0.93 reported in the original validation of the structured interview
+guide (SIGMA) with human patients [29]. Our point estimates for the item-level ICCs are also strong, but these
+values should be interpreted with caution since the confidence intervals are wide, given our small sample of
+raters. The variability in item-level reliability also mirrors findings in the SIGMA study, which characterized its
+item-level reliability as “good to excellent.” This suggests that such variability may reflect not just system-
+specific behavior, but also the inherent ambiguity in rating certain symptoms. Further evaluations with a larger
+sample of raters will be needed to assess this question.
+The broadly positive qualitative feedback is an encouraging sign of the system’s fidelity, although these findings
+should also be considered preliminary as the total number of interviews (N=20) is moderate. The wide agreement
+on profile consistency is a key finding. It suggests that even when experts’ blind quantitative scores differed from
+the ground truth, they still perceived the patient's behavior as a reasonable representation of the intended clinical
+profile, indicating that the system’s generated behavior falls within an acceptable spectrum of clinical
+interpretation.
+This central finding is supported by the strong ratings for character cohesion (19/20 positive) and dialogue realism
+(19/20 positive). The isolated ‘Somewhat Disagree’ ratings are valuable as they point to specific areas for
+refinement. For instance, one rater’s observation that despite factual consistency, the virtual patient appeared, at
+times, behaviorally inconsistent, highlights the challenge of maintaining nuanced, implicit manifestations of the
+symptoms throughout the entire conversation. Another comment suggested that the instances of unrealistic
+verbosity occurred specifically within the context of severe symptoms. This feedback directly suggests a need to
+calibrate the model’s output to better match this typical clinical presentation. However, these individual
+observations did not appear to detract from the overall expert agreement. Taken together, these results provide
+initial evidence that the tool is capable of producing interactions that are clinically consistent, factually and
+behaviorally cohesive and linguistically natural.
+These findings address long-standing limitations of current training paradigms. The system presented here offers a
+compelling alternative that combines the realism of SPs with the scalability and standardization afforded by
+automated solutions. By providing on-demand access to a wide range of patient personas, the virtual patient
+simulations could offer trainees the repeated practice opportunities needed to build expertise. Furthermore, the
+system’s ability to generate consistent patient stimuli could be leveraged to calibrate raters and mitigate “rater
+drift” throughout the course of a clinical trial, contributing to enhanced data quality.
+11
+
+Limitations and future directions
+Despite the promising results, this study has several limitations that highlight important directions for future
+research. The most critical limitation is the study’s sample size (4 virtual patient personas and 5 expert raters),
+which is appropriate for a pilot study but limits the broader generalizability of our findings. A larger-scale
+evaluation with more diverse patient characters and a larger set of raters is needed to validate the initial results
+from this pilot study.
+Moreover, the current simulations are based only on audio, lacking any non-verbal cues such as facial expressions
+and body language. These cues are an essential part of clinical assessment, for instance in evaluating items such as
+“Apparent Sadness” on the MADRS, and their absence limits the system’s ecological validity. An important next
+step is to integrate the voice pipeline into a multimodal simulation, for instance with animated 3-dimensional
+avatars, that can train raters to interpret both verbal and non-verbal communication.
+While the virtual patients in our simulations demonstrated high narrative cohesion, it is important to acknowledge
+that LLMs are inherently susceptible to generating factually inconsistent or clinically implausible content. Even
+though this was not an issue in our controlled study, robust guardrails and continuous validation will be essential
+for deploying such a system in a real-world training environment.
+The present study focused on symptoms of depression as measured specifically by the MADRS. In practice, this
+tool holds promise for supporting clinical assessment training across a broad range of psychiatric conditions and
+assessment scales such as for anxiety and bipolar disorder. Careful validation will be necessary to demonstrate the
+system’s generalizability to these scenarios.
+Finally, a critical future direction will be to rigorously test the system's pedagogical effectiveness in a real training
+scenario. While expert feedback suggests the tool would be beneficial, a longitudinal study is required to
+empirically determine if training with this simulation system can lead to demonstrable improvements in trainee
+scoring accuracy, confidence and interviewing skills compared to traditional training methods.
+Conclusions
+LLM-powered virtual patient simulations represent a viable novel tool for training clinicians in standardized
+clinical assessments. This pilot study provides preliminary evidence that the system can produce clinically
+plausible practice scenarios that experts can score with a high degree of accuracy and promising reliability
+estimates. By addressing the need for scalable, standardized and realistic training opportunities, this technology
+has the potential to enhance the quality of psychiatric assessments, improve data integrity in mental health clinical
+trials, and ultimately better prepare clinicians for real-world patient interactions. Future work will focus on
+expanding the system's capabilities and rigorously testing its impact on trainee performance over time to solidify
+its role in medical education.
+Acknowledgements
+We thank the expert raters who participated in this study. Funding was provided by Brooklyn Health.
+12
+
+Data Availability
+User study data and analysis code are available upon request.
+Conflicts of Interest
+None declared.
+References
+1. Berendsen S, Verdegaal LMA, van Tricht MJ, Blankers M, Van HL, de Haan L. An old but still burning
+problem: Inter-rater reliability in clinical trials with antidepressant medication. J Affect Disord Elsevier BV;
+2020 Nov 1;276:748–751. PMID:32736184
+2. Sadler ME, Yamamoto RT, Khurana L, Dallabrida SM. The impact of rater training on clinical outcomes
+assessment data: a literature review. Int J Clin Trials Medip Academy; 2017 Jul 27;4(3):101.
+3. Xiao J, Fu X. Is the use of standardized patients more effective than role-playing in medical education? A
+meta-analysis. Front Med (Lausanne) 2025 Jun 18;12:1601116. PMID:40606465
+4. Brun S. Effectively Managing Rater Training and Consistency in CNS Trials. Available from:
+https://www.precisionformedicine.com/blog/effectively-managing-rater-training-and-consistency-in-cns-
+trials/ [accessed Aug 6, 2025]
+5. Kobak KA, Lipsitz J, Williams JBW, Engelhardt N, Jeglic E, Bellew KM. Are the effects of rater training
+sustainable? Results from a multicenter clinical trial. J Clin Psychopharmacol 2007 Oct;27(5):534–535.
+PMID:17873701
+6. Rothman B, Yavorsky C, De Fries A, Gordon J, Opler M. Quantifying rater drift on the HAM-D in a sample
+of standardized rater training events: Implications for reliability and sample size calculations. Eur Psychiatry
+Cambridge University Press (CUP); 2011 Mar;26(S2):683–683.
+7. Elendu C, Amaechi DC, Okatta AU, Amaechi EC, Elendu TC, Ezeh CP, Elendu ID. The impact of
+simulation-based training in medical education: A review. Medicine (Baltimore) Ovid Technologies
+(Wolters Kluwer Health); 2024 Jul 5;103(27):e38813. PMID:38968472
+8. Bienstock J, Heuer A. A review on the evolution of simulation-based training to help build a safer future.
+Medicine (Baltimore) Ovid Technologies (Wolters Kluwer Health); 2022 Jun 24;101(25):e29503.
+PMID:35758389
+9. Chaby L, Benamara A, Pino M, Prigent E, Ravenet B, Martin J-C, Vanderstichel H, Becerril-Ortega R,
+Rigaud A-S, Chetouani M. Embodied virtual patients as a simulation-based framework for training clinician-
+patient communication skills: An overview of their use in psychiatric and geriatric care. Front Virtual Real
+Frontiers Media SA; 2022 Jun 29;3. doi: 10.3389/frvir.2022.827312
+10. Flanagan OL, Cummings KM. Standardized patients in medical education: A review of the literature. Cureus
+Springer Science and Business Media LLC; 2023 Jul;15(7):e42027. PMID:37593270
+13
+
+11. Stiff A, White M, Fosler-Lussier E, Jin L, Jaffe E, Danforth D. A randomized prospective study of a hybrid
+rule- and data-driven virtual patient. Nat Lang Eng Cambridge University Press (CUP); 2022 Sep 23;1–42.
+12. Hamilton A, Molzahn A, McLemore K. The evolution from standardized to virtual patients in medical
+education. Cureus 2024 Oct;16(10):e71224. PMID:39525234
+13. Parsons TD, Kenny P, Ntuen CA, Pataki CS, Pato MT, Rizzo AA, St-George C, Sugar J. Objective
+structured clinical interview training using a virtual human patient. Stud Health Technol Inform
+2008;132:357–362. PMID:18391321
+14. Cook DA, Erwin PJ, Triola MM. Computerized virtual patients in health professions education: a systematic
+review and meta-analysis. Acad Med Ovid Technologies (Wolters Kluwer Health); 2010 Oct;85(10):1589–
+1602. PMID:20703150
+15. Furlan R, Gatti M, Menè R, Shiffer D, Marchiori C, Giaj Levra A, Saturnino V, Brunetta E, Dipaola F. A
+natural language processing-based virtual patient simulator and intelligent tutoring system for the clinical
+diagnostic process: Simulator development and case study. JMIR Med Inform JMIR Publications Inc.; 2021
+Apr 9;9(4):e24073. PMID:33720840
+16. Sapci AH, Sapci HA. Artificial intelligence education and tools for medical and health informatics students:
+Systematic review. JMIR Med Educ JMIR Publications Inc.; 2020 Jun 30;6(1):e19285. PMID:32602844
+17. Graf L, Sykownik P, Gradl-Dietsch G, Masuch M. Towards believable and educational conversations with
+virtual patients. Front Virtual Real Frontiers Media SA; 2024 May 21;5. doi: 10.3389/frvir.2024.1377210
+18. Cook DA, Overgaard J, Pankratz VS, Del Fiol G, Aakre CA. Virtual patients using large language models:
+Scalable, contextualized simulation of clinician-patient dialogue with feedback. J Med Internet Res 2025 Apr
+4;27:e68486. PMID:39854611
+19. Gutiérrez Maquilón R, Uhl J, Schrom-Feiertag H, Tscheligi M. Integrating GPT-based AI into virtual
+patients to facilitate communication training among medical first responders: Usability study of mixed reality
+simulation. JMIR Form Res 2024 Dec 11;8:e58623. PMID:39661979
+20. Wang R, Milani S, Chiu JC, Zhi J, Eack SM, Labrum T, Murphy SM, Jones N, Hardy K, Shen H, Fang F,
+Chen ZZ. PATIENT-\psi: Using large language models to simulate patients for training mental health
+professionals. arXiv [csCL]. 2024. Available from: http://arxiv.org/abs/2405.19660
+21. Cabrera Lozoya D, Conway M, Sebastiano De Duro E, D’Alfonso S. Leveraging large language models for
+simulated psychotherapy client interactions: Development and usability study of Client101. JMIR Med Educ
+JMIR Publications Inc.; 2025 Jul 31;11(v11i3e68056):e68056. PMID:40743466
+22. Cross J, Kayalackakom T, Robinson RE, Vaughans A, Sebastian R, Hood R, Lewis C, Devaraju S, Honnavar
+P, Naik S, Joseph J, Anand N, Mohammed A, Johnson A, Cohen E, Adeniji T, Nnenna Nnaji A, George JE.
+Assessing ChatGPT’s capability as a new age standardized patient: Qualitative study. JMIR Med Educ 2025
+May 20;11:e63353. PMID:40393017
+23. Zeng J, Qi W, Shen S, Liu X, Li S, Wang B, Dong C, Zhu X, Shi Y, Lou X, Wang B, Yao J, Jiang G, Zhang
+Q, Cao S. Embracing the future of medical education with large language model–based virtual patients:
+Scoping review (preprint). JMIR Preprints. 2025. doi: 10.2196/preprints.79091
+24. Montgomery SA, Asberg M. A new depression scale designed to be sensitive to change. Br J Psychiatry
+Cambridge University Press; 1979 Apr;134(4):382–389. PMID:444788
+14
+
+25. Rabinowitz J, Schooler NR, Brown B, Dalsgaard M, Engelhardt N, Friedberger G, Kinon BJ, Lee D, Ockun
+F, Mahableshwarkar A, Tsai J, Williams JBW, Sauder C, Yavorsky C, ISCTM ALGORITHMS/FLAGS TO
+IDENTIFY CLINICAL INCONSISTENCY IN THE USE OF RATING SCALES IN CNS RCTs working
+group members. Consistency checks to improve measurement with the Montgomery-Asberg Depression
+Rating Scale (MADRS). J Affect Disord Elsevier BV; 2019 Sep 1;256:143–147. PMID:31176186
+26. Anthropic. Claude 3.7 Sonnet. 2025. Available from: https://www.anthropic.com/models/claude-3
+27. Amazon Web Services, Inc. Amazon Transcribe. 2025. Available from: https://aws.amazon.com/transcribe/
+28. ElevenLabs. ElevenLabs Speech Synthesis. 2025. Available from: https://elevenlabs.io/
+29. Williams JBW, Kobak K. Development and reliability of a structured interview guide for the Montgomery-
+Åsberg Depression Rating Scale (SIGMA). Br J Psychiatry cambridge.org; 2008 Jan 1;192:52–58.
+PMID:18174510
+Abbreviations
+AI: artificial intelligence
+CNS: central nervous system
+ICC: intraclass correlation coefficient
+LLM: large language model
+MADRS: Montgomery-Asberg Depression Rating Scale
+STT: speech-to-text
+SP: standardized patient
+TTS: text-to-speech
+VP: virtual patient
+15

@@ -1,0 +1,1360 @@
+5202
+yaM
+13
+]LC.sc[
+1v68300.6052:viXra
+Adaptive-VP: A Framework for LLM-Based Virtual Patients that Adapts
+to Trainees’ Dialogue to Facilitate Nurse Communication Training
+KeyeunLee12,SeolheeLee12,EstherHehsunKim12,YenaKo2,JinsuEun1,
+DaheeKim3,HyewonCho1,HaiyiZhu4,RobertE.Kraut4,
+EunyoungSuh3,Eun-meeKim2,HajinLim12
+1hci+dLab,2DepartmentofCommunication,3DepartmentofNursing
+SeoulNationalUniversity
+4 Human-ComputerInteractionInstitute,CarnegieMellonUniversity
+{kieunp, hajin}@snu.ac.kr
+Abstract Traditionally, simulation-based training with
+standardized patients (SPs) has been central to
+Effectivecommunicationtrainingisessential nursing education (MacLean et al., 2017; Nestel
+to preparing nurses for high-quality patient
+andBearman,2014). However,itoftenprioritizes
+care. While standardized patient (SP) simu-
+proceduralskillsovercommunication,incurshigh
+lationsprovidevaluableexperientiallearning,
+costs,andscriptedinteractionslimititsabilitytore-
+theyareoftencostlyandinflexible. Virtualpa-
+tient(VP)systemsofferascalablealternative, flectthedynamicnatureofrealclinicalencounters
+but most fail to adapt to the varying commu- (Elenduetal.,2024;Wallaceetal.,2002).
+nicationskillsoftrainees. Inparticular,when Virtual patients (VPs) have emerged as a scal-
+traineesrespondineffectively,VPsshouldesca- ablealternativeforclinicaltraining(Barrows,1993;
+lateinhostilityorbecomeuncooperative—yet
+Zivetal.,2006;McGaghieetal.,2010;Pascucci
+thislevelofadaptiveinteractionremainslargely
+et al., 2014). Recent advances in large language
+unsupported. To address this gap, we intro-
+models(LLMs)enhanceVPsbyenablingmorenat-
+duceAdaptive-VP1,aVPdialoguegeneration
+ural,context-awareinteractions(Lietal.,2024;Fan
+frameworkthatleverageslargelanguagemod-
+els(LLMs)todynamicallyadaptVPbehavior etal.,2025;Chenetal.,2023). However,mostVP
+basedontraineeinput. Theframeworkfeatures systemsstilllackanaturalfeedbackloop—when
+apipelineforconstructingclinicallygrounded traineesuseineffectivecommunicationstrategies,
+yet flexible VP scenarios and a modular sys- theVPshouldrespondaccordingly(e.g.,byescalat-
+temforassessingtraineecommunicationand
+ingfrustration),andviceversa(e.g.,de-escalating
+adjustingVPresponsesinrealtime,whileen-
+whencommunicationimproves)(Grafetal.,2024).
+suringlearnersafety. WevalidatedAdaptive-
+To address these limitations, we develop
+VPbysimulatingchallengingpatientconver-
+sations. Automatedevaluationusingacorpus Adaptive-VP (see Figure 1), a LLM-based VP
+frompracticingnursesshowedthatourcommu- framework to dynamically adapt VP behavior
+nicationskillevaluationmechanismreflected basedontraineeinput. Ourapproachbeginswith
+real-world proficiency levels. Expert nurses theVPcasedevelopmentpipeline,whichguides
+furtherconfirmedthatAdaptive-VPproduced
+the creation of clinically grounded yet customiz-
+morenaturalandrealisticinteractionsthanex-
+able VP-based training scenarios by incorporat-
+istingapproaches,demonstratingitspotential
+ingdetailedpatientpersonasandclinicalcontexts
+asascalableandeffectivetoolfornursingcom-
+alignedwithspecifictraininggoals.
+municationtraining.
+Dialogue adaptation is managed by four core
+1 Introduction modulesthatcollaborativelyadjusttheVP’sbehav-
+iorbasedontraineeperformance(e.g.,escalating
+Effective nurse-patient communication is crucial
+problematic behavior when trainees’ response is
+forenhancingtreatmentadherenceandhealthout-
+ineffective and de-escalating when it is appropri-
+comes(Pataketal.,2009;Chochinovetal.,2013;
+ate). First,theEvaluationModuleassessestrainee
+Peimanietal.,2020). Conversely,poorcommuni-
+utterancesusingamulti-agentevaluationprocess
+cationcanleadtomedicalerrors,increasedpatient
+based on criteria informed by best practices and
+dissatisfaction,andheightenedproviderstress(Dit-
+literature in nursing communication. Based on
+holeetal.,2016;Banerjeeetal.,2016).
+thisassessment,theDynamicAdaptationModule
+thendeterminesthedirectionoftheVP’snextre-
+1Code and data available at: https://github.com/
+keyeun/adaptive-vp sponseandpassesthistotheDialogueGeneration
+
+Adaptive-VP’spotentialtosupportscalable,realis-
+tic,andadaptivecommunicationtraining.
+To apply the Adaptive-VP framework to train-
+ing for challenging patient interactions, we con-
+ductedaseriesofvalidationstudies. First,weeval-
+uatedthequalityandrealismofcasesgeneratedby
+the VP Case Development Pipeline through con-
+sultationswith10nursingprofessionals. Second,
+wevalidatedtheEvaluationModuleusingconver-
+sation corpora collected from expert and novice
+nurses(15each). Finally,weconductedabetween-
+subjectsexperimentwith28nursingprofessionals
+to assess the realism and role consistency of VP
+responsesfromtheAdaptive-VPframework.
+Results demonstrated that Adaptive-VP gener-
+ated highly adaptive and contextually grounded
+VPbehavior,significantlyimprovingtheperceived
+realism of VP interactions compared to existing
+approaches. These findings highlight the frame-
+work’s potential to support scalable communica-
+tiontrainingacrosshealthcaredomains. Moreover,
+Adaptive-VPoffersapromisingapproachforgener-
+atingdiverseclinicaldialoguecorpora—especially
+in areas where real-world data collection is con-
+strainedbyprivacyregulationsandpolicyrestric-
+Figure1: OverviewoftheAdaptive-VPframework tions(Wangetal.,2024a).
+2 RelatedWork
+Module,whichgeneratesacontextuallyappropri-
+ateVPdialogue. Finally,theSafetyMonitoring LLM-based agents are increasingly used as vir-
+ModulereviewsthegeneratedVPdialoguebefore tualpatients(VPs)forcommunicationtrainingin
+presentingittotrainees,ensuringlearnersafetyby healthcare education (Fan et al., 2025). These
+filtering harmful content (e.g., extreme toxicity), agents have been applied to a range of clini-
+whilepreservingtherealismofinteraction. calscenarios,includingdiagnostictraining(Chen
+AsatestbedforrefiningandvalidatingAdaptive- etal.,2023),patientinterviewing(Lietal.,2024),
+VP,wefocusedonsimulatingchallengingpatient and history-taking simulations (Holderried et al.,
+interactions,whichencompassarangeofencoun- 2024b;Sardesaietal.,2024),demonstratingtheir
+terswherecommunicationdifficultiesdisruptther- abilitytogenerateclinicallyrelevantVPdialogues.
+apeuticrelationshipsbetweenpatientsandhealth- Someframeworksfurtherintegratemulti-agentin-
+care providers (Hardavella et al., 2017; Marcum, teractions(Baoetal.,2024;Fanetal.,2025)and
+2015). Such challenges often stem from patient cognitivemodelingtosupportmentalhealthtrain-
+characteristicssuchasaggression,non-cooperation, ingandpsychiatricevaluations(Chenetal.,2023;
+or demanding attitudes(Groveset al.,1978; Har- Louieetal.,2024;Gabrieletal.,2024).
+davellaetal.,2017),whichcanleadtoemotional While these systems have advanced the use of
+exhaustion for providers and strain the patient- LLMs in healthcare training, many remain lim-
+providerrelationship(Serouretal.,2010). Studies ited in their ability to reflect the adaptive nature
+estimate that approximately 15% of clinical en- of human communication. In real-world interac-
+countersareperceivedbyphysiciansas“difficult” tions,speakerscontinuouslyadjusttheirbehavior
+(Hahn et al., 1996; Hinchey and Jackson, 2011), inresponsetotheirconversationpartner’scuesand
+yet targeted VP-based training for handling such signals (Kraut et al., 1982). In contrast, existing
+interactionsremainslimited. Byfocusingonthese LLM-basedVPsystemsoftenfocusonmaintaining
+challenginginteractions,weintendtodemonstrate pre-definedrolefidelityandscenarioconsistency
+
+Table1: ComparisonofLLM-basedVirtualPatientSystems
+Expert- Real-time Adaptive Learner
+Study TargetTrainee VPSystemObjective
+verifiedVP Evaluation Behavior Safety
+Wangetal.(2024b) Counselingtrainees CBTskilltraining ✓ ✗ ✗ ✗
+Steenstraetal.(2025) Counselors Motivational interviewing skill ✗ ✓ ✓ ✗
+training(substancemisusecon-
+text)
+Louieetal.(2024) Novicecounselors Mental health counseling skill ✓ ✗ ✗ ✓
+training
+Hickeetal.(2025) Medicalstudents History taking and physi- ✓ ✗ ✗ ✗
+cian–patient communication
+training
+Baoetal.(2025) Nottraining-focused Nurse–patient outpatient recep- ✗ (✓) ✗ ✗
+tiondialoguegeneration(fordata
+creationandmodeldevelopment)
+Holderriedetal.(2024a) Medicalstudents Historytakingskilltraining (✓) ✗ ✗ ✗
+OurWork Nursetrainees Communication skill training ✓ ✓ ✓ ✓
+acrossdiverseclinicalscenarios
+(Jiangetal.,2025;Wangetal.,2024b;Louieetal., a range of communication training goals. At its
+2024),whichcanconstraintheirabilitytosimulate core, Adaptive-VP implements a four-module ar-
+dynamicpatient-providerexchanges. Additionally, chitecturethatdynamicallyadjustsVPbehaviorin
+rigid,scenario-specificdesignsmayreducescala- realtimebasedontraineeperformance,supporting
+bilityacrossvariedtraininggoalsandcommunica- trainingexperiencesthatarerealistic,responsive,
+tioncompetencies. andpedagogicallyeffective.
+Tobettercontextualizeourapproachinrelation
+3 OverviewofAdaptive-VPFramework
+toexistingsystems,Table1providesacomparative
+overview of recent LLM-based VP frameworks. In developing the Adaptive-VP framework, we
+Wesummarizeeachsystem’stargettrainees,train- identifiedfourcorechallengesincreatingadaptive
+ing objectives, and the presence of four core ca- VPdialoguesanddevelopedtargetedapproaches
+pabilities that also define the design goals of our toaddressthem,asoutlinedbelow.
+framework: expert-verifiedVPpersonas,real-time
+3.1 Challenge1: DevelopingClinically
+response evaluation, adaptive VP behavior, and
+GroundedyetAdaptableVPcases
+learnersafetymechanisms.
+InSPsimulationtraining,detailedcaseprotocols
+As shown in Table 1, existing systems vary in
+areessential,encompassingpatientdemographics,
+theircoverageofthefourcorecapabilitiesweiden-
+clinicalcontent(e.g.,presentsymptoms,medical
+tify. Whilemanyincorporateoneortwoofthese
+history),psychosocialbackground,situationalde-
+dimensions, few integrate all four. For example,
+tails,andSP-specificcomplaints(INACSL,2023;
+severalsystemsmaintainconsistentrolepersonas
+ASPE, 2022). While existing SP protocol struc-
+andstructuredscenariosbutdonotadapttheirbe-
+tures and developed cases offer a strong founda-
+havior based on trainee input. Others often lack
+tionforVPcasedesign,theirhighlyscriptedand
+safeguardstosupportlearnerwell-being. Thesepat-
+context-specificnatureoftenlimitsreusabilityand
+ternshighlightopportunitiesformorecomprehen-
+adaptabilityacrossdiverseclinicaltrainingscenar-
+siveandflexibleVPframeworksthatnotonlyadapt
+ios(Elenduetal.,2024;Wallaceetal.,2002).
+dynamicallytotraineeperformance,butalsoincor-
+poratesafeguardstosupportlearnerwell-beingand
+Our Approach To address this, we developed
+ensurerealistic,pedagogicallysoundinteractions.
+theVPCaseDevelopmentPipeline,ensuringclin-
+Our framework, Adaptive-VP, is designed to icalvaliditywhileallowingflexibilityintailoring
+address these gaps through a structured, modu- educationalgoalsandcontexts.
+lar approach. It integrates all four core capabili- Our pipeline consists of five stages. First, it is
+tiesidentifiedinTable1,enablingthecreationof necessary to 1) clarify the training goal, identi-
+diverse, clinically grounded VP cases tailored to fyingkeycommunicationchallengesandtraining
+
+goals, such as managing challenging patient in- Accordingly,ourEvaluationModule,operates
+teractions. Second, we 2) incorporate relevant at two levels: (1) the utterance level, assessing
+literaturebyintegratingevidence-basedinsights qualitiessuchastoneandempathy,and(2)thecon-
+from nursing communication literature and best versationlevel,evaluatingcontext-specificstrate-
+practices. Third,we3)specifythetrainingcon- gies—for example, the use of de-escalation tech-
+text,includinggeographical,cultural,andtrainee- niqueswhenmanagingdifficultpatientinteractions
+specificfactorsthatshapethelearningscenario. (Priceetal.,2024).
+By inputting this information into LLMs, the Furthermore, to enhance evaluation reliability,
+pipeline4)generatesdraftVPcases,developing we adopt a multi-agent evaluation, as described
+VPprofilesandclinicalscenariosalignedwiththe in (Chan et al., 2023). Systematic evaluation re-
+trainingfocusandSPprotocolstandards(INACSL, sults(e.g.,communicationefficiencyscore)derived
+2023; ASPE, 2022). To promote consistency in from this process guide how the VP dynamically
+VP behavior, the pipeline also specifies detailed adaptsitsresponsesbasedontraineeperformance.
+communicationtraitsofVP(DeVriesetal.,2009),
+3.3 Challenge3: DynamicallyAdjustingVP
+guidingLLMsingeneratingcoherentresponsepat-
+Responses
+terns. Finally,5)expertvalidationinvolvesclini-
+caleducatorsandexperiencedpractitionersreview- Static VP behaviors throughout training can be
+ingthegeneratedprofilesandscenarios. Theirfeed- ineffective, as patient behavior in real-world set-
+back on clinical accuracy and educational value tingsisdynamicandresponsivetothehealthcare
+informstherefinementofthedraftVPcases. provider’scommunication(Pinesetal.,2021).
+Our Approach To adjust VP responses based
+3.2 Challenge2: RobustlyEvaluatingNurse
+ontraineeperformance,theDynamicAdjustment
+CommunicationEfficiency
+ModuledeterminesthedirectionofVPresponses
+Traditionalapproachestoevaluatingnursecommu-
+tothetrainee’sutterancebasedonevaluationresults
+nicationeffectivenesshavereliedonstandardized
+from the Evaluation Module. These evaluation
+toolssuchasobservationchecklistsandquestion-
+results,representedasascore,guidemodifications
+naires (Bialer et al., 2011; Cannity et al., 2021).
+tothecommunicationtraitsdefinedintheVPcases
+While these methods offer structured assessment
+and influence how the VP responds to nurses, di-
+frameworks,theyoftendependonasmallnumber
+rectingtheDialogueGenerationModuletopro-
+ofhumanevaluators,includingself-assessmentsor
+ducecontextuallyappropriateresponses.
+expert reviews, which can introduce subjectivity
+andinconsistencies(Podsakoffetal.,2003;Hoyt 3.4 Challenge4: EnsuringLearnerSafety
+andKerns,1999). While realism in VP behavior is essential, an
+More recently, large language models (LLMs) overlycombativeorhostileVPdialoguemaycause
+havebeenadoptedforautomatedevaluation. How- emotional distress and reduce learner confidence
+ever,single-agentassessmentscanexhibitseveral (Kardong-Edgrenetal.,2024;Stephenetal.,2020).
+known biases, including positional bias (Wang
+Our Approach To ensure learner safety, the
+et al., 2023; Liusie et al., 2024), self-preference
+SafetyMonitoringModuleevaluateseachVPut-
+bias(Kooetal.,2024;Liuetal.,2024),andincon-
+terancebeforepresentingittothetrainee. Theini-
+sistenciesinknowledgeorformatting(Zhuetal.,
+tialVPresponse,generatedbytheDialogueGen-
+2023). These challenges highlight the need for
+erationModule,isassessedagainstfourcriteria.
+more robust and reliable evaluation mechanisms
+First,“safetyassurance”detectsoverlyhostileor
+forcommunicationtraining.
+derogatorylanguage. Next,itverifies“alignment
+Our Approach To enable robust evaluation of withthetraininggoal,”ensuringthattheresponse
+traineecommunicationeffectiveness,wedrawon isrelevanttotheintendedcommunicationtraining
+well-establishedguidelinesandcriteriafromnurs- objectives. Italsoexamines“consistency”withthe
+ingliteratureandbestpracticeframeworks. While patientcasedetailsand“adherence”tobehavioral
+specific metrics may vary depending on training directionsfromtheDynamicAdjustmentModule.
+goals and contexts, the underlying structure re- Iftheutterancefailstomeetanyofthesecriteria,
+mainsconsistent: assessingcommunicationatboth itisreturnedtotheDialogueGenerationModule
+theutteranceandconversationlevels. withfeedbackforrevision.
+
+3.5 TestCase: CreatingVPsDemonstrating strengtheningtheircommunicationskillsforman-
+ChallengingPatientTraits agingchallengingpatientinteractionsthroughVP-
+basedtraining.
+WeappliedtheAdaptive-VPframeworktosimulate
+challenging patient interactions, a particularly
+4)GenerateDraftVPCases Basedonthespec-
+complex domain within nursing communication
+ified training goals and context, we used Claude-
+(Grovesetal.,1978;Townsleyetal.,2023). These
+3.5 Sonnet to generate two distinct scenarios for
+scenariosinvolvepatientsexhibitingbehaviorsthat
+each of the four challenging patient types, yield-
+hindereffectivetherapeuticcommunication,such
+ing a total of eight scenarios. Claude-3.5 Sonnet
+asbeingoverdependent,authoritative,aggressive,
+wasusedthroughout,givenitsstrongperformance
+oruncooperative(Grovesetal.,1978). Below,we
+in Korean and clinical dialogue (Jang and Jung,
+detail the implementation and validation process
+2024; Kim et al., 2024; Schmidgall et al., 2024).
+fordevelopingVPsthatrealisticallyportraythese
+WethenpromptedtheLLMtoconstructdetailed
+challengingtraits,providingguidanceforapplying
+patientprofilesinaccordancewithinternationalSP-
+theframeworkacrossdiversenursingcommunica-
+based training protocols (INACSL, 2023; ASPE,
+tiontrainingcontexts.
+2022), including demographics, medical history,
+andsituationaldetails(seeA.3). Toensurerealistic
+4 DevelopingVPCasesforChallenging
+andconsistentcommunicationbehavior,wefurther
+Patients
+prompted the model to generate communication
+traitsbasedonsevenempiricallygroundedstyles
+We applied the VP Case Development Pipeline
+(e.g.,threateningness)(DeVriesetal.,2009),guid-
+to generate challenging patient cases that reflect
+ingittotailoreachpatient’stoneandexpressions
+nurses’communicationchallengesinspecificclini-
+to their persona type, scenario, and demographic
+calsettingsfollowingthefivestepsbelow.
+attributes(seeA.4).
+1)ClarifyingtheTrainingGoal Ourfocuswas
+5)ExpertValidation Tovalidatetheclinicalva-
+onprovidingtrainingonhandlingchallengingpa-
+lidityoftheeightdraftVPcases,weconductedan
+tientinteractionssincethisiswidelyrecognizedas
+expert evaluation with 10 practicing nurses (avg.
+oneofthemostdifficultaspectsofnursingcommu-
+7.0yearsofexperience). Ona5-pointscale,partic-
+nication(Steinetal.,2022).
+ipantsratedthescenariosmoderatelyhighinboth
+2)IncorporatingRelevantLiterature Wefirst realism (M = 3.81, SD = 0.97) and accuracy in
+identified four prevalent types of challenging pa- reflectingpatientcharacteristics(M=4.00,SD=
+tientsalongwiththeircorrespondingtraits: overde- 0.94). Follow-up interviews provided additional
+pendent,overlyauthoritative,threatening,andnon- feedbackthatinformedrevisions. Forexample,one
+cooperative toward treatment, based on a review nurse (EV2) remarked, “Patients often complain
+ofnurse-patientcommunicationliterature(Colson abouthospitalfood,butrarelybecomeviolentover
+etal.,1985;Grovesetal.,1978;Kits,1990)(See it,” prompting us to replace the original scenario
+A.1fordetailsoneachchallengingpatienttype). withamorecontextuallygroundedcaseinvolving
+patientaggressiontriggeredbyschedulingchanges
+3)SpecifyingtheTrainingContext InSouthKo-
+formedicalexaminations(seeBforthefinalized
+rea, nursesfrequentlyfaceemotionallaborwhen
+VPcasesrefinedthroughexpertvalidation).
+managing challenging patients, leading to stress
+and burnout (Hankyung, 2020; KN News, 2016).
+5 EvaluatingTraineeCommunication
+This challenge is particularly critical for novice
+EfficiencywithChallengingPatients
+nurses, who often feel unprepared for real-world
+practice, leading to strained patient relationships We implemented an evaluation module aligned
+(Hoetal.,2021;Kimetal.,2020). Notably,57.4% withestablishednursingcommunicationstrategies
+ofnovicenursesinSouthKorearesignwithintheir (Priceetal.,2024;Ernstmeyeretal.,2022;Hallett
+firstyear(YonhapNews,2024),withconflictsin- andDickens,2017;Sheldon,2009;TMLT,2022a),
+volving patients and caregivers cited as a major assessingnurses’communicationatboththeutter-
+contributing factor (Son et al., 2017). Given this, ance level (Tone, Empathy, and Prohibited Com-
+wespecifiedourtrainingcontextsastargetingearly- municativeBehaviors)andtheconversationlevel
+career nurses in South Korea, with the goal of (De-escalationfortensionmanagement). Further,
+
+Component EvaluationUnit Subcomponent ScoringCondition Max Min ExampleNurseUtterance(Max/Min)
+Max: "Could you tell me where you
+Calm feeluncomfortable?"
+Tone Utterance IfcalmANDclear,+1 1 0
+Clear Min: "Yeah... Igetit, butthat’sjust
+howthingsare."
+Max: "I’msosorryyou’refeelingthis
+Empathy way."
+Empathy Utterance Ifempathylevel≥3,+1 1 0
+level(0-6) Min: "It’snotabigdeal.Justdealwith
+it."
+Max: (Noprematureempathy)
+Premature
+Min: "Iknowit’stough,butlet’sjust
+empathy
+getitdone."
+Prohibited
+Max: (Noinvalidation)
+Communicative Utterance Invalidating
+Ifanybehaviorpresent,-1 0 -1 Min: "That’s not true. You’re just
+Behavior beliefs
+imaginingthings."
+Max: (Nodismissiveness)
+Dismissive
+Min: "StopwhiningandjustdowhatI
+commands
+say."
+Max: "Wouldyouliketotakeabreak
+orkeeptalking?"
+Autonomy Ifusedatleastonce,+1
+Min: "JustdoasIsay. Youhaveno
+choice."
+Max: "I need you to stay seated for
+D Ste r- ae tes gca ylation Conversation Limit-setting Ifusedatleastonce,+1 3 0
+Min:
+n "Io fw y."
+oudon’tsitdown, Iwon’t
+talktoyou."
+Max: "Let’s find a way to make this
+Problem
+easierforyou."
+solving/ Ifusedatleastonce,+1
+Min: "There’snothingwecando.Just
+Reframing
+acceptit."
+Table2: Evaluationcriteriawithexampleutterancesformaximumandminimumscores.
+toenhancethereliabilityoftheseassessments,we Prohibited Communicative Behaviors disrupt
+adopted a multi-agent evaluation process to miti- rapportandeffectiveintervention. BasedonTMLT
+gatebiasescommonlyfoundinsingle-agentjudg- (2022b), we penalize the following behaviors (1-
+ments. Based on this process, each trainee utter- point deduction per utterance, regardless of fre-
+anceisscoredforcommunicationefficiencybased quency): (1)Prematureclaimsofempathy,(2)In-
+onthisevaluationframework(seeTable2). validatingbeliefs,and(3)Dismissivecommands.
+Conversation-levelEvaluation De-escalationis
+5.1 EvaluationCriterionandScoring
+acriticalcommunicationstrategyformanagingten-
+Mechanism
+sionwhilepreservingpatientautonomy(Spencer
+Utterance-level Evaluation Tone plays a cru- et al., 2018; Hallett and Dickens, 2017). Origi-
+cialroleinnurse-patientcommunication(Sheldon, nallydevelopedforhandlingaggressivebehavior,
+2009),soweassesswhetherthetrainee’sutterance de-escalation techniques have also demonstrated
+isCalmandClear,awarding1pointifbothcriteria effectiveness in managing broader forms of chal-
+aremet. lengingpatientencounters(Richmondetal.,2012;
+Empathyenhancespatientwell-being,satisfac- Accinnietal.,2021).
+tion (Howick et al., 2018; Madula et al., 2018), In our evaluation, we focused on three core
+andtherapeuticcommunication(BlakeandBlake, de-escalation strategies identified by Price et al.
+2019; Brown and Bylund, 2008). Using the Em- (2024): Autonomy, which engages patients in
+pathicCommunicationCodingSystem(Kleinsmith decision-makingtoenhancetheirsenseofcontrol;
+etal.,2015),whichclassifieshealthcareprofession- Limit-setting,whichestablishesbehavioralbound-
+als’empathylevelsona0–6scale,wedesignated ariesforsafety;andProblem-solving&Reframing,
+level3orhigherasempathetic,awarding1point. whichfacilitatesconstructivedialoguebyreinter-
+
+pretingthesituationcollaboratively. Eachstrategy
+isscoredwith1pointifitisobservedatleastonce
+duringtheconversation.
+5.2 Multi-agentEvaluation
+To ensure both rigorous and comprehensive eval-
+uation of trainee performance, we implement a
+multi-agentpipelinefollowingrole-basedevalua-
+tionapproachesinpriorwork(Zhangetal.,2023;
+Wu et al., 2023; Zhu et al., 2024). To minimize
+falsepositivesandimprovereliability,aresponseis
+onlyconsideredvalidwhenallagentsreachunani-
+Figure 2: Turn-by-turn mean evaluation scores (with
+mousagreement. Wedefinethreespecializedeval- 95%CI)forexpert(N=15)andnovice/students(N=15)
+uator roles, each reflecting a critical perspective
+in communication training: a Nursing Professor,
+a Communication Skills Trainer, and a Clinical agementanduseofde-escalationstrategies. This
+Psychologist (See C.1, C.2, and C.3 for role de- resultsuggestedthatourevaluationmodulereliably
+scriptionsandpromptingdetails). distinguishedeffectivecommunicationbehaviors.
+A detailed subcomponent analysis is provided in
+5.3 ValidatingEvaluationRigor
+AppendixG.1.
+We assessed our evaluation module’s rigor by fo-
+cusingontwoquestions: 1)Doesiteffectivelydis-
+ReliabilityandRole-BasedDifferencesinMulti-
+tinguishbetweenexpertandnovicecommunication
+Agent Evaluation Next, we assessed whether
+efficiency?, and 2) Do differences in multi-agent
+themulti-agentevaluationframeworkyieldedcon-
+scoresreflectmeaningfulrole-basedperspectives
+sistent scores and whether observed differences
+ratherthanrandomvariation?
+among raters reflected legitimate role-based per-
+spectives rather than random variability. Using
+DistinguishingExpertfromNovicePerformance
+Fleiss’kappatomeasureoverallconsistencyacross
+We analyzed dialogue corpora from two groups:
+thethreeevaluatorsyieldedhighinter-rateragree-
+novice (N = 15; ten with
+
+0.75).
+fivepre-licensurestudents)andexperiencednurses
+(N=15;meantenure=12.5years). Eachpartici- To further examine the source of rating varia-
+pantengagedineightinteractionswithVPagents tion,weconductedamixed-effectsanalysisusing
+generatedsolelyfromourvalidatedVPcases(see GeneralizedEstimatingEquations(GEE),model-
+B), excluding the evaluation module during data ingevaluatorroleasafixedeffectandcontrolling
+collection. Wethenappliedourmulti-agenteval- fortextualvariationasarandomeffect.
+uation pipeline (see C) to assess their utterances. Theresultsshowedthatscorevariationswerenot
+The average conversation length was 7.45 turns random but systematically reflected role-specific
+for experienced nurses vs. 5.3 turns for novices. perspectives. Both the Communication Skills
+For consistency, only the first five utterances per Trainer and the Nursing Professor consistently
+sessionwereanalyzed. assigned lower scores for tone-related attributes
+Wefirstexaminedwhethertheevaluationscores than the Clinical Psychologist (all p = 4). In contrast, the dynamic VP, while
+cues,(4)appropriateincorporationofrudeexpres- stillagitated,acknowledgesthetrainee’sattemptto
+sions, and (5) restriction of references to higher engage(“Ohcomeon! 10! It’s10!”) andgradually
+authoritiestoencourageinteraction. deescalatesastheconversationprogresses.
+ResponseStructure Eachresponseconsistsof 7 BalancingRealismwithLearnerSafety
+threecomponents: (1)innermonologuecapturing
+patientreasoning(hiddenfromtrainees),(2)verbal TheSafetyMonitoringModuleevaluateseachVP
+responsereflectingcognitiveandemotionalstates, responseagainstfourcriteriabeforepresentingit
+and(3)non-verbalcueannotations(e.g.,“sighs)”). to trainees: (1) Safety Assurance—ensuring pro-
+Thistripartiteresponsestructureensurescoherent fessional boundaries without excessive hostility;
+patientbehaviorbyaligninginternalstateswithver- (2)Alignmentwiththetraininggoal—confirming
+balandnon-verbalexpressions(Zhouetal.,2024). meaningfullearningratherthanredundantoroff-
+
+target content; (3) Consistency with Patient Pro-
+file—verifyingthealignmentwiththepredefined
+persona;and(4)DirectionAdherence—checking
+compliancewithassignedintensitylevelsandtraits
+(SeeFfordetails).
+8 HumanEvaluation
+Toassesstheimpactofdynamicadaptationonsim-
+ulationrealism,weconductedacomparativestudy
+whereexperiencednursesevaluatedVPagentsun-
+Figure4: HumanEvaluationResult
+dertwoconditions: StaticandDynamicVPs.
+EvaluationProcedure Werecruited28experi-
+VPsunrealisticduetotheirrigidandunresponsive
+encednurses(≥3yearsofclinicalexperience)and
+nature. S2noted,“Ifmyresponsesareefficient,the
+randomlyassignedthemtooneoftwoconditions:
+patientshouldcalmdown,buttheydon’t.” Others
+Static(n=14)orDynamicVP(n=14). Eachpar-
+raisedconcernsabouttraineemotivationandconfi-
+ticipant interacted with eight VP agents and then
+dence: “Ifthepatientnevercalmsdown,itmight
+ratedtheirperceivedrealismusingasix-itemques-
+discouragenovicenurses.” (S9).
+tionnaire adapted from prior work (Wind et al.,
+2004),scoredonafive-pointLikertscale(1=Not 9 ConclusionandFutureDirections
+realisticatall,5=Highlyrealistic).
+Inthisstudy,weintroducedAdaptive-VP,anLLM-
+An exploratory factor analysis (EFA) revealed
+based virtual patient framework designed to en-
+thatthesesixitemsgroupedintotwodistinctfac-
+hance nurse communication training by address-
+tors: RoleFidelity(Cronbach’sα=0.96)andCon-
+ingfourkeychallenges: (1)generatingclinically
+versationalRealism(Cronbach’sα=0.97). Role
+groundedyetadaptableVPcases,(2)implement-
+FidelitymeasuredhowwelltheVPmaintainedits
+ingastructuredevaluationoftraineecommunica-
+designatedpersonaandenactedrelevantbehavioral
+tion, (3) dynamically adjusting VP responses in
+traits. Conversational Realism assessed dialogue
+real time, and (4) balancing realism with learner
+authenticityandcoherence.
+safety. In doing so, our framework integrates a
+To analyze the effects of Condition (Static
+structuredVPcasepipelinetailoredtoeducational
+vs. Dynamic) and Patient Type on these two di-
+goals and training contexts, alongside a modular
+mensions, we fitted a linear mixed-effects model
+structurethatadaptsVPutterancesbasedonevalu-
+(LMM).ThemodelincludedfixedeffectsforCon-
+ationresultswhileensuringlearnersafety.
+dition, Patient Type, and their interaction, with
+Specifically,weappliedthisframeworktosim-
+a random intercept for Subject ID to account for
+ulatechallengingpatientinteractionsfortraining
+within-subjectvariability.
+novice nurses in South Korea. Through this pro-
+Results Omnibus tests revealed a significant cess, we validated the clinical authenticity and
+main effect of Condition for both Role Fidelity, realism of VP cases, the validity of the evalua-
+F(1, 25.4)=4.52, p=.043, η2 =0.151, andCon- tionmechanism,andtheperceivedrealismofVP
+p
+versationalRealism,F(1,24.7)=8.421,p=.008, conversations,involvingover50practicingnurses.
+η2 =0.254. DynamicVPswereratedsignificantly These findings suggest that Adaptive-VP has the
+p
+higher than Static VPs on both dimensions (see potentialtoenhancenursingcommunicationtrain-
+Figure 4). In contrast, no significant main effect ing, providingascalableandadaptableapproach
+of Patient Type was found, indicating perceived toVP-basedcommunicationtraining.
+realismwasconsistentacrossscenarios. Buildingonthesefindings,Adaptive-VPcanbe
+Open-ended feedback further supported these extended to diverse communication training con-
+results. OnenurseintheDynamicCondition(D6) texts. Also, its evaluation modules can be cus-
+commented,“TheVPfeltveryrealistic. I’veheard tomizedforvariedassessmentgoalsandroles,and
+similar responses from real patients before. This theframeworkmayalsosupportgeneratingclinical
+willbereallyusefulfornovicenurses.”Conversely, dialoguecorporawheredatacollectionislimited
+several nurses in the Static Condition found the byprivacyorresources(Wangetal.,2024a).
+
+10 Limitations Lastly,ourevaluationprioritizedtherealismof
+patientutterancesoverdirectlymeasuringthetrain-
+WhileAdaptive-VPdemonstratespromiseasascal-
+ing effectiveness of newly hired nurses (Tanana
+ableandadaptableapproachforVP-basedcommu-
+et al., 2019; Wang et al., 2024b). We made this
+nicationtraining,ithasseverallimitations.
+decisionbasedonthepremisethatrealisticpatient
+First,ourapplicationandvalidationfocusedon dialogueisafoundationalprerequisiteforeffective
+theKoreancontext,specificallytargetingchalleng- simulation-basedtraining. Accordingly,ourfocus
+ingpatientencountersasakeytrainingarea. This wasonensuringthatVP-generatedspeechclosely
+contextualfocusenhancesculturalandsituational mirrorsreal-worldinteractions. Futurestudieswill
+relevance, ensuring that the generated VP inter- extendthisworkbyevaluatingitsimpactonlearn-
+actionsalignwithreal-worldchallengesfacedby ers’skilldevelopmentandlong-termeducational
+localhealthcareprofessionals. However,thisem- outcomesamongnovicenurses.
+phasismaylimitthegeneralizabilityofourfindings
+to other healthcare systems, cultural contexts, or 11 EthicalConsideration
+trainingdomainsthatpresentdifferentcommunica-
+ThisstudyaimstoadvancetheuseofLLMsinVP
+tiondynamicsandexpectations.
+agentsfornursingcommunicationtraining,while
+Furthermore, ourhumanevaluationinvolveda
+firmlyrecognizingthatitshouldsupplementrather
+relatively small sample of nursing students and
+than replace hands-on training with experienced
+professionalsbasedinSouthKorea. Althoughthe
+professionals in real-world clinical settings. We
+results demonstrated statistical significance, the
+also acknowledge the broader ethical risks asso-
+limited sample size and demographic scope may
+ciatedwithAI-drivensimulations. Theseinclude
+affectthebroaderapplicabilityofourframework
+potentialmisuseforimpersonation,deception,or
+and findings. Future research should investigate
+thegenerationofmisleadingorharmfulcontent.
+howAdaptive-VPperformsinmorediverseclini-
+cal environments and assess whether its adaptive
+Human Evaluation All human evaluation pro-
+frameworkremainseffectiveacrossvariedpatient-
+cedureswereapprovedbytheInstitutionalReview
+providerinteractionscenarios.
+Board (IRB) of Seoul National University. Par-
+Additionally,ourframeworkprimarilyutilized
+ticipants provided informed consent prior to par-
+Claude 3.5 Sonnet, selected for its strong perfor-
+ticipationandwereinformedthatVPinteractions
+manceinKoreanlanguagegenerationandcontex-
+might include emotionally challenging scenarios.
+tual alignment with clinical scenarios. However,
+Participantswerefreetowithdrawatanypoint. All
+alternativeLLMssuchasGPT-4orLLaMAmay
+collected data were anonymized, and access was
+alsoofferviablecapabilitiesforsimulatingvirtual
+restrictedtoauthorizedresearchpersonnel.
+patient interactions. Future research should sys-
+tematicallycomparetheperformanceofdifferent Participant Recruitment and Compensation
+LLMstoidentifywhichmodelsarebestsuitedfor Participants across all studies were recruited us-
+generating realistic and adaptable VP dialogues ingacombinationofpurposiveandsnowballsam-
+acrossvariouslanguagesandtrainingsettings. plingmethods. Initialparticipantswereidentified
+Anotherlimitationofourapproachisitsexclu- throughprofessionalnursingnetworks,university
+sive focus on generating textual dialogue, which mailing lists, and relevant online forums. These
+constrains the multimodal realism of VP-based individuals were then invited to refer colleagues
+training. Althoughdynamictextgenerationallows whometthestudy’seligibilitycriteria.
+for adaptive conversational flow, effective nurse- For the VP case expert validation (Section 4),
+patient communication depends heavily on non- which was conducted in person, ten experienced
+verbal cues such as tone, facial expressions, and nurseswerecompensated$35(50,000KRW)for
+gestures. The absence of these modalities limits their time. For the dialogue corpus collection in-
+bothimmersionandtheauthenticityoftrainingsce- volving both expert and novice nurses (15 each;
+narios. FutureworkshouldexploremultimodalVP Section 5.3), they completed the task online and
+systems that incorporate speech synthesis, visual received$20(30,000KRW)ascompensation. For
+expressions,andinteractivebehaviorstomoreac- thehumanevaluationstudy(Section8),28partici-
+curately simulate real-world clinical interactions, pantscompletedthetaskonlineandwerecompen-
+ashighlightedbyLouieetal.(2024). sated$20(30,000KRW)fortheirparticipation.
+
+References Liu.2023. Chateval: Towardsbetterllm-basedeval-
+uators through multi-agent debate. arXiv preprint
+TommasoAccinni,GeorgiosPapadogiannis,andLuigi
+arXiv:2308.07201.
+Orso.2021. De-escalationTechniquesinVariousSet-
+tings. InMassimoBiondi, MassimoPasquini, and
+Siyuan Chen, Mengyue Wu, Kenny Q. Zhu, Kunyao
+LorenzoTarsitani,editors,Empathy,Normalization
+Lan,ZhilingZhang,andLyuchunCui.2023. LLM-
+and De-escalation, pages 65–91. Springer Interna-
+empoweredChatbotsforPsychiatristandPatientSim-
+tionalPublishing,Cham.
+ulation: ApplicationandEvaluation. arXivpreprint.
+ArXiv:2305.13614[cs].
+ASPE. 2022. Aspe case development template. Ac-
+cessed: 2025-02-15.
+HarveyMChochinov,SusanEMcClement,ThomasF
+Hack, NancyAMcKeen, AmandaMRach, Pierre
+Smita C Banerjee, Ruth Manna, Nessa Coyle,
+Gagnon,ShaneSinclair,andJillTaylor-Brown.2013.
+Megan Johnson Shen, Cassandra Pehrson, Talia
+Health care provider communication: an empiri-
+Zaider,StaceyHammonds,CarolAKrueger,Patri-
+cal model of therapeutic effectiveness. Cancer,
+ciaAParker,andCarmaLBylund.2016. Oncology
+119(9):1706–1713.
+nurses’communicationchallengeswithpatientsand
+families: a qualitative study. Nurse education in
+DonaldBColson,JonGAllen,LolafayeCoyne,David
+practice,16(1):193–201.
+Deering,NancyJehl,WilliamKearns,andHerbert
+Spohn.1985. Patternsofstaffperceptionofdifficult
+Zhijie Bao, Qingyun Liu, Ying Guo, Zhengqiang Ye,
+patientsinalong-termpsychiatrichospital. Psychi-
+JunShen,ShirongXie,JiajiePeng,XuanjingHuang,
+atricServices,36(2):168–172.
+and Zhongyu Wei. 2024. PIORS: Personalized In-
+telligentOutpatientReceptionbasedonLargeLan-
+ReinoutEDeVries,AngeliqueBakker-Pieper,Robert
+guageModelwithMulti-AgentsMedicalScenario
+AltingSiberg,KimvanGameren,andMartijnVlug.
+Simulation. arXivpreprint. ArXiv:2411.13902[cs].
+2009. Thecontentanddimensionalityofcommuni-
+cationstyles. CommunicationResearch,36(2):178–
+Zhijie Bao, Qingyun Liu, Xuanjing Huang, and
+206.
+Zhongyu Wei. 2025. SFMSS: Service flow aware
+medicalscenariosimulationforconversationaldata
+Kefalotse Dithole, Sambulelwe Sibanda, Mary M
+generation. InFindingsoftheAssociationforCom-
+Moleki,andGloriaThupayagale-Tshweneagae.2016.
+putational Linguistics: NAACL 2025, pages 4586–
+Exploringcommunicationchallengesbetweennurses
+4604, Albuquerque, New Mexico. Association for
+and mechanically ventilated patients in the inten-
+ComputationalLinguistics.
+sive care unit: a structured review. Worldviews on
+Evidence-BasedNursing,13(3):197–206.
+Howard S Barrows. 1993. An overview of the uses
+ofstandardizedpatientsforteachingandevaluating
+Chukwuka Elendu, Dependable C Amaechi, Alexan-
+clinicalskills.aamc. Academicmedicine,68(6):443–
+derUOkatta,EmmanuelCAmaechi,TochiCElendu,
+51.
+ChiamakaPEzeh,andIjeomaDElendu.2024. The
+PhilipA.Bialer,DavidKissane,RichardBrown,Tomer impactofsimulation-basedtraininginmedicaledu-
+Levin,andCarmaBylund.2011. Respondingtopa- cation: Areview. Medicine,103(27):e38813.
+tientanger: Developmentandevaluationofanoncol-
+ogycommunicationskillstrainingmodule. Palliative Kimberly Ernstmeyer, Elizabeth Christman, and
+andSupportiveCare,9(4):359–365. Chippewa Valley Technical College, editors. 2022.
+Nursing: mental health and community concepts.
+Tim Blake and Tayler Blake. 2019. Improving Ther- Openresourcesfornursing.ChippewaValleyTech-
+apeuticCommunicationinNursingThroughSimu- nicalCollege,EauClaire(WI).
+lationExercise. TeachingandLearninginNursing,
+14(4):260–264. ZhihaoFan, LaiWei, JialongTang, WeiChen, Wang
+Siyuan, Zhongyu Wei, and Fei Huang. 2025. AI
+RichardF.BrownandCarmaL.Bylund.2008. Com- hospital: Benchmarkinglargelanguagemodelsina
+municationSkillsTraining: DescribingaNewCon- multi-agent medical interaction simulator. In Pro-
+ceptualModel:. AcademicMedicine,83(1):37–44. ceedings of the 31st International Conference on
+ComputationalLinguistics,pages10183–10213,Abu
+KerryMCannity,SmitaCBanerjee,ShiraHichenberg, Dhabi,UAE.AssociationforComputationalLinguis-
+Angelina D Leon-Nastasi, Frances Howell, Nessa tics.
+Coyle,TaliaZaider,andPatriciaAParker.2021. Ac-
+ceptability and efficacy of a communication skills SaadiaGabriel,IshaPuri,XuhaiXu,MatteoMalgaroli,
+trainingfornursingstudents: Buildingempathyand andMarzyehGhassemi.2024. CanAIrelate: Test-
+discussingcomplexsituations. NurseEducationin inglargelanguagemodelresponseformentalhealth
+Practice,50:102928. support. InFindingsoftheAssociationforComputa-
+tionalLinguistics: EMNLP2024,pages2206–2221,
+Chi-MinChan,WeizeChen,YushengSu,JianxuanYu, Miami,Florida,USA.AssociationforComputational
+Wei Xue, Shanghang Zhang, Jie Fu, and Zhiyuan Linguistics.
+
+LindaGraf,PhilippSykownik,GertraudGradl-Dietsch, Bishop,PatriekMistiaen,NiaW.Roberts,Egle˙ Di-
+and Maic Masuch. 2024. Towards believable and eninyte˙, Xiao-Yang Hu, Paul Aveyard, and Igho J.
+educationalconversationswithvirtualpatients. Fron- Onakpoya.2018. Effectsofempathicandpositive
+tiersinVirtualReality,5:1377210. communicationinhealthcareconsultations:asystem-
+aticreviewandmeta-analysis. JournaloftheRoyal
+JamesEGrovesetal.1978. Takingcareofthehateful SocietyofMedicine,111(7):240–252.
+patient.
+WilliamTHoytandMichael-DavidKerns.1999. Mag-
+Steven R Hahn, Kurt Kroenke, Robert L Spitzer, nitudeandmoderatorsofbiasinobserverratings: A
+DavidBrody,JanetBWWilliams,MarkLinzer,and meta-analysis. PsychologicalMethods,4(4):403.
+FrankVerloinDeGruy.1996. Thedifficultpatient:
+prevalence,psychopathology,andfunctionalimpair- INACSL.2023. Healthcaresimulationstandardsofbest
+ment. Journalofgeneralinternalmedicine,11:1–8. practice: Simulationdesign. Accessed: 2025-02-15.
+Nutmeg Hallett and Geoffrey L. Dickens. 2017. De- WooriJangandSeohyonJung.2024. EvaluatingLLM
+escalationofaggressivebehaviourinhealthcareset- PerformanceinCharacterAnalysis: AStudyofAr-
+tings: Concept analysis. International Journal of tificialBeingsinRecentKoreanScienceFiction. In
+NursingStudies,75:10–20. Proceedingsofthe4thInternationalConferenceon
+Natural Language Processing for Digital Humani-
+Hankyung.2020. Severeemotionallaboramongmed- ties,pages339–351,Miami,USA.Associationfor
+ical staff... nurses suffering from difficult patients. ComputationalLinguistics.
+Onlinearticle. Accessed: 2025-02-16.
+YixingJiang,KameronC.Black,GloriaGeng,Danny
+GeorgiaHardavella,AneAamli-Gaagnat,ArminFrille, Park, Andrew Y. Ng, and Jonathan H. Chen. 2025.
+NeilSaad,AlexandraNiculescu,andPippaPowell. MedAgentBench: DatasetforBenchmarkingLLMs
+2017. Top tips to deal with challenging situations: asAgentsinMedicalApplications. arXivpreprint.
+doctor–patientinteractions. Breathe,13(2):129–135. ArXiv:2501.14654[cs].
+Yann Hicke, Jadon Geathers, Niroop Rajashekar, Suzie Kardong-Edgren, Elizabeth Wells-Beede, and
+Colleen Chan, Anyanate Gwendolyne Jack, Justin LisaMarie Wands. 2024. Student abuse in simula-
+Sewell,MackenziPreston,SusannahCornes,Dennis tion: causesandsolutions. TeachingandLearningin
+Shung,andReneKizilcec.2025. Medsimai: Simu- Nursing,19(2):145–149.
+lationandformativefeedbackgenerationtoenhance
+deliberate practice in medical education. Preprint, EunGyungKim,MyunSookJung,JongKyungKim,
+arXiv:2503.05793. andSunJuYou.2020. Factorsaffectingnewgrad-
+uatenurses’intentiononretentioninhospitals: Fo-
+SherriAHincheyandJeffreyLJackson.2011. Aco- cusedonnursingorganizationalculture,empowering
+hortstudyassessingdifficultpatientencountersina leadership and organizational socialization. Jour-
+walk-inprimarycareclinic,predictorsandoutcomes. nalofKoreanAcademyofNursingAdministration,
+Journalofgeneralinternalmedicine,26:588–594. 26(1):31–41.
+Szu-Szu Ho, Rosie Stenhouse, and Austyn Snowden. JundongKim,Hye-YoonLee,Ji-HwanKim,andChang-
+2021. ‘it was quite a shock’: A qualitative study EopKim.2024. DevelopmentofanLLM-basedCPX
+oftheimpactoforganisationalandpersonalfactors PracticingChatbotforKoreanMedicineEducation:
+onnewlyqualifiednurses’experiences. Journalof ImplementationofAutomatedScoringandFeedback
+ClinicalNursing,30(15-16):2373–2385. GenerationFramework. JournalofKoreanMedicine,
+45(4):215–230.
+Friederike Holderried, Christian Stegemann-Philipps,
+AnneHerrmann-Werner,TeresaFestl-Wietek,Martin Robert J Kits. 1990. Nurses and unpopular patients.
+Holderried,CarstenEickhoff,andMoritzMahling. AJNTheAmericanJournalofNursing,90(6):62–68.
+2024a. Alanguagemodel–poweredsimulatedpatient
+withautomatedfeedbackforhistorytaking: Prospec- Andrea Kleinsmith, Diego Rivera-Gutierrez, Glen
+tivestudy. JMIRMedEduc,10:e59213. Finney,JuanCendan,andBenjaminLok.2015. Un-
+derstanding empathy training with virtual patients.
+Friederike Holderried, Christian Stegemann-Philipps, ComputersinHumanBehavior,52:151–158.
+LeaHerschbach,Julia-AstridMoldt,AndrewNevins,
+Jan Griewatz, Martin Holderried, Anne Herrmann- KNNews.2016. Nursesfacesevereemotionallabor...
+Werner,TeresaFestl-Wietek,MoritzMahling,etal. strugglingtohandle’difficultpatients’. Onlinearti-
+2024b. A generative pretrained transformer (gpt)– cle. Accessed: 2025-02-16.
+powered chatbot as a simulated patient to practice
+history taking: Prospective, mixed methods study. RyanKoo,MinhwaLee,VipulRaheja,JongInnPark,
+JMIRmedicaleducation,10(1):e53961. ZaeMyungKim,andDongyeopKang.2024. Bench-
+markingCognitiveBiasesinLargeLanguageModels
+JeremyHowick,AndrewMoscrop,AlexanderMebius, as Evaluators. arXiv preprint. ArXiv:2309.17012
+Thomas R. Fanshawe, George Lewith, Felicity L. [cs].
+
+Robert E. Kraut, Steven H. Lewis, and Lawrence W. Person, and Mary Beth Happ. 2009. Improv-
+Swezey.1982. Listenerresponsivenessandthecoor- ing patient-provider communication: a call to ac-
+dinationofconversation. JournalofPersonalityand tion. JONA:TheJournalofNursingAdministration,
+SocialPsychology,43(4):718–731. 39(9):372–376.
+Maryam Peimani, Ensieh Nasli-Esfahani, and Roya
+YanzengLi,ChengZeng,JialunZhong,RuoyuZhang,
+Sadeghi. 2020. Patients’ perceptions of patient–
+MinhaoZhang,andLeiZou.2024. LeveragingLarge
+provider communication and diabetes care: A sys-
+LanguageModelasSimulatedPatientsforClinical
+tematicreviewofquantitativeandqualitativestudies.
+Education. arXivpreprint. ArXiv:2404.13066[cs].
+Chronicillness,16(1):3–22.
+Yiqi Liu, Nafise Sadat Moosavi, and Chenghua Lin.
+Rachyl Pines, Howard Giles, and Bernadette Watson.
+2024. LLMs as Narcissistic Evaluators: When
+2021. Managing patient aggression in healthcare:
+Ego Inflates Evaluation Scores. arXiv preprint.
+Initialtestingofacommunicationaccommodation
+ArXiv:2311.09766[cs].
+theory intervention. Psychology of Language and
+Communication,25(1):62–81.
+Adian Liusie, Potsawee Manakul, and Mark J. F.
+Gales.2024. LLMComparativeAssessment: Zero- PhilipMPodsakoff,ScottBMacKenzie,Jeong-Yeon
+shot NLG Evaluation through Pairwise Compar- Lee, and Nathan P Podsakoff. 2003. Common
+isonsusingLargeLanguageModels. arXivpreprint. method biases in behavioral research: a critical re-
+ArXiv:2307.07889[cs]. view of the literature and recommended remedies.
+Journalofappliedpsychology,88(5):879.
+Ryan Louie, Ananjan Nandi, William Fang, Cheng
+Chang, Emma Brunskill, and Diyi Yang. 2024. OwenPrice,ChristopherJ.Armitage,PennyBee,He-
+Roleplay-doh: Enabling domain-experts to create lenBrooks,KarinaLovell,DebbieButler,Lindsey
+LLM-simulatedpatientsviaelicitingandadheringto Cree,PaulFishwick,AndrewGrundy,IsobelJohn-
+principles. InProceedingsofthe2024Conferenceon ston, Peter Mcpherson, Holly Riches, Anne Scott,
+EmpiricalMethodsinNaturalLanguageProcessing, LaurenWalker,andCatPapastavrouBrooks.2024.
+pages10570–10603,Miami,Florida,USA.Associa- De-escalating aggression in acute inpatient mental
+tionforComputationalLinguistics. healthsettings: abehaviourchangetheory-informed,
+secondary qualitative analysis of staff and patient
+SharonMacLean,MichelleKelly,FionaGeddes,and perspectives. BMCPsychiatry,24(1):548.
+Phillip Della. 2017. Use of simulated patients to
+Janet Richmond, Jon Berlin, Avrim Fishkind, Gar-
+developcommunicationskillsinnursingeducation:
+land Holloman, Scott Zeller, Michael Wilson,
+Anintegrativereview. Nurseeducationtoday,48:90–
+Muhamad Aly Rifai, and Anthony Ng. 2012. Ver-
+98.
+balDe-escalationoftheAgitatedPatient: Consensus
+Statement of the American Association for Emer-
+PreciousMadula,FatchWelcomeKalembo,HongYu,
+gencyPsychiatryProjectBETADe-escalationWork-
+andAtipatsaChiwandaKaminga.2018. Healthcare
+group. Western Journal of Emergency Medicine,
+provider-patientcommunication: aqualitativestudy
+13(1):17–25.
+ofwomen’sperceptionsduringchildbirth. Reproduc-
+tiveHealth,15(1):135. NeilSardesai,PaoloRusso,JonathanMartin,andAnand
+Sardesai.2024. Utilizinggenerativeconversational
+JamesAMarcum.2015. Caringforpatientsduringchal- artificialintelligencetocreatesimulatedpatienten-
+lengingclinicalencounters. JournalofEvaluationin counters: apilotstudyforanaesthesiatraining. Post-
+ClinicalPractice,21(3):404–409. graduateMedicalJournal,100(1182):237–241.
+William C McGaghie, S Barry Issenberg, Emil R SamuelSchmidgall,RojinZiaei,CarlHarris,Eduardo
+Petrusa, and Ross J Scalese. 2010. A critical re- Reis, Jeffrey Jopling, and Michael Moor. 2024.
+viewofsimulation-basedmedicaleducationresearch: AgentClinic: amultimodalagentbenchmarktoeval-
+2003–2009. Medicaleducation,44(1):50–63. uate AI in simulated clinical environments. arXiv
+preprint. ArXiv:2405.07960[cs].
+DebraNestelandMargaretBearman.2014. Simulated
+MalekaSerour,HeyamAlOthman,andGhadaAlKhal-
+patientmethodology: theory,evidenceandpractice.
+ifah.2010. Difficultpatientsordifficultdoctors: an
+JohnWiley&Sons.
+analysisofproblematicconsultations.
+Robert C. Pascucci, Peter H. Weinstock, Brigid E.
+Lisa Kennedy Sheldon. 2009. Communication for
+O’Connor,KristinaM.Fancy,andElaineC.Meyer.
+nurses: talkingwithpatients,2ndededition. Jones
+2014. IntegratingActorsIntoaSimulationProgram:
+and Bartlett Publishers, Sudbury, Mass. OCLC:
+APrimer. SimulationinHealthcare: TheJournalof
+243818592.
+theSocietyforSimulationinHealthcare,9(2):120–
+126. Haeng-Mi Son, Eun Hee Lee, and Kyung Sook Cho.
+2017. Affectingfactorsofnewnurse’sintentionto
+Lance Patak, Amy Wilson-Stronks, John Costello, retention in hospitals. Journal of muscle and joint
+RuthMKleinpell,ElizabethAHenneman,Colleen health,24(3):205–216.
+
+Sally Spencer, Paula Johnson, and Ian C Smith. language models to simulate patients for training
+2018. De-escalationtechniquesformanagingnon- mentalhealthprofessionals. InProceedingsofthe
+psychosis induced aggression in adults. Cochrane 2024ConferenceonEmpiricalMethodsinNatural
+DatabaseofSystematicReviews,2018(7). LanguageProcessing,pages12772–12797,Miami,
+Florida, USA. Association for Computational Lin-
+IanSteenstra,FarnazNouraei,andTimothyBickmore. guistics.
+2025. Scaffolding empathy: Training counselors
+with simulated patients and utterance-level perfor- LidewijAWind,JanVanDalen,ArnoMMMuijtjens,
+mance visualizations. In Proceedings of the 2025 andJan-JoostRethans.2004. Assessingsimulated
+CHI Conference on Human Factors in Computing patientsinaneducationalsetting: themasp(maas-
+Systems,CHI’25,NewYork,NY,USA.Association tricht assessment of simulated patients). Medical
+forComputingMachinery. Education,38(1):39–44.
+DeborahStein,KerryCannity,RichardWeiner,Shira Ning Wu, Ming Gong, Linjun Shou, Shining Liang,
+Hichenberg,AngelinaLeon-Nastasi,SmitaBanerjee, andDaxinJiang.2023. LargeLanguageModelsare
+andPatriciaParker.2022. Generalanduniquecom- DiverseRole-PlayersforSummarizationEvaluation.
+munication skills challenges for advanced practice arXivpreprint. VersionNumber: 3.
+providers: a mixed-methods study. Journal of the
+AdvancedPractitionerinOncology,13(1):32. YonhapNews.2024. Morethanhalfofnewnursesquit
+withinayear..."Excessiveworkloadandmaladapta-
+Lee-Anne Stephen, Carol Kostovich, and Jenny tion". Accessed: 2025-02-15.
+O’Rourke.2020. PsychologicalSafetyinSimulation:
+PrelicensureNursingStudents’Perceptions. Clinical Xinghua Zhang, Bowen Yu, Haiyang Yu, Yangyu
+SimulationinNursing,47:25–31. Lv, Tingwen Liu, Fei Huang, Hongbo Xu, and
+Yongbin Li. 2023. Wider and Deeper LLM Net-
+MichaelJTanana,ChristinaSSoma,VivekSrikumar, works are Fairer LLM Evaluators. arXiv preprint.
+David C Atkins, and Zac E Imel. 2019. Develop- ArXiv:2308.01862[cs].
+mentandEvaluationofClientBot: Patient-LikeCon-
+versationalAgenttoTrainBasicCounselingSkills. Junkai Zhou, Liang Pang, Huawei Shen, and Xueqi
+JournalofMedicalInternetResearch,21(7):e12529. Cheng.2024. Thinkbeforeyouspeak: Cultivating
+communicationskillsoflargelanguagemodelsvia
+Texas Medical Liability Trust TMLT. 2022a. De- inner monologue. In Findings of the Association
+escalationvideo1: Howtoidentifyandprepareto forComputationalLinguistics: NAACL2024,pages
+meetwithadisruptivepatient. 3925–3951, Mexico City, Mexico. Association for
+ComputationalLinguistics.
+Texas Medical Liability Trust TMLT. 2022b. De-
+escalation video 3: Actions to avoid...and actions KaijieZhu,JindongWang,QinlinZhao,RuochenXu,
+totake. andXingXie.2024. DynamicEvaluationofLarge
+LanguageModelsbyMetaProbingAgents. arXiv
+Alexandra Townsley, Jennifer Li-Wang, and Rajani preprint. VersionNumber: 2.
+Katta. 2023. When patient rudeness impacts care:
+areviewofincivilityinhealthcare. Cureus,15(6). Lianghui Zhu, Xinggang Wang, and Xinlong Wang.
+2023. JudgeLM: Fine-tuned Large Language
+JeremyWallace,RangaRao,andRichardHaslam.2002. Models are Scalable Judges. arXiv preprint.
+Simulatedpatientsandobjectivestructuredclinical ArXiv:2310.17631[cs].
+examinations: reviewoftheiruseinmedicaleduca-
+tion. AdvancesinPsychiatrictreatment,8(5):342– AmitaiZiv,PaulRootWolpe,StephenDSmall,andShi-
+348. monGlick.2006. Simulation-basedmedicaleduca-
+tion:anethicalimperative. SimulationinHealthcare,
+JundaWang,ZonghaiYao,ZhichaoYang,HuixueZhou, 1(4):252–256.
+Rumeng Li, Xun Wang, Yucheng Xu, and Hong
+Yu.2024a. Notechat: adatasetofsyntheticpatient-
+physicianconversationsconditionedonclinicalnotes.
+InFindingsoftheAssociationforComputationalLin-
+guisticsACL2024,pages15183–15201.
+PeiyiWang,LeiLi,LiangChen,ZefanCai,DaweiZhu,
+BinghuaiLin,YunboCao,QiLiu,TianyuLiu,and
+ZhifangSui.2023. LargeLanguageModelsarenot
+FairEvaluators. arXivpreprint. ArXiv:2305.17926
+[cs].
+RuiyiWang,StephanieMilani,JamieC.Chiu,Jiayin
+Zhi,ShaunM.Eack,TravisLabrum,SamuelMMur-
+phy,NevJones,KateVHardy,HongShen,FeiFang,
+andZhiyuChen.2024b. PATIENT-ψ: Usinglarge
+
+A VPCaseDevelopmentPipeline
+A.1 4TypesofChallengingPatients(Grovesetal.1978)
+Type Description
+Overdependent Reliesheavilyonnursestoalleviateanxietyaboutillness
+Frequentlycallsnursesorseeksreassuranceforeveryconcern
+Authoritative Attemptstoexploithealthcareprovidersthroughintimidationorguilt
+Believesexcessiveangerandunreasonabledemandsarejustifiedasadefensemechanism
+Aggressive Openlydisplaysangerandhostility
+Threatensorresortstoviolentbehaviortowardnurses
+Uncooperative Remainsoverlypessimisticabouttreatmentoractivelyimpedescare
+Sometimesdisplaysdependentbehaviorswhiledenyingthepossibilityofrecovery
+Table3: TypesofChallengingPatientInteractions
+A.2 IncorporatingLiterature
+The following describes types of problematic patients who create difficulties in
+nurse-patient communication:
+Type 1: Overly Dependent Patients
+Attempt to resolve psychological fears about their illness by becoming excessively
+dependent on nurses
+Individuals who worry excessively about their illness or use the nurse call button
+too frequently
+Type 2: Overly Authoritative Patients
+Attempt to manipulate doctors through threats or inducing guilt
+Feel threatened by nurses having power over their life and death, and thus believe
+they have the right to express anger and make excessive or inappropriate demands
+as a defense mechanism
+Patients who never praise or thank nurses, are obsessed with filing lawsuits
+against nurses, or constantly complain
+Type 3: Threatening and Violent Patients
+Patients who argue with others
+Patients who express anger and hostility
+Patients who are violent towards their family members or objects
+Patients who threaten or show violent behavior towards nurses
+Type 4: Non-compliant Patients
+Patients who are excessively pessimistic about treatment or directly engage in
+behaviors that interfere with treatment
+
+Continued smoking by lung cancer patients
+Continued drinking by alcoholic patients
+While overly dependent, they use defense mechanisms to deny their chances of survival
+Give up hope of being treated and take pride in self-destructive behaviors
+Actually derive satisfaction from interfering with treatment
+Background: We plan to conduct simulation training for nurse-patient communication
+for new nurses.
+Task: For each of the four patient types above, describe 5 specific situations in
+Korean where these patients create problems in nurse-patient communication in Korean
+medical and surgical general wards.
+A.3 BasicProfileGeneration
+Create highly detailed, realistic, and vivid patient profiles for the 5 situations
+of the specified type. Focus on making the 5 patients as diverse as possible while
+keeping them realistic for Korean ward settings.
+
+{PATIENT_TYPE_DESCRIPTION}
+
+– Write in JSON format
+– Keys should be in English, Values should be in Korean
+– Add "type" as a key to all patient profiles with a value of 1
+
+For each patient profile, include the following information:
+- Brief description of client
+- name
+- gender
+- age
+- religion
+- height
+- weight
+- Chief complaint: 1-2 Quotes
+- History of present illness
+- social history
+- past medical history
+
+- past surgical history & date
+- family medical history
+- allergies
+- immunization
+- medication
+- primary diagnosis
+- communication style
+A.4 CommunicationTraitsGeneration
+You are tasked with analyzing a virtual patient’s profile for a nursing communication
+training simulation. The patient profile is provided below:
+
+{PATIENT_PROFILE}
+
+Please follow these steps:
+1. Carefully review the patient profile, paying special attention to the
+communication style section.
+2. Summarize the patient’s communication style in five sentences or fewer in Korean.
+Focus on the key characteristics that define how this patient interacts with
+healthcare providers.
+3. Within your summary, make sure to highlight the problematic aspects of the
+patient’s communication style. These are behaviors or tendencies that may pose
+challenges for nurses during interactions.
+4. Do not specify a numerical scale. Instead, focus on describing how these
+communication characteristics manifest in actual conversations.
+5. Write two example expressions that the patient might use when first addressing a
+passing nurse. The expressions should clearly convey the patient’s needs. These
+should be direct quotes that illustrate the patient’s communication style. Make
+sure to write realistic and natural Korean expressions that the patient would
+likely use in real-life situations. Avoid overly dramatic expressions.
+6. Focus on portraying a realistic patient image for this research-based simulation.
+However, exclude any content about complaining to higher authorities such as the
+hospital director or head nurse.
+7. Present your analysis in the following format:
+
+{Your five-sentence summary of the patient’s communication style,
+including problematic aspects}
+
+1. "[First example expression]"
+2. "[Second example expression]"
+
+{PATIENT_PROFILE}
+
+2. Examine the conversation between the patient and the nurse:
+
+{CONVERSATION} 
+3. Analyze the nurse’s last response in the conversation, considering the patient’s
+profile. Focus on the following aspects:
+1) Tone Assessment
+Evaluate whether the nurse’s tone was calm and clear, while avoiding negative
+emotions such as contempt, frustration, anger, or anxiety. Use these guidelines:
+Calm:
+Evaluate whether the nurse’s tone was calm. Assess if the nurse sufficiently
+suppressed contempt, frustration, anger, or anxiety.
+Clear:
+Evaluate whether the nurse’s tone was clear. Assess if the nurse used clear
+sentences to reduce confusion or prevent escalation.
+2) Empathy Evaluation
+Analyze the nurse’s level of empathy using the following scale:
+Level 6: Explicitly shares feelings or experiences.
+e.g. "I remember feeling the same way when I went through something similar."
+Level 5: Confirms the patient’s expressed emotion.
+
+e.g. "I’m very sorry you’re upset by what’s happened."; "I see you’re
+struggling."
+Level 4: Acknowledges the main issue and pursues it further.
+e.g. "Tell me why this is important to you.", "That’s upsetting to hear.
+Would you say more about that?"
+Level 3: Acknowledges the main issue without follow-up.
+e.g. "I’m here to listen.", "That’s a difficult situation to be in."
+Level 2: Implicit recognition of a secondary issue.
+e.g. "Oh really? I didn’t realize that.", "This is what I’ve heard you say
+so far."
+Level 1: Gives a backchannel response.
+e.g. "Uh-huh.", "I see."
+Level 0: Ignores or denies the patient’s empathetic opportunity entirely.
+e.g. "You’re overreacting; it’s not that bad." Completely ignoring the
+patient’s comment or changing the subject abruptly, "Anyway, let’s move on
+to something else."
+3) De-escalation Techniques
+Evaluate whether the nurse applied the following de-escalation techniques:
+Autonomy:
+Did the nurse involve the patient in decision-making, offer options, or use
+techniques like seeking permission or providing emotional space?
+e.g. "We can proceed with either X or Y—what do you prefer?", "Would it be
+okay if we talk about this further after you’ve had a moment to think?"
+Limit-Setting:
+Did the nurse establish clear behavioral boundaries or explain consequences?
+e.g. "I understand you’re upset, but I cannot allow yelling during this
+conversation.", "If this continues, I may need to step away for a moment
+until we can discuss this calmly."
+Problem-Solving and Reframing:
+Did the nurse clarify the issue, redirect focus, or encourage a broader
+perspective?
+e.g."It seems like you’re feeling frustrated because you’ve been waiting
+for a long time—am I understanding that correctly?", "I know this feels
+overwhelming, but remember, your family is looking forward to seeing you
+healthy again."
+4) Prohibited Behaviors Check
+Determine if the nurse avoided the following mistakes:
+Premature Claims of Empathy:
+Avoid phrases like "I understand" unless fully justified.
+Invalidating Beliefs:
+Avoid dismissing the patient’s feelings or beliefs as untrue.
+
+Dismissive Commands:
+Avoid phrases like "Calm down," which can escalate emotions.
+4. Present your analysis in the following format:
+
+[Yes/No]
+
+[Yes/No]
+
+[Your brief explanation in 1-2 sentences]
+
+[0-6]
+
+[Your brief explanation in 1-2 sentences]
+
+[Yes/No]
+
+[Your brief explanation in 1-2 sentences]
+
+[Yes/No]
+
+[Your brief explanation in 1-2 sentences]
+
+[Yes/No]
+
+[Your brief explanation in 1-2 sentences]
+
+[Yes/No]
+
+[Yes/No]
+
+[Yes/No]
+
+[Your brief explanation in 1-2 sentences]
+
+5. Final Instructions:
+- Be objective. Base your analysis solely on the provided patient profile and
+conversation.
+- Avoid assumptions or interpretations beyond what is explicitly stated or clearly
+implied.
+- Evaluate based on strict criteria.
+
+D DynamicAdjustmentModule
+Thefollowingarethespecificresponsedirectionsbasedoncommunicationefficiencyscore.
+Score Direction
+0 CommunicationStyle: Maximumintensificationofnegativecommunicationtraitsspecifiedintheprofile
+ComplaintIntensity: Extremelyexaggeratedcomplaintswithpersonalattacksandirrelevantaccusations
+Responsivenesstonurse: Completerefusaltoacceptanyinterventionorexplanationfromthenurse
+1 CommunicationStyle: Highintensityofnegativecommunicationtraitsspecifiedintheprofile
+ComplaintIntensity: Frequentcomplaintswithunrelatedgrievancesandstrongexaggerations
+Responsivenesstonurse: Strongresistancetointerventionswithoccasionalbriefpausesbetweenreactions
+2 CommunicationStyle: Moderatetohighintensityofnegativecommunicationtraitsspecifiedintheprofile
+ComplaintIntensity: Persistentcomplaintswithreducedexaggeration,shiftingtowardspecificissues
+Responsivenesstonurse: Minimalacknowledgmentofnurse’sinputwithoccasionalmomentsofclarity
+3 CommunicationStyle: Moderateintensityofnegativecommunicationtraitsspecifiedintheprofile
+ComplaintIntensity: Continuedcomplaintsaboutspecificissueswithreducedaccusatorytone
+Responsivenesstonurse: Briefperiodsoflistening,thoughquicktoreturntoresistantbehavior
+4 CommunicationStyle: Lowintensityofnegativecommunicationtraitsspecifiedintheprofile
+ComplaintIntensity: Focusedcriticismonspecificissueswithmeasuredemotionalexpression
+Responsivenesstonurse: Cautiousconsiderationofnurse’sinputwithintermittentresistance
+5 CommunicationStyle: Slightdisplayofnegativecommunicationtraitsspecifiedintheprofile
+ComplaintIntensity: Practicalconcernsexpressedwithrestraintwhilemaintainingskepticism
+Responsivenesstonurse: Basiccooperationwhilepreservingnoticeableresistance
+Table8: Directionsbasedoncommunicationefficiencyscore.
+E DialogueGenerationModulePrompt
+ThefollowingaretheprompttemplatesusedforAdaptive-VPagent.
+E.1 SystemPrompt
+Your role is to act as a patient with a specific profile, engaging in a challenging
+conversation with a nurse.
+E.2 UserPrompt
+You are participating in a nurse-patient communication training simulation. Your
+task is to act as a patient in a realistic and difficult communication scenario. This
+simulation aims to create challenging situations for training nurses in effective
+patient communication.
+First, carefully read and internalize the following patient profile:
+
+{PATIENT_PROFILE}
+
+Follow these rules and guidelines for the conversation:
+1. Understand and embody the demographic characteristics, symptoms, and
+communication style presented in the patient profile.
+2. Use natural, conversational Korean language. Avoid textbook-like dialogue and
+overdramatization.
+
+3. Include non-verbal communication (voice tone, facial expressions, gestures) in
+your responses.
+4. If appropriate for the patient’s communication style and situation, include
+rude or problematic expressions in the patient’s speech. Focus on portraying a
+realistic patient image for this research-based simulation.
+5. Expressions about complaining to the "Head of hospital", "Head nurse", or
+"Customer center" should not be used.
+For each response, provide three components:
+1. : Write the patient’s internal thoughts and reactions to the
+nurse’s response.
+
+2. : Write the patient’s actual verbal response to the nurse.
+
+3. : Write any non-verbal communication or actions you would take.
+
+To generate your response, follow these steps:
+1. Review the patient profile carefully, ensuring your response aligns with the
+described demographic characteristics and communication style.
+2. Read the entire conversation you had with the nurse before:
+
+{NURSE_RESPONSE}
+
+3. Follow the director’s direction:
+
+{DIRECTION}
+
+4. Think about how this patient would internally react and externally respond based
+on their profile and the current situation.
+5. Following the direction given, craft an appropriate response to the nurse’s words
+that you can give in the current situation:
++ {SAFETY_AGENT_WARNING}
+Generate only one Korean response from the patient for each nurse interaction.
+Ensure your response is realistic and consistent with the patient profile. Under no
+circumstances should the actor mention details that contradict the profile. Emphasize
+the importance of consistency to maintain the realism and integrity of the simulation.
+Always double-check that you speak natural, everyday Korean.
+Begin your response now:
+ifsafetyagentrejectstheoutput:
+{SAFETY_AGENT_WARNING} =
+6. Avoid responses like the following inappropriate example and explanation:
+Inappropriate Example: {INAPPROPRIATE_RESPONSE}
+Reason: {REASON_FOR_INAPPROPRIATENESS}
+
+F SafetyMonitoringModulePrompt
+ThefollowingaretheprompttemplatetoevaluatethesafetyofcandidateresponsesofAdaptive-VPagent.
+F.1 SystemPrompt
+You are a Supervisory Agent responsible for evaluating the appropriateness,
+accuracy, and training effectiveness of the last dialogue entry made by a virtual
+patient in a nurse-patient communication simulation. Your task is to assess the
+patient’s last utterance based on specific criteria and provide a detailed evaluation.
+For each criterion, consider the following:
+1. Consistency with Patient Profile:
+Does the response reflect the patient’s information as described in the profile?
+Are the complaints aligned with the profile’s description of the patient’s
+concerns?
+2. Direction Adherence:
+Does the response follow the communication direction provided?
+Does the intensity and type of communication exhibited in the response match the
+required level (e.g., maximum, moderate) as outlined in the direction, without
+deviating from the patient’s profile traits?
+3. Training Effectiveness:
+Does the utterance provide a meaningful challenge for the nurse trainee?
+Is new or relevant information introduced, or is it repetitive/ineffective?
+4. Nurse Safety Assurance:
+Does the response remain within professional boundaries?
+Is it free from excessive hostility or abuse that could compromise the training’s
+purpose?
+Ensure your evaluation is thorough, objective, and provides constructive feedback
+to improve the quality of the nurse-patient communication simulation.
+F.2 UserPrompt
+First, carefully review the following information: Carefully read the patient
+profile, communication direction, and the entire conversation.
+Patient Profile:
+
+{PROFILE}
+
+Communication Direction:
+
+{DIRECTION}
+
+Patient-Nurse Conversation:
+
+{CONVERSATION}
+
+Next, evaluate the patient’s last utterance based on the following criteria:
+1. Consistency with Patient Profile
+2. Direction Adherence
+3. Training Effectiveness
+4. Nurse Safety Assurance
+Next, present your evaluation in the following format:
+
+True/False
+
+[Brief assessment and justification in 1-2 sentences]
+
+True/False
+
+[Brief assessment and justification in 1-2 sentences]
+
+True/False
+
+[Brief assessment and justification in 1-2 sentences]
+
+True/False
+
+[Brief assessment and justification in 1-2 sentences]
+
+G Validationstudiesofevaluationmodules: detailedfinding
+G.1 SubComponentAnalysis
+Binary subcomponents were assessed via chi-square, and empathy level (ordinal scale 0–6) was ana-
+lyzedusingbothWelch’st-testandtheMann–WhitneyUtest. Fortone,experiencednursesproduced
+
+Figure5: Proportionofutterancesexhibitingdifferentcommunicationsubcomponentsbetweenexperiencedand
+new/studentnurses
+significantlymorecalmandclearutterances(tone.calm: χ2(1) = 12.9341,p = 0.0003;tone.clear:
+χ2(1) = 13.3849, p = 0.0003). By contrast, empathy.level differences were marginal and did not
+reach statistical significance (Welch’s t-test: t = 1.8542, p = 0.0640; Mann–Whitney U = 190974.0,
+p = 0.0587).
+In de-escalation strategies, experienced nurses were significantly more likely to employ autonomy
+strategies (χ2(1) = 5.5561, p = 0.0184) as well as problem-solving/reframing strategies (χ2(1) =
+4.7535, p = 0.0292). Limit-setting usage did not differ significantly (χ2(1) = 2.0609, p = 0.1511).
+Among prohibited behaviors, only invalidating beliefs appeared significantly less in the experienced
+group (χ2(1) = 8.4373, p = 0.0037); no differences arose for premature empathy (χ2(1) = 0.0000,
+p = 1.0000)ordismissivecommands(χ2(1) = 3.2966,p = 0.0694)(Figure5).
+G.2 EvaluationofMultipleAgentPersonas
+Table9: Inter-raterAgreement: Fleiss’KappaValues
+EvaluationItem Kappa
+tone.calm 0.881
+tone.clear 0.885
+de_escalation.autonomy 0.908
+de_escalation.limit_setting 0.889
+de_escalation.problem_solving_and_reframing 0.876
+prohibitedbehaviors.premature_empathy 0.776
+prohibitedbehaviors.invalidating_beliefs 0.893
+prohibitedbehaviors.dismissive_commands 0.876
+The overall inter-rater agreement was generally high, as evidenced by Fleiss’ kappa values
+exceeding 0.88 for items such as tone.calm and tone.clear; however, some items, such as
+prohibited_behaviors.premature_empathy(κ = 0.776),exhibitedrelativelyloweragreement(See
+Table9). Thesefindingssuggestthatwhilethereissubstantialconsensusamongevaluatorsoverall,dis-
+crepanciesinspecificareaswarrantfurtherinvestigationintopotentialsystematicdifferencesattributable
+toevaluatorroles.
+Tothisend,werecodedthebinaryevaluationoutcomesas1/0andemployedmixed-effectslogistic
+regression analyses using Generalized Estimating Equations (GEE) to model the effects of evaluator
+persona(fixedeffects)whileaccountingfortext-levelvariability(randomeffects). Theresultsindicatethat,
+eveninthepresenceofgenerallyhighinter-rateragreement,theevaluatorrolessystematicallyinfluenced
+theratings(DetailinTable10). Forinstance,inthecaseoftoneattributes(tone.calmandtone.clear),
+boththeCommunicationSkillsTrainerandNursingProfessorevaluatorsyieldedsignificantlylowerratings
+comparedtothereferenceevaluator(e.g.,fortone.calm,β = −0.2696,p
+
+0.05). Incontrast,evaluationsofprohibitedbehaviorsshowthat,althoughratingsforpremature
+empathydonotdiffersignificantlyacrossevaluatorroles(p > 0.05),bothinvalidating beliefsand
+dismissive commandsareratedsignificantlyhigherbytheCommunicationSkillsTrainerandNursing
+Professor(allp < 0.001).
+
+H HumanEvaluation
+ThefollowingaretheprotocolsandscreenshotexamplesofthehumanevaluationonAdaptive-VP.
+H.1 HumanEvaluationProtocol
+Figure6: Ascreenshotofgettingconsentfromhumanevaluationparticipants
+
+Figure7: Ascreenshotofprovidingvirtualpatient’sprofileforhumanevaluationparticipants
+
+Figure8: Ascreenshotofvirtualpatientandhumanevaluationparticipanthavingconversation
+
+Figure9: Ascreenshotofsurveyquestionsforhumanevaluationparticipantsafteraconversation

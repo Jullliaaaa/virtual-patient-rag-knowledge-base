@@ -1,0 +1,17 @@
+# 環境變數（不可 commit 真實金鑰）
+.env
+
+# Vector DB 資料
+docker/pgdata/
+
+# Python 虛擬環境
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# 增量更新 hash 快取
+data/.file_hashes.json
+
+# 模型快取
+.cache/

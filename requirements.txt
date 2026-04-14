@@ -1,0 +1,20 @@
+# Python >= 3.10 required (developed with 3.12.10)
+
+# Vector DB
+psycopg2-binary==2.9.9
+pgvector==0.2.5
+
+# Embedding (本地免費方案，支援中英混合)
+sentence-transformers==2.7.0
+
+# PDF 解析
+pdfplumber==0.11.0
+
+# LLM 統一介面
+litellm==1.40.0
+
+# LLM fallback（LiteLLM 掛掉時備案）
+openai==1.30.0
+
+# 環境變數管理
+python-dotenv==1.0.1

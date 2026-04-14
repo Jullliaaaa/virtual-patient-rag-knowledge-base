@@ -1,0 +1,2620 @@
+PATIENTSIM: A Persona-Driven Simulator for
+Realistic Doctor-Patient Interactions
+DaeunKyung1,HyunseungChung1,SeongsuBae1,JihoKim1,
+JaeHoSohn2,TaerimKim3,SooKyungKim4,∗,EdwardChoi1,∗
+1KAIST 2UCSF 3SamsungMedicalCenter4EwhaWomansUniversity
+{kyungdaeun,edwardchoi}@kaist.ac.kr,sookim@ewha.ac.kr
+Abstract
+Doctor-patientconsultationsrequiremulti-turn,context-awarecommunicationtai-
+lored to diverse patient personas. Training or evaluating doctor LLMs in such
+settingsrequiresrealisticpatientinteractionsystems. However,existingsimulators
+oftenfailtoreflectthefullrangeofpersonasseeninclinicalpractice. Toaddress
+this, weintroduce PATIENTSIM, apatientsimulatorthatgeneratesrealisticand
+diversepatientpersonasforclinicalscenarios,groundedinmedicalexpertise. PA-
+TIENTSIMoperatesusing: 1)clinicalprofiles,includingsymptomsandmedical
+history,derivedfromreal-worlddataintheMIMIC-EDandMIMIC-IVdatasets,
+and2)personasdefinedbyfouraxes: personality,languageproficiency,medical
+historyrecalllevel,andcognitiveconfusionlevel,resultingin37uniquecombina-
+tions. WeevaluateeightLLMsforfactualaccuracyandpersonaconsistency. The
+top-performingopen-sourcemodel,Llama3.370B,isvalidatedbyfourclinicians
+to confirm the robustness of our framework. As an open-source, customizable
+platform,PATIENTSIMprovidesareproducibleandscalablesolutionthatcanbe
+customizedforspecifictrainingneeds. Offeringaprivacy-compliantenvironment,
+itservesasarobusttestbedforevaluatingmedicaldialoguesystemsacrossdiverse
+patientpresentationsandshowspromiseasaneducationaltoolforhealthcare. The
+codeisavailableathttps://github.com/dek924/PatientSim.
+1 Introduction
+Largelanguagemodels(LLMs)haveshownimpressiveperformanceonmedicalquestion-answering
+benchmarkssuchasMedQA[21],MedMCQA[44],andPubMedQA[22],evensurpassinghuman
+experts. However,thesebenchmarksusesingle-turnsettingswherepatientdataisreadilyprovided,
+andmodelssimplyanalyzethesedatatoselectthemostlikelydiagnosisortreatment. Incontrast,
+real-worldcliniciansengageinmulti-turn,context-awareconversationstogatherpatientinformation
+actively. Asaresult,thesemodelsmaynotguaranteeeffectivenessinpracticalclinicalsettings.
+ToevaluateLLM-poweredvirtualdoctors(i.e.,doctorLLMs)inmulti-turnsettings,realisticpatient
+interactionsystemsareneeded.Traditionally,standardizedpatients(SPs)[4],trainedactorssimulating
+symptoms and histories, have been used to train and assess medical students’ communication
+and clinical skills. In this context, SPs could serve as a benchmark for evaluating doctor LLMs
+by providing dynamic, interactive patient encounters. However, SPs are limited by high costs,
+inconsistentavailability,andscalingchallengesduetotheneedforhumanactors[13]. Incontrast,
+LLM-basedpatientsimulatorsprovideascalable,accessible,andcost-effectivealternative[8]. They
+reducetheneedforrepetitivehumanacting,eliminategeographicandtimeconstraints,andlower
+costscomparedtoSPs. TheseadvantageshighlightthepotentialofAIasapowerfultoolfortraining
+andevaluatingmedicalstudents[19,34,61],aswellasdoctorLLMs[14,26,32,33,35,51,58].
+∗Co-correspondingauthor
+39thConferenceonNeuralInformationProcessingSystems(NeurIPS2025)TrackonDatasetsandBenchmarks.
+5202
+tcO
+92
+]IA.sc[
+2v81871.5052:viXra
+
+PATIENTSIM
+Patient
+D ano yc t oo tr h: erH ua nv ue
+s
+uyo alu
+s
+e yx mp pe tr oie mn sc e bd
+e
+sa in dy
+e
+sre tc he en ct ow ue gig hh at
+n
+lo ds cs h, efa st ti g tiu ge h,
+t
+no er
+ss?
+Profile #1
+170 Clinical Profiles Patient:I'm so tired, doctor, and I have no appetite, it's like I'm
+Real-World Overanxious losing my strength. I've been having fevers and chills, and my
+MIMIC-IV & ED Clinical Data Intermediate headaches are terrible, it's all so scary. Do you think it could be
+{ High Recall something inside me, like an infection, that's making me feel this way?
+subject_idgender…paincomch pie laf int “ “s au gb e”je : c 7t 7_ ,id”: 5736479, Normal Doctor Doctor:I understand how distressing this must be for you, and your
+5736479 F … 10 dyspnea “gender”: “F”, (LLM) symptoms can indeed suggest an infection. Have you had any recent
+… … … … … “marital_status”: “married”, illnesses, like a cold or flu, or been around anyone who was sick?
+5 5 S8 7 e2 3 r1 v6 i2 4 c5 e74 :9 NEUF ROLO… GY0 numbness “ “ “ “f m c pa h am e i ie ndi f ”l iy _c : _ ca 1m ol 0_ me h ,d i psi ltc aoa ir nl y_ t” ”h : :i s “ “.t d.o . y”r sy , p”: n “ e… a,” …, ”, P d Ca i odt uni l' de t n f ie tt e b: l e Y g pe os no, ed d u to mhc e ot no n,r i a, b ,I u dt th oIin ctk h to os r,uo pg, h lm et a y i st h ewu tas esb ll a j mun s ed t isw t't sa re s ns os si t,c snk oo f mwew eI' t m hw in e w ge ok wrs r oia e rg d so e I ?, ca an ud g I h w t sa os m ta ek thin ing g c fa rr oe m o f h h imim . . I
+Allergies: … “medication”: “...”,
+Chief Complaint: SOB, cough ... Patient Doctor:I appreciate your honesty about that. Have you noticed
+History of Present Illness:... } Profile #1 Profile #170 any recent changes in your sleep patterns or appetite?
+Distrustful Patient:I haven't noticed any significant changes in my sleep or
+Advanced appetite, but I have been feeling a bit dizzy and uncertain about my
+37 Personas High Recall condition. I'm not sure why you're asking about my sleep and
+Personality PL ra on fig cu iea ng ce y M Red ei cc aa ll l H Leis vt eo lry ConC fuo sg in oi nti v Le e vel Normal (D Ho uc mt ao nr ) a wp ep ae kt nit ee s, s t h ino u mg yh l e- fs t h so idu eld ?n't we be focusing on the numbness and
+Neutral Overanxious Basic High Highly Doctor:Thank you for sharing that. Have you experienced any headaches, vision changes, or
+Verbose Pleasing Intermediate Recall Confused dizziness since your symptoms started?
+Impatient Distrustful Advanced RL eo cw al l Normal P cha at ni gen et s.: I'I m d id a bm ite sn uti ro pn r ise ea drl ie yor uth da it d I n'v 'te cb ae tce hn tf hee atli n eg a rd lieiz rz -y, s b hu ot u I l dd no 'tn ' yt o h ua bve e a tan ky in h ge a md oa rc eh de es t ao ir le v dis nio on te s
+or something?
+Figure 1: Overall framework of PATIENTSIM. PATIENTSIM generates realistic doctor-patient
+conversationdatabasedon1)clinicalprofiles,includingsymptomsandmedicalhistory,derivedfrom
+MIMIC-EDandMIMIC-IVdatasets,and2)personasdefinedbyfouraxes: personality,language
+proficiency, medical history recall level, and cognitive confusion level, resulting in 37 unique
+combinations (left). Each simulation begins with a doctor’s question, where the doctor only has
+accesstothepatient’sbasicinformation,nottheirsymptoms. Theexamplesshownaremid-dialogue
+snippetsselectedtohighlightthepatient’spersona(right).
+RecentworkhighlightsthepotentialofLLM-basedpatientsimulators,butasignificantgapremains
+between these systems and real clinical settings. A number of studies [33, 35, 38, 51] explored
+doctors’interactiveinformation-seekingabilitiesbyprovidingLLMswithpatientdataandhaving
+themrole-playpatients. However,thesestudiesfocusedonevaluatingtheperformanceofdoctor
+LLMs, even though the validity of these evaluations depends on how closely patient simulators
+emulateactualpatientbehavior. Recognizingthisimportance,somestudies[12,14,36]havebegun
+evaluating patient simulators focusing on how accurately they convey symptomatic information.
+However,doctor-patientconsultationsaremorethanjustpatientsaccuratelyrecitingtheirsymptoms.
+Effectiveconsultationsmusttakeintoaccountpatientbehaviorsdictatedbymultipleaxessuchas
+theiremotionalstatesandlanguageskills,whichsignificantlyinfluencehealthoutcomes.
+Tothisend,weproposePATIENTSIM,asystemthatsimulatesdiversepatientpersonasencountered
+inclinicalsettings(Figure1). Oursimulatoractsbasedon: 1)clinicalprofiles,includingsymptoms
+andmedicalhistory,and2)personasdefinedbyfouraxes: personality,languageproficiency,medical
+historyrecalllevel,andcognitiveconfusionlevel. Patientprofilesareconstructedbasedonreal-world
+medicalrecordsfromtheMIMIC-ED[23]andMIMIC-IV[25]datasets,totaling170profiles(Sec.4).
+Forpersonas,wedefined37distinctcombinationsacrossfouraxes,designedtoreflectkeyfactors
+impactingdoctor-patientconsultationquality, basedonliteraturereviewsandguidedbymedical
+experts(Sec.5.1). WeevaluateeightLLMsasthebackboneofoursimulatorandselectLlama3.3
+70Basthefinalmodel,whichmaintainsapersistentpersonawhileensuringfactualaccuracy(Sec.7).
+Theresultingsimulatorwasassessedbyfourclinicalexpertsandreceivedanaveragequalityscoreof
+3.89outof4acrosssixcriteria. Oursimulatoroffersthefollowingcontributions:
+• PATIENTSIM introducesanovelframeworkforsimulatingrealisticdoctor-patientinteractions.
+Itleveragesreal-worldclinicaldatafromMIMIC-IVandMIMIC-ED,modelingdiversepatient
+personas across four axes: personality, language proficiency, medical history recall level, and
+cognitiveconfusionlevel.
+• WeconductacomprehensiveevaluationacrosseightLLMs,assessingfactualaccuracyandpersona
+reflection. Toconfirmtherobustnessof PATIENTSIM ’ssimulations,thetop-performingopen-
+sourcemodel,Llama3.370B,isfurthervalidatedbyfourclinicians.
+• Builtonanopen-sourcemodel,PATIENTSIMoffersanaccessible,reproducibletoolforproviding
+doctor-patientconsultationdatawhileprioritizingpatientprivacy. Thisscalable,privacy-compliant
+solutionenablesresearchersandpractitionerstovalidatetheirmodel’sperformanceandadaptit
+forclinicalusessuchaseducationaltools.
+2
+
+2 Relatedwork
+LLM-basedagentsimulationinclinicalsetting LLM-basedagentsimulationsinclinicalset-
+tings vary by scope and agents. Previous studies [1, 3, 32, 62] simulate hospital workflows with
+agentssuchaspatients,nurses,andphysicians,prioritizingfinaltaskaccuracy(e.g.,diagnositicor
+departmentrecommendationaccuracy)overagentinteractions. Additionally,previousworkssuch
+asMedagents[55]andMDAgents[29]focusoncollaborativephysiciandecision-makingbutare
+limitedtosingle-turnQAsettings. Recentstudiesemphasizedoctor-patientinteractions,evaluating
+physicianLLMsinpatient-centeredcommunication[1,36,38,51]orexploringtheirpotentialas
+educationaltools[19,34,61]. However,theseoftenoverlookdiversepatientcharacteristics,leading
+toinsufficientrealisminsimulatedinteractions. Aspatientsimulatorsarefoundationaltohospital
+simulations,providingprimaryclinicalinformationanddrivinginteractiondynamics,ensuringtheir
+realismiskeychallenge. OurresearchaddressesthisbydevelopinganLLM-basedpatientsimulator
+thatdeliversclinicallycoherentresponsesandreflectsdiversepatientcharacteristics.
+LLMpatientsimulation LLM-basedpatientsimulationisdividedintoapplicationsforgeneral
+hospital consultations and psychological consultations, each with distinct objectives. In general
+hospitalsettings,patientsimulationsaimtoaccuratelypresentmedicalhistoryandsymptomsthrough
+multi-turndialogue[12,14,36,38]. Whilemosteffortsprimarilyfocusonimplementingpatient
+simulatorthatcanrespondtoquestionswithfactuallycorrectanswers,somestudies[12,38]tried
+toaddabitofrealismtothepatientsimulatorbydescribingitspersonaswithkeywordssuchasthe
+Big Five traits or occupation groups. No previous studies, however, aimed to implement and, at
+thesametime,evaluatepatientsimulatorthatcanemulatediverseandclinicallyrelevantpersonas.
+Psychological counseling simulations, on the other hand, try to model complex internal states,
+such as thoughts, and emotions, emphasizing subjective responses like mood shifts or treatment
+resistance[39,47,59,60]. Thesestudiesthereforeprioritizedeeperpersonadevelopmenttocapture
+emotionalandrelationalnuances,makingthemunsuitableforsimulatingpatientsingeneraldiagnostic
+consultationsettingssuchashospitalemergencydepartments. Unlikepreviousworks, our study
+proposesarealisticpatientsimulatorthatcombinestheemotionalrealismemphasizedinpsychological
+counselingwiththeclinicalaccuracyrequiredforgeneraldiagnosticconsultations.
+3 Problemdefinition
+Wetargetafirst-time,single-sessionemergencydepartment(ED)visit,consideringtechnicaland
+clinicalconstraintsbelow,toensureafeasibleandcoherentdesign.
+LimitedaccesstocomprehensiveclinicaldataInreal-worldclinicalpractice,physiciansintegrate
+datafrommultipledimensionssuchaspatient-reportedsymptoms,physicalexaminations,andtest
+results(e.g.,laboratoryorimagingstudies)tomakediagnoses. However,whensimulatingpatients,
+itisinfeasibletopredefineordynamicallygenerateclinicallyaccurate,case-consistentdataacross
+allrelevantdimensionstoaddressthefullrangeofpossiblequeries. Evenwhenusingrealhospital
+data,availableexaminationsandtestresultsarefrequentlysparseorincomplete. Moreover,reliable
+methodstogenerateaccuratesynthetictestresultstofillthese gapsarestilllacking. Asaresult,
+patientsimulatorsoftenreceivequestionsaboutdatathatareinaccessible. Priorapproacheshave
+addressedthisbyinstructingLLMstorespondwithvaguestatementslike“Idon’tknow”[12,33,36]
+ortoassumenormaltestresultswhendataarenotdefinedinthepatient’sprofile[14,51]. These
+strategies restrict physicians to inquire predefined data, limiting their ability to explore diverse
+reasoningpaths. Moreover,assumingnormaltestresultscanmisleadphysicians. Toaddressthis,we
+focusoursimulationonthehistory-takingprocess,asystematicapproachtogatherpatient’spersonal
+andmedicalinformation,priortophysicalexamorlabtests[27]. Researchshowsthatapproximately
+80%ofdiagnosesrelyonhistorytakingalone,highlightingitscriticalimportance[18,45]. Unlike
+objectivedata(e.g.,testresults),subjectivedata(e.g.,patients’verbalreports)inherentlyinvolves
+uncertainty[41,52],allowingittocapturethevariabilityinpatients’descriptions. Thisvariability,
+drivenbypersonalfactors,supportsourgoalofcreatingrealisticvirtualpatientswithdiversepersonas,
+ensuringflexibleandnaturalisticinteractions.
+InabilitytosimulatelongitudinalpatientstatechangesRealisticmulti-sessionsimulationsrequire
+modelingtreatmenteffectsanddiseaseprogressionovertime. However,currentmethodsarelimited
+tospecificcasesandrelyonrestrictiveassumptions. Inoursetting,wherethedoctorLLMisallowed
+3
+
+toaskopen-endedquestionsfreely,incorporatinginterventions,medications,orfollow-upstrategies
+presentsarisk,asthedoctorLLMmaysuggesttreatmentsdifferentfromthoseinthedatabase.Patient
+outcomescanvarysubstantiallydependingonnumerousfactors,suchascomorbidities,lifestyle,
+and medication adherence. Predicting these trajectories is highly complex, even for experienced
+physicians. Attemptingtomodellongitudinalclinicalstateswithexistingmethodsrisksgenerating
+misleading or clinically unsafe conclusions. Therefore, we focus on single-session interactions,
+avoidingtheneedtomodellong-termoutcomesorreadmissions.
+ProblemscopeIntheinitialEDconsultationsetting,physiciansoftenrelyonverbalpatientinforma-
+tion,suchassymptomsandmedicalhistory,fordifferentialdiagnosisundertimepressure,beforetest
+resultsbecomeavailable. Thus,wefocusondifferentialdiagnosisbasedonthisinitialconsultation,
+whichtypicallydoesnotrequiretestdata. Thisapproachensuresclinicalrelevancebyreflecting
+real-worlddiagnosticreasoningwhilesidesteppingcurrenttechnicallimitations.
+4 Patientprofileconstruction
+Structurizedpatientprofile Simulatingpatientsrequiresdetailedclinicalinformation,suchas
+presentingsymptoms,painlevels,andfamilymedicalhistory,whichisessentialforcliniciansto
+performclinicalreasoninganddecision-makingduringtheinitialdiagnosticprocess[57]. Currently,
+theMIMICdatabaseistheonlypubliclyavailableresourcethatprovidesthislevelofclinicaldetail.
+Toensureclinicalrelevancewhileminimizingambiguityinthesimulations,weconstructeddetailed
+andstructuredpatientprofilesusingrealclinicaldatafromMIMIC-IV[23],MIMIC-IV-ED[25],and
+MIMIC-IV-Note[24]. Weextractedaccuratepatientdatafromstructuredtablesandusedclinical
+notestocapturedetailedinformation,suchaslifestyleandpresentsymptoms,notincludedinthe
+tables. Thishybridapproachcombinestheaccuracyofstructureddatawiththedepthofnarrative
+notes. DetailsondatasourcesandprocessingareprovidedintheAppendixA.1andA.2. Asaresult,
+eachpatientprofileincludes24items,coveringdemographics,socialandmedicalhistory,andED
+visitdetails(seeAppendixA.3). Clinicalexpertsreviewedeachitemforrelevance.
+Targetdiseaseselection WeselectthefiveprevalentdiseasesfromtheMIMIC-IV-EDdataset:
+myocardialinfarction,pneumonia,urinarytractinfection,intestinalobstruction,andcerebralinfarc-
+tion(stroke). Oursimulatoroperatesexclusivelyinadialogue-basedsettingduetoseveraltechnical
+andclinicalconstraints(Sec.3). Withinthisscope,weselectfivediseasesbasedonthefollowing
+criteria: 1)highclinicalprevalenceandsignificanceascommonEDpresentations;2)distinctand
+differentiablesymptomprofilessuitablefordiagnosisthroughhistory-takingalone;and3)sufficient
+representationintheMIMIC-EDtosupportrobustmodeldevelopmentandevaluation. Sincethe
+target diseases must be reliably inferred from conversational information alone without any test
+results,therangeandgranularityofpossiblediseasecategoriesislimited. Forexample,physicians
+cannotreliablydistinguishbetweenmyocardialinfarctionandanginasolelythroughpatientdialogue.
+Theselectionprocesswasguidedbytwomedicalexperts,oneofwhomisanERdoctorwith13years
+ofexperience,toensureclinicalrelevanceandconsistencywithEDworkflows.
+5 PATIENTSIM
+5.1 Personadefinition
+Wedefinedfourkeyaxesforpersonasimulationthatimpactconsultationqualityinclinicalpractice,
+basedonliteraturereviewsandguidancefrommedicalexperts.
+PersonalityPersonalityisawell-establishedfactorinfluencingconsultationquality[7,9,37,49].The
+BigFiveframework[40],oneofthemostwidelyrecognizedmodelsofpersonality,hasbeenusedin
+previouspatientsimulationstudies[12],butitstraitsarebroadandtendtoinfluencepatient–physician
+interactionsonlyindirectly. Recentpsychologicaltherapyresearchemphasizesobservableconver-
+sationalstylesthatdirectlymanifestinpatientinteractions. Drawingonthis,weadaptthesestyles
+intodoctor-patientconsultation-specificpersonalitythataredirectlyobservableandactionablefor
+simulation. Basedonliteraturereview[2,6,31,53]andguidancefrommedicalexperts,wedefine
+sixpersonalitiesrelevanttomedicalconsultationsinED:impatient,overanxious,distrustful,overly
+positive,verbose,andneutral(straightforwardcommunication)asthebaseline.
+4
+
+LanguageproficiencyApatient’slanguageproficiencyisacriticaldeterminantofdoctor-patient
+communicationquality[46,54],yetithasbeenunderexploredinsimulationcontexts. Byspecifying
+languageproficiencylevels,wesimulatescenariosinwhichphysiciansmustadapttopatientswith
+varyingproficiencybyusingappropriatelanguagetoensureunderstanding. WeusetheCommon
+EuropeanFrameworkofReferenceforLanguages(CEFR)[42],whichdefinessixproficiencylevels
+(A1,A2,B1,B2,C1,C2). Tofacilitatethehumanevaluationbyphysicians,weconsolidatedthese
+intothreelevels,A(basic),B(intermediate),andC(advanced).
+MedicalhistoryrecalllevelPatientsmaynotalwaysaccuratelyrecallthedetailsoftheirmedical
+history[5,30]. Assumingperfectrecall,asintraditionalsettings,representsanidealizedcase. In
+low-recallscenarios,physiciansmustaskadditionalquestionstobuilddiagnosticconfidence. We
+definetwosettings: highrecallandlowrecall,enablingpracticewithdiversepatientprofiles.
+LevelofcognitiveconfusionPatientsvisitingtheEDoftenpresentacutesymptomexacerbation,
+leadingtoahighlyconfusedanddazedstate. Thesepatientsmayinitiallystrugglewithcoherent
+communicationbutstabilizethroughinteraction. Tosimulatesuchcases,wedefinetwomentalstatus
+levels: highlyconfusedandnormal.
+Toavoidoverlapbetweenconfusionandotheraxes(e.g.,impatientpersonality,lowlanguagepro-
+ficiency, or low recall), highly confused patients are limited to neutral personality, intermediate
+languageproficiency,andhighrecall. Adetailedanalysisoftheimpactofhighconfusiononother
+personatraitsisprovidedinAppendixF.4.3. Thisresultsin37distinctpersonas;36fromcombi-
+nationsof6personalities,3languageproficiencylevels,2recalllevels,and1fromhighconfusion
+persona.
+5.2 Promptdesign
+PATIENTSIMThePATIENTSIMpromptcomprisesprofileinformation,fourpersonaaxes,andgeneral
+behavioral guidelines. The prompt was iteratively refined through a process of LLM evaluation,
+qualitativeanalysisbytheauthors,andtworoundsoffeedbackfrommedicalexperts. Inthefirst
+round,twomedicalexperts,whoarealsoco-authors,providedfeedbackafterengaginginextensive
+conversationswithoursimulators. Thesecondroundincorporatedinputfromfouradditionalmedical
+expertsexternaltotheauthorgroup,basedontheirreviewof10samplecases. Thefullpromptis
+providedintheAppendixC.1.
+DoctorLLMOurresearchfocusesondevelopingrealisticpatientsimulatorsratherthandoctorsimu-
+lators. However,forautomatedevaluation,werequireadoctorLLMcapableofaskingappropriate
+questionstoelicitandassesspatientresponses. Toachievethis, thedoctorpromptwascarefully
+designed,drawingonmedicaltextbook[56]andexpertadvice,toensureitincludesallessential,
+routinequestions. ThefullpromptisprovidedintheAppendixC.2.
+6 Experiments
+6.1 Taskandevaluation
+TosystematicallyassessthequalityofLLMresponsesintermsofpromptalignment,wepresent
+experimentsdesignedtoaddressthefollowingresearchquestions.
+6.1.1 RQ1: DoLLMsnaturallyreflectdiversepersonatraitsintheirresponses?
+Realisticsimulationofdiverseandnuancedpatientresponsesiscrucialfortrainingorevaluating
+PATIENTSIM’s communication skills. We evaluate whether PATIENTSIM accurately reflects its
+assignedpersona,acrossall37possiblepersonacombinations. Weassessfourpersonacategories
+(i.e.,personality,languageproficiency,medicalhistoryrecalllevel,confusionlevel),aswellasoverall
+realismtoensurethatthemodelportraysthepersonafaithfullywithoutexaggeration. Theevaluation
+isdividedintotwofolds. Forautomaticevaluation,wegeneratedialoguesbetweenPATIENTSIM
+and the doctor LLM across various persona settings, and then an LLM-based evaluator assesses
+thegeneratedconversations. Forhumanevaluation,fourmedicalexpertseachengageinsufficient
+dialoguewiththesimulatoracross27personasamples(foratotalof108dialogues),afterwhichthey
+evaluatethequalityofthesimulator. BothhumanandLLMevaluatorsscorethefollowingcategories
+ona4-pointscale(1=Stronglydisagree,4=Stronglyagree):
+5
+
+Step 1: Classify each sentence in patient’s utterance.
+meta-
+politeness emotion inquiry information information
+Step 2-1: Are any patient profile fields Step 2-2: Does the sentence
+predicted as mentioned in the given sentence? contain new information beyond the profile?
+age … present chief pain If no field is detected, Yes No
+illness complaint go to Step 3-2.
+Step 3-1: NLI evaluationfor K relevant profile fields
+Step 3-2: Plausibility rating (4-point scale)
+( entailment /neutral/ contradiction )
+If all detected fields are
+entailment entailment neutral neutral, go toStep 3-2.
+Figure2: Overallprocessforsentence-levelfactualityevaluation.ForeachsentenceinPATIENTSIM’s
+utterance,wefirstdeterminewhetheritcontainssomeinformation. Ifitdoes,weidentifyallrelevant
+profileitemsandassesswhetherthesentenceissupportedbyeachofthem. Ifthesentenceincludes
+informationnotspecifiedintheprofile,weclassifyitasunsupportedandthenassessitsplausibility
+basedonotherprofileinformationtodetermineaplausibilityrate.
+• Thesimulatedpatient’spersonalityisconsistentlyandaccuratelyreflectedduringtheinteraction.
+• Thepatient’slanguageuse(vocabulary,grammar,fluency)isappropriatetotheirassignedlanguage
+proficiencylevel.
+• Thepatient’sabilitytorecallmedicalandpersonalinformationisconsistentwiththeirassigned
+recalllevel(e.g.,loworhigh).
+• Thepatient’scoherenceandclarityofthoughtmatchtheassignedlevelofcognitiveconfusion.
+• Thepatient’soverallcommunicationstylematchedwhatIwouldexpectfromarealEDpatient.
+Notethatcliniciansassessthesimulator’squalityafterengaginginfullconversationswithit,whereas
+theLLMevaluatesusingpre-generatedconversations. BothhumanandLLM-basedevaluatorswere
+providedwithexplicitpersonadescriptionsforeachpatientpriortoevaluation(Fig.E17).
+6.1.2 RQ2: DoLLMsaccuratelyderiveresponsesbasedonthegivenprofile?
+In medical consultations, physicians rely on patient-reported information to form a differential
+diagnosis. The quality of patient-provided information directly impacts the effectiveness of the
+dialogueandthecorrectnessofthephysician’sconclusions. Weevaluatefactualaccuracyattwo
+levels: 1)sentenceleveland2)dialoguelevel. Thei-thpatientprofile,denotedasPi ={xi}K ,
+k k=1
+consistsofK predefineditems,amongN totalprofiles. Thedialoguebetweenthephysicianand
+PATIENTSIMconfiguredwithprofilePiisrepresentedasDi. WithinDi,PATIENTSIM’sutterances
+overT turnsarerepresentedasUi ={ui}T ,whereui istheutteranceatturnt. Eachutteranceui
+t t=1 t t
+maycontainmultiplesentences,denotedasui ={si }M ,whereM isthenumberofsentences
+t tm m=1
+in utterance ui. We classify si as supported if it is related to at least one profile item xi, and
+t tm k
+unsupportedifitisunrelatedtoanyprofileitems.
+Sentence-levelevaluation. ToassesstheaccuracyofthePATIENTSIM’sresponsesprecisely,we
+firstanalyzeallofitsresponsesatthesentencelevel. Here,wefocusonlyonsupportedsentences,
+assessingtheirfactualaccuracybasedonthepatientprofile. Evaluationofunsupportedsentences
+is addressed separately in Sec. 6.1.3. We first explain how we detect supported sentences, and
+thendescribehowwecalculatethefactualaccuracyofthesupportedsentences(Figure2). Each
+step of the evaluation is performed by providing the LLM sentence classifier with the preceding
+conversation history (i.e., the dialogue up to the current sentence si ) along with step-specific
+tm
+instructions(AppendixD.2.2). Theevaluationproceedsasfollows. Foreachsentencesi :
+tm
+1. Classifysentencetype(multi-class,Step1inFigure2): Wecategorizeeachsentencesi asone
+tm
+offivetypes: politeness,emotion,inquiry,meta-information,orinformation(C(si )). Onlythe
+tm
+sentencesclassifiedasinformationproceedtothenextstep.
+2. Identifytherelatedprofileitems(multi-label,Step2-1inFigure2): Foreachsentencesi
+tm
+classifiedasinformation,determinewhichofthepatient’sprofileitemsxi itrelatesto. Thisisa
+k
+6
+
+multi-labelclassificationtask,whereasentencemayrelatetomultiplexi’s. Theresultisabinary
+k
+vectorR(si )=[ri,ri,...,ri ],where:
+tm 1 2 K
+(cid:26) 1 ifsi isrelatedtoitemxi,
+ri = tm k (1)
+k 0 otherwise.
+3. Verify factual accuracy (Step 3-1 in Figure 2)): For each profile item xi where ri = 1,
+k k
+perform a Natural Language Inference (NLI) evaluation to check if the si aligns with xi.
+tm k
+NLI,amethodtoevaluatetextualconsistency,labelstherelationshipasentailment(consistent),
+contradiction(inconsistent),orneutral(unrelated). WedenotetheNLIlabelasNLI(si ,xi)∈
+tm k
+{entailment,contradiction,neutral}. Ifri = 0,noNLIevaluationisperformedforthatitem,as
+k
+the sentence si is deemed unrelated to xi. The final factual accuracy of the sentence si is
+tm k tm
+representedbyEntail(%),calculatedasfollows,
+(cid:80)T (cid:80)M 1[C(si )=info]·max (cid:0) ri ·1[NLI(si ,xi)=entail](cid:1)
+Entail(Di)= t=1 m=1 tm k k tm k (2)
+(cid:80)T (cid:80)M 1[C(si )=info]
+t=1 m=1 tm
+whichreflectsthepercentageofsupportedsentencesthatarefactuallyaccurate.
+Dialogue-level evaluation Sentence-level accuracy may be biased if the physician fails to elicit
+acomprehensivemedicalhistory, focusingonlyonspecifictopics. Tomitigatethis, weevaluate
+informationcoverageandtheaccuracyofthecoveredinformationatthedialoguelevel. First,we
+extractaderivedprofile, Pˆi = {xˆi,xˆi,...,xˆi }, inferredbytheLLMprofileextractorfromthe
+1 2 K
+dialogueDi. WethencomputetheInformationCoverage(ICov),theproportionofitemcategories
+presentinboththederivedprofile(Pˆi)andtheoriginalprofile(Pi):
+1 (cid:88)N |Oi|
+ICov= , whereOi ={j |xi ̸=∅,xˆi ̸=∅} (3)
+N K j j
+i=1
+Foroverlappingitemcategories,wecalculateInformationConsistency(ICon)atthedialoguelevel:
+N (cid:32) (cid:33)
+1 (cid:88) 1 (cid:88)
+ICon= score(xi,xˆi) (4)
+N |Oi| j j
+i=1 o∈Oi
+Here,score(xi,xˆi)measuresthesemanticsimilaritybetweentheoriginalitemxi andthederived
+j j j
+itemxˆi. Similarityratingsareassignedona4-pointscaleusingtheGemini-2.5-Flashmodelasthe
+j
+scoringfunction. PromptsfortheprofileextractorandsimilarityscorerareinAppendixD.2.2.
+6.1.3 RQ3: CanLLMsreasonablyfillintheblanks?
+Itisinfeasibletopredefineorgenerateclinicallyaccurateinformationacrossallpossibledimensions.
+Thus,patientsimulatorsmayencounterquestionsaboutinformationnotexplicitlydescribedinthe
+given profile. Unlike previous studies, which typically refuse to answer such questions (i.e., not
+allowinganyunsupportedsentences),thuslimitingtheflowofdoctor-patientdialogue,weinsteadlet
+PATIENTSIManswersuchquestionsbasedonthegivenprofile(i.e.,allowingunsupportedsentences).
+However,itisessentialtoassesstheclinicalplausibilityofthoseunsupportedsentences,inorderto
+guaranteetheoverallclinicalvalidityofPATIENTSIM,anditseffectivenessasasimulationtool.
+Therefore this evaluation targets unsupported sentences, statements containing at least one piece
+of information not explicitly present in the given profile (per RQ2). We start by identifying the
+informationsentences(RQ2,Step1).Toclassifyaninformationsentenceasunsupported,weevaluate
+whethereachinformationsentenceincludesundefinedinformation(Figure2,Step2-2),basedon
+criteriadetailedintheAppendixD.2.3. Tomaximizerecall,weapplytwoadditionalrules:
+• If no related profile items xi are found for a sentence si (i.e., (cid:80) R(si ) = 0), it is deemed
+k tm tm
+unsupported,whereR(si )isabinaryvectorindicatingrelatedprofileitems(RQ2,Step2).
+tm
+• IfallNLIlabelsforsi areneutral,itisclassifiedasunsupported.
+tm
+WeusetheLLMsentenceclassifiertoclassifyunsupportedsentencesinpatientutterances(Sec.6.1.2).
+Theseidentifiedsentencesarethenratedforplausibilityona4-pointscalebybothhumanandLLM
+evaluator(Figure2,Step3-2). Sinceplausibilityjudgmentsmayvarybasedonmedicalexpertise,
+potentially introducing bias, we assigned three different annotators to each sample and reported
+inter-clinicianagreementtoensurerobustnessforhumanevaluation.
+7
+
+Table 1: Persona fidelity evaluation of various LLMs across five criteria, Personality, Language,
+Recall,Confused,andRealism,assessedbyGemini-2.5-Flash. Eachcriterionisratedona4-point
+scale. Theaveragescore(Avg.) summarizesoverallperformance.
+Engine Personality Language Recall Confused Realism Avg.
+Gemini-2.5-Flash 3.94 3.54 3.64 3.38 3.37 3.57
+GPT-4omini 3.58 3.55 3.78 3.88 3.26 3.61
+DeepSeek-R1-Distill-Llama-70B 3.87 3.58 3.42 2.50 3.19 3.31
+Qwen2.5-72B-Instruct 3.30 3.68 3.63 3.50 3.22 3.46
+Llama-3.3-70B-Instruct 3.92 3.40 3.78 4.00 3.28 3.68
+Llama-3.1-70B-Instruct 3.65 3.51 3.62 4.00 3.23 3.60
+Llama-3.1-8B-Instruct 3.53 3.29 3.70 4.00 3.20 3.54
+Qwen2.5-7B-Instruct 3.23 3.49 3.31 3.50 3.16 3.34
+Table2: Sentence-levelfactualityevaluationacrosseightLLMs,byGemini-2.5-Flash. Supported
+statements refer to sentences that relate to at least one item in the given profile. Unsupported
+statementsincludeatleastonepieceofinformationthatisnotexplicitlymentionedintheprofile.
+EntailandContradictareevaluatedforsupported,whilePlausibilityisassessedforunsupported.
+ForSupported ForUnsupported
+Info(%) Supported(%) Unsupported(%)
+Entail(%,↑) Contradict(%,↓) Plausibility(↑)
+Gemini-2.5-Flash 0.972 0.763 0.316 0.978 0.022 3.953
+GPT-4omini 0.957 0.721 0.428 0.968 0.032 3.929
+DeepSeek-R1-Distill-Llama-70B 0.975 0.762 0.416 0.968 0.032 3.911
+Qwen2.5-72B-Instruct 0.975 0.683 0.468 0.954 0.046 3.928
+Llama-3.3-70B-Instruct 0.958 0.796 0.387 0.981 0.019 3.963
+Llama-3.1-70B-Instruct 0.948 0.813 0.407 0.968 0.032 3.955
+Llama-3.1-8B-Instruct 0.944 0.771 0.488 0.944 0.056 3.897
+Qwen2.5-7B-Instruct 0.987 0.703 0.453 0.939 0.061 3.862
+6.2 Experimentalsettings
+Werandomlysampledatotalof170profilesanddividedthemintotwosubsets: 108profilesfor
+evaluatingRQ1(i.e.,personaevaluation)and52profilesforevaluatingRQ2(i.e.,factualaccuracy)
+andRQ3(i.e.,clinicalplausibility). Weused10profilestovalidatetheLLMsentenceclassifier’s
+performanceinautomaticallydetectingsupportedandunsupportedstatements(RQ2,3). Detailed
+statisticsareprovidedintheAppendixA.4. AstheLLMbackboneof PATIENTSIM,weselected
+eightrepresentativemodels: twoAPI-basedLLMs(Gemini-2.5-Flash[10],GPT-4omini[43])and
+sixopen-sourcemodels(Llama3.18B[16],Llama3.170B[16],Llama3.370B,Qwen2.572B[48],
+Qwen2.57B[48]). WeselectedGPT-4ominitoplaytheroleofthedoctor. WeemployedGemini-
+2.5-Flashasanevaluatormodeltoassessresponsesacrossallexperiments,usingtask-specificrubrics.
+DetailedinformationaboutmodelselectionisprovidedintheAppendixF.4. Forhumanevaluation,
+werecruitedfourgeneralpractitioners2throughIngedata3,anAIdataannotationcompany. Detailed
+informationisprovidedinAppendixE.
+7 Results
+Inthissection,wereporttheperformanceofvariousLLMswithrespecttoRQ1,2,and3,usingLLM-
+as-judge[63]. Basedontheseevaluations,weidentifiedthebest-performingmodelandconducteda
+humanevaluationtofurthervalidateitsperformance.
+RQ1: DoLLMsnaturallyreflectdiversepersonatraitsintheirresponses? Table1presentsthe
+fidelityofvariousbaselineLLMsacrossdifferentpersonaaxes. ResultsunderscoreLlama’sstrengths
+insimulationtasks,revealingthatgeneralLLMbenchmarkperformancedoesnotalwayscorrelate
+withsimulationfidelity[20,50]. TheLlamaseriesdemonstratesrobustperformance,particularlyin
+2Twoindividualshave4yearsandtwoindividualshave6yearsofclinicalexperiencepost-physicianlicense.
+Thelattertwoalsoholdnursinglicenses,with13and17yearsofnursingexperience,respectively.
+3https://www.ingedata.ai/
+8
+
+Table3: Dialogue-levelfactualityevaluationacrossSocialHistory(Social),PreviousMedicalHistory
+(PMH),andCurrentVisitInformation(CurrentVisit),evaluatedbyGemini-2.5-Flash.
+InformationCoverage(ICov)(%) InfomationConsistency(ICon)(4-point)
+Social PMH CurrentVisit Avg. Social PMH CurrentVisit Avg.
+Gemini-2.5-Flash 0.44 0.77 0.88 0.70 3.82 3.51 3.18 3.50
+GPT-4omini 0.55 0.76 0.89 0.73 3.72 3.33 3.01 3.35
+DeepSeek-R1-Distill-Llama-70B 0.50 0.76 0.91 0.72 3.73 3.31 3.08 3.37
+Qwen2.5-72B-Instruct 0.47 0.77 0.90 0.71 3.75 3.50 2.95 3.40
+Llama-3.3-70B-Instruct 0.53 0.78 0.89 0.73 3.72 3.47 3.10 3.43
+Llama-3.1-70B-Instruct 0.56 0.77 0.89 0.74 3.82 3.43 3.05 3.43
+Llama-3.1-8B-Instruct 0.61 0.78 0.88 0.76 3.68 3.19 2.85 3.24
+Qwen2.5-7B-Instruct 0.44 0.75 0.89 0.69 3.60 3.32 2.89 3.27
+Table4: Plausibilityscoresforunsupportedsentencesinpatientresponses,labeledbyfourclinicians,
+withthreeannotatorspersentence(outof4). Intra-clinicianagreementmeasuredbyGwet’sAC
+1
+with95%confidenceintervalsestimatedvia1,000bootstrapiterations.
+ClinicianA ClinicianB ClinicianC ClinicianD
+Intra-ClinicianAgreement
+ClinicianA – 0.949(0.927,0.969) 0.968(0.951,0.983) 0.866(0.828,0.901)
+ClinicianB 0.949(0.927,0.969) – 0.961(0.940,0.979) 0.853(0.818,0.886)
+ClinicianC 0.968(0.951,0.983) 0.961(0.940,0.979) – 0.879(0.843,0.913)
+ClinicianD 0.866(0.828,0.901) 0.853(0.818,0.886) 0.879(0.843,0.913) –
+Plausibility(4pointscale)
+Plausibility 3.955 3.923 3.985 3.781
+aspectsrelatedtoemotionalexpression(i.e.,PersonalityandConfusedcolumnsinTable1). Notably,
+Llama8BexhibitsbetterfidelitythanQwen72B,despitefewerparameters. TheConfusedcolumn
+showsthehighestvariabilityamongmodels,andmostmodelsstrugglewithnegativeemotionssuch
+asimpatienceanddistrust,detailedinAppendixF.1. ThismaystemfromsafetymeasuresinLLMs
+toavoidharmfulresponses,potentiallylimitingrole-playingcapabilities[11].
+RQ2: DoLLMsaccuratelyderiveresponsesbasedonthegivenprofile? Weanalyzethefactual
+accuracyofsentencescontainingclinicalinformation,focusingonstatementsexplicitlymentionedin
+thegivenprofile(supported). Foreachsentence,entailmentiscalculatedwithrespecttoallrelevant
+profileitems(Table2,Entailcolumn). Allmodelsdemonstratehighentailment,butanotablegap
+existsbetweenlargermodels(≥70Bparameters)andsmallermodels(≤8Bparameters),withthe
+lattermorepronetoincorrectstatements. Unlikepersonafidelity,informationaccuracyappearsto
+correlatewithmodelsize, likelyduetosmallermodels’limitedcapacitytoprocesslongcontext
+comparedtolargerones. Llama70Bmodelsperformwellinbothaspects.
+Table3comparesdialogue-levelICovandIConacrossSocial(i.e.,socialhistory),PMH(i.e.,previous
+medicalhistory),andCurrentVisit(e.g.,chiefcomplaint,presentillnesses)categories. PMHand
+CurrentVisithavesimilarcoverageacrosssimulators,astheyarestandardinmedicalinterviews.
+Socialcoveragevariesbasedoncontext,asdetailslikeoccupationorexercisearelessfrequently
+queried. CurrentVisithaslowerconsistencyscoresduetoitssubjectivenature,needingdetailed
+questionsforfullsymptomcapture. AmongLLMs,Gemini-2.5-Flashleadsinconsistency,followed
+byLlama3.370BandLlama3.170B,thetopopen-sourcemodel.
+RQ3: Can LLMs reasonably fill in the blanks? To address this question, we focus on the
+unsupportedsentencesthatincludeatleastonepieceofinformationnotexplicitlymentionedinthe
+givenprofile. TheplausibilitycolumnofTable2showstheplausibilityratingsforanswersabout
+unspecifiedinformation. Onaverage,evaluationsareconductedon764sentencespermodel. Overall,
+largermodelsconsistentlydemonstratehigherplausibilitythansmallermodels. Smallermodelsare
+morelikelytomakeadditionalstatementsthatdirectlycontradicttheirprofile’smedicalhistoryor
+theirownpriorstatements,possiblyduetolimitationsinprocessinglongcontexts. TheLlamaseries
+9
+
+againexhibitsthebestperformanceinthistask,underscoringitspotentialtosimulaterealisticpatient
+responses.
+1.0
+0.5
+0.0
+Personalit Ly anguage Recall Confused Realism UseTo fuo ll ness
+noitroporP
+Humanevaluation AsLlama3.370Bconsis-
+tentlydemonstratedrobustperformanceacross Score
+1
+allresearchquestions,weselecteditastheLLM
+2
+forPATIENTSIM. ForRQ1,cliniciansengaged 3
+4
+in approximately 10–15 minutes of conversa-
+tion for each case, and rated the interactions
+on six evaluation criteria (4-point scale). Fig-
+ure3showsthescoredistributionacrossallcrite-
+Figure3: Scoredistributionacrosssixevaluation
+ria. Cliniciansconsistentlyassignedhighscores,
+criteria,inclinicianevaluation(4-pointscale).
+with an overall average of 3.89 out of 4. In
+additiontothefivecriteriausedbytheLLM-as-
+judge(Sec.7,RQ1),cliniciansalsoratedtheiragreementwiththestatement: “Thischatbotwould
+beusefulineducationforpracticingconsultationskills”. Theaveragescorewas3.75,highlighting
+thesimulator’spotentialasaneffectiveeducationaltool. InRQ2,weevaluatedtheLLMsentence
+classifier’sperformanceusingmanuallyannotatedlabelsbyauthorsacross411sentencesfrom10
+dialogues. ThevalidationresultsarepresentedinAppendixF.4.1. ForRQ3,Table4presentsthe
+plausibilityscoresfromfourdifferentclinicians,alongwiththeirintra-cliniciancorrelation. Each
+clinicianevaluated39dialogues(about616sentences),carefullyreviewingthepatientprofilesand
+conversation histories, spending approximately 6 minutes per dialogue. They assigned an aver-
+ageplausibilityscoreof3.91,withhighagreementasmeasuredbyGwet’sAgreementCoefficient
+(AC )[17],demonstratingmeaningfulresponsesgeneratedbyoursimulator.Amoredetailedanalysis
+1
+isprovidedintheAppendixF.
+8 Discussion
+Althoughwecarefullydesignedtheoverallframework,severallimitationsremain: 1)Ourexperiment
+is based on the MIMIC database, given that it is currently the only publicly available dataset to
+integrateclinicalnoteswithEDtriageinformation. Thismaylimitthegeneralizabilityofourfindings.
+2)Duetothetext-basednatureofoursimulationenvironment,thesimulatorcannotcapturenon-
+verbalexpressions(e.g.,facialfeatures,bodymovements),leadingtolimitedpersonarepresentation.
+3)Humanevaluationwasconductedwithfourclinicians,whichcouldlimitthegeneralizabilityofthe
+evaluationresults. Toenhancetherealismandgeneralizabilityofourframework,severalavenuescan
+beexploredinfuturework. First,incorporatingmultimodalfeatures(e.g.,tone,facialexpressions,
+or gestures), possibly via virtual reality (VR) simulations, would allow for more comprehensive
+modelingofpatientpersonas. Second,increasingthescaleanddiversityofhumanevaluatorscan
+providemorereliablevalidationofLLM-basedassessments.
+AcknowledgmentsandDisclosureofFunding
+WethankJun-MinLeeforhiscontributiontothedevelopmentoftheofficialPATIENTSIMpackage.
+ThisworkwassupportedbytheInstituteofInformation&CommunicationsTechnologyPlanning&
+Evaluation(IITP)grants(No.RS-2019-II190075,No.RS-2022-00155966,No.RS-2025-02304967)
+andNationalResearchFoundationofKorea(NRF)grants(NRF-2020H1D3A2A03100945,No.RS-
+2024-00342044),fundedbytheKoreagovernment(MSIT).
+References
+[1] M.Almansoori,K.Kumar,andH.Cholakkal.Self-evolvingmulti-agentsimulationsforrealistic
+clinicalinteractions,2025. URLhttps://arxiv.org/abs/2503.22678.
+[2] A.BanerjeeandD.Sanyal. Dynamicsofdoctor–patientrelationship: Across-sectionalstudy
+onconcordance,trust,andpatientenablement. JournalofFamilyandCommunityMedicine,19
+(1):12–19,2012. doi: 10.4103/2230-8229.94006.
+10
+
+[3] Z. Bao, Q. Liu, Y. Guo, Z. Ye, J. Shen, S. Xie, J. Peng, X. Huang, and Z. Wei. Piors:
+Personalizedintelligentoutpatientreceptionbasedonlargelanguagemodelwithmulti-agents
+medicalscenariosimulation,2024. URLhttps://arxiv.org/abs/2411.13902.
+[4] H.S.Barrows. Anoverviewoftheusesofstandardizedpatientsforteachingandevaluating
+clinicalskills. AcademicMedicine,68(6):443–451,1993.
+[5] G.S.Boyer,D.W.Templin,W.P.Goring,J.C.Cornoni-Huntley,D.F.Everett,R.C.Lawrence,
+S. P. Heyse, and A. Bowler. Discrepancies between patient recall and the medical record.
+potentialimpactondiagnosisandclinicalassessmentofchronicdisease. ArchivesofInternal
+Medicine,155(17):1868–1872,1995.
+[6] F.Chipidza,R.S.Wallwork,T.N.Adams,andT.A.Stern. Evaluationandtreatmentofthe
+angrypatient. PrimaryCareCompanionforCNSDisorders,18(3),2016.
+[7] G.B.Clack,J.Allen,D.Cooper,andJ.O.Head. Personalitydifferencesbetweendoctorsand
+theirpatients: implicationsfortheteachingofcommunicationskills. MedicalEducation,38(2):
+177–186,2004. doi: 10.1111/j.1365-2923.2004.01752.x.
+[8] D.A.Cook. Creatingvirtualpatientsusinglargelanguagemodels: scalable,global,andlow
+cost. MedicalTeacher,47(1):40–42,2025. doi: 10.1080/0142159X.2024.2376879.
+[9] G.CousinandM.SchmidMast. Agreeablepatientmeetsaffiliativephysician: Howphysician
+behavior affects patient outcomes depends on patient personality. Patient Education and
+Counseling, 90(3):399–404, 2013. ISSN 0738-3991. Quality of Communication from the
+PatientPerspective.
+[10] G. DeepMind. Start building with gemini 2.5 flash, 2024. URL https://developers.
+googleblog.com/en/start-building-with-gemini-25-flash/.
+[11] A.Deshpande,V.Murahari,T.Rajpurohit,A.Kalyan,andK.Narasimhan. Toxicityinchatgpt:
+Analyzingpersona-assignedlanguagemodels. InH.Bouamor,J.Pino,andK.Bali,editors,
+FindingsoftheAssociationforComputationalLinguistics: EMNLP2023,pages1236–1270,
+Dec.2023. doi: 10.18653/v1/2023.findings-emnlp.88. URLhttps://aclanthology.org/
+2023.findings-emnlp.88/.
+[12] Z.Du,L.Zheng,R.Hu,Y.Xu,X.Li,Y.Sun,W.Chen,J.Wu,H.Cai,andH.Ying. Llmscan
+simulatestandardizedpatientsviaagentcoevolution,2024. URLhttps://arxiv.org/abs/
+2412.11716.
+[13] C.Elendu,D.C.Amaechi,A.U.Okatta,E.C.Amaechi,T.C.Elendu,C.P.Ezeh,andI.D.
+Elendu. Theimpactofsimulation-basedtraininginmedicaleducation: Areview. Medicine,
+103(27):e38813,July2024. doi: 10.1097/MD.0000000000038813.
+[14] Z.Fan,L.Wei,J.Tang,W.Chen,W.Siyuan,Z.Wei,andF.Huang. Aihospital: Benchmarking
+largelanguagemodelsinamulti-agentmedicalinteractionsimulator. InProceedingsofthe
+31stInternationalConferenceonComputationalLinguistics,2025.
+[15] A.L.Goldberger,L.A.N.Amaral,L.Glass,J.M.Hausdorff,P.C.Ivanov,R.G.Mark,J.E.
+Mietus,G.B.Moody,C.-K.Peng,andH.E.Stanley. Physiobank,physiotoolkit,andphysionet:
+Componentsofanewresearchresourceforcomplexphysiologicsignals. Circulation[Online],
+101(23):e215–e220,2000. doi: 10.1161/01.CIR.101.23.e215.
+[16] A.Grattafiorietal. Thellama3herdofmodels,2024. URLhttps://arxiv.org/abs/2407.
+21783.
+[17] K.L.Gwet. Computinginter-raterreliabilityanditsvarianceinthepresenceofhighagreement.
+BritishJournalofMathematicalandStatisticalPsychology,61(1):29–48,2008. doi: 10.1348/
+000711006X126600.
+[18] J.R.Hampton,M.J.G.Harrison,J.R.A.Mitchell,J.S.Prichard,andC.Seymour. Relative
+contributionsofhistory-taking,physicalexamination,andlaboratoryinvestigationtodiagnosis
+andmanagementofmedicaloutpatients. BritishMedicalJournal,2(5969):486–489,May1975.
+doi: 10.1136/bmj.2.5969.486.
+11
+
+[19] Y.Hicke,J.Geathers,N.Rajashekar,C.Chan,A.G.Jack,J.Sewell,M.Preston,S.Cornes,
+D.Shung,andR.Kizilcec.Medsimai:Simulationandformativefeedbackgenerationtoenhance
+deliberatepracticeinmedicaleducation,2025. URLhttps://arxiv.org/abs/2503.05793.
+[20] Y.Huang,Z.Yuan,Y.Zhou,K.Guo,X.Wang,H.Zhuang,W.Sun,L.Sun,J.Wang,Y.Ye,
+andX.Zhang. Socialsciencemeetsllms: Howreliablearelargelanguagemodelsinsocial
+simulations?,2024. URLhttps://arxiv.org/abs/2410.23426.
+[21] D.Jin,E.Pan,N.Oufattole,W.-H.Weng,H.Fang,andP.Szolovits. Whatdiseasedoesthis
+patienthave? alarge-scaleopendomainquestionansweringdatasetfrommedicalexams. arXiv
+preprintarXiv:2009.13081,2020.
+[22] Q. Jin, B. Dhingra, Z. Liu, W. Cohen, and X. Lu. Pubmedqa: A dataset for biomedical
+researchquestionanswering. InProceedingsofthe2019ConferenceonEmpiricalMethodsin
+NaturalLanguageProcessingandthe9thInternationalJointConferenceonNaturalLanguage
+Processing(EMNLP-IJCNLP),pages2567–2577,2019.
+[23] A. Johnson, L. Bulgarelli, T. Pollard, L. A. Celi, R. Mark, and S. Horng. MIMIC-IV-ED
+(version2.2). https://doi.org/10.13026/5ntk-km72,2023. PhysioNet.
+[24] A.Johnson,T.Pollard,S.Horng,L.A.Celi,andR.Mark. Mimic-iv-note:Deidentifiedfree-text
+clinicalnotes(version2.2). https://doi.org/10.13026/1n74-ne17,2023. PhysioNet.
+[25] A.Johnson,L.Bulgarelli,T.Pollard,B.Gow,B.Moody,S.Horng,L.A.Celi,andR.Mark.
+MIMIC-IV(version3.1). https://doi.org/10.13026/kpb9-mt58,2024. PhysioNet.
+[26] S.Johri,J.Jeong,B.A.Tran,D.I.Schlessinger,S.Wongvibulsin,Z.R.Cai,R.Daneshjou,
+and P. Rajpurkar. CRAFT-MD: A conversational evaluation framework for comprehensive
+assessmentofclinicalLLMs. InAAAI2024SpringSymposiumonClinicalFoundationModels,
+2024.
+[27] K.E.Keifenheim,M.Teufel,J.Ip,N.Speiser,E.J.Leehr,S.Zipfel,andA.Herrmann-Werner.
+Teachinghistorytakingtomedicalstudents: asystematicreview. BMCMedicalEducation,15
+(1):159,2015. doi: 10.1186/s12909-015-0443-x.
+[28] S. Kim, J. Shin, Y. Cho, J. Jang, S. Longpre, H. Lee, S. Yun, S. Shin, S. Kim, J. Thorne,
+and M. Seo. Prometheus: Inducing fine-grained evaluation capability in language models.
+In The Twelfth International Conference on Learning Representations, 2024. URL https:
+//openreview.net/forum?id=8euJaTveKw.
+[29] Y.Kim,C.Park,H.Jeong,Y.S.Chan,X.Xu,D.McDuff,H.Lee,M.Ghassemi,C.Breazeal,
+andH.W.Park. Mdagents: Anadaptivecollaborationofllmsformedicaldecision-making. In
+TheThirty-eighthAnnualConferenceonNeuralInformationProcessingSystems,2024.
+[30] M. B. Laws, Y. Lee, T. Taubin, W. H. Rogers, and I. B. Wilson. Factors associated with
+patientrecallofkeyinformationinambulatoryspecialtycarevisits: Resultsofaninnovative
+methodology. PLoSONE,13(2):e0191940,2018. doi: 10.1371/journal.pone.0191940.
+[31] A.M.Legg,S.E.Andrews,H.Huynh,A.Ghane,A.Tabuenca,andK.Sweeny.Patients’anxiety
+andhope: predictorsandadherenceintentionsinanacutecarecontext. HealthExpectations,18
+(6):3034–3043,2015. doi: 10.1111/hex.12288.
+[32] J.Li,Y.Lai,W.Li,J.Ren,M.Zhang,X.Kang,S.Wang,P.Li,Y.-Q.Zhang,W.Ma,andY.Liu.
+Agenthospital: Asimulacrumofhospitalwithevolvablemedicalagents,2025.
+[33] S.S.Li,V.Balachandran,S.Feng,J.S.Ilgen,E.Pierson,P.W.Koh,andY.Tsvetkov. Mediq:
+Question-asking LLMs and a benchmark for reliable interactive clinical reasoning. In The
+Thirty-eighthAnnualConferenceonNeuralInformationProcessingSystems,2024.
+[34] Y.Li,C.Zeng,J.Zhong,R.Zhang,M.Zhang,andL.Zou. Leveraginglargelanguagemodelas
+simulatedpatientsforclinicaleducation,2024.URLhttps://arxiv.org/abs/2404.13066.
+[35] Y. Liao, Y. Meng, H. Liu, Y. Wang, and Y. Wang. An automatic evaluation framework for
+multi-turnmedicalconsultationscapabilitiesoflargelanguagemodels, 2023. URLhttps:
+//arxiv.org/abs/2309.02077.
+12
+
+[36] Y.Liao,Y.Meng,Y.Wang,H.Liu,Y.Wang,andY.Wang. Automaticinteractiveevaluationfor
+largelanguagemodelswithstateawarepatientsimulator,2024.
+[37] S.D.LifchezandR.J.Redett. Astandardizedpatientmodeltoteachandassessprofessionalism
+andcommunicationskills: Theeffectofpersonalitytypeonperformance. JournalofSurgical
+Education,71(3):297–301,2014. ISSN1931-7204. doi: https://doi.org/10.1016/j.jsurg.2013.09.
+010.
+[38] H.Liu,Y.Liao,S.Ou,Y.Wang,H.Liu,Y.Wang,andY.Wang.Med-pmc:Medicalpersonalized
+multi-modalconsultationwithaproactiveask-first-observe-nextparadigm,2024. URLhttps:
+//arxiv.org/abs/2408.08693.
+[39] R.Louie,A.Nandi,W.Fang,C.Chang,E.Brunskill,andD.Yang. Roleplay-doh: Enabling
+domain-expertstocreateLLM-simulatedpatientsviaelicitingandadheringtoprinciples. In
+Proceedingsofthe2024ConferenceonEmpiricalMethodsinNaturalLanguageProcessing,
+pages10570–10603,2024.
+[40] R. R. McCrae and P. T. Costa. Validation of the five-factor model of personality across
+instrumentsandobservers. JournalofPersonalityandSocialPsychology,52(1):81–90,1987.
+[41] A.N.Meyer,T.D.Giardina,L.Khawaja,andH.Singh. Patientandclinicianexperiencesof
+uncertainty in the diagnostic process: Current understanding and future directions. Patient
+EducationandCounseling,104(11):2606–2615,2021. ISSN0738-3991. doi: https://doi.org/10.
+1016/j.pec.2021.07.028.
+[42] C.ofEurope. CommonEuropeanFrameworkofReferenceforLanguages: Learning,Teaching,
+Assessment. CambridgeUniversityPress,Cambridge,2001.
+[43] OpenAI. Gpt-4omini: advancingcost-efficientintelligence,2024. URLhttps://openai.
+com/index/gpt-4o-mini-advancing-cost-efficient-intelligence/.
+[44] A.Pal,L.K.Umapathi,andM.Sankarasubbu. Medmcqa: Alarge-scalemulti-subjectmulti-
+choicedatasetformedicaldomainquestionanswering. InProceedingsoftheConferenceon
+Health,Inference,andLearning,pages248–260,2022.
+[45] M.C.Peterson,J.H.Holbrook,D.VonHales,N.L.Smith,andL.V.Staker. Contributionsof
+thehistory,physicalexamination,andlaboratoryinvestigationinmakingmedicaldiagnoses.
+WesternJournalofMedicine,156(2):163–165,1992.
+[46] E.J.Pérez-StableandS.El-Toukhy. Communicatingwithdiversepatients: Howpatientand
+clinician factors affect disparities. Patient Education and Counseling, 101(12):2186–2194,
+2018. ISSN0738-3991. doi: https://doi.org/10.1016/j.pec.2018.08.021.
+[47] H.QiuandZ.Lan. Interactiveagents: Simulatingcounselor-clientpsychologicalcounseling
+viarole-playingllm-to-llminteractions,2024. URLhttps://arxiv.org/abs/2408.15787.
+[48] Qwen,:,A.Yang,B.Yang,B.Zhang,B.Hui,B.Zheng,B.Yu,C.Li,D.Liu,F.Huang,H.Wei,
+H.Lin, J.Yang, J.Tu, J.Zhang, J.Yang, J.Yang, J.Zhou, J.Lin, K.Dang, K.Lu, K.Bao,
+K.Yang,L.Yu,M.Li,M.Xue,P.Zhang,Q.Zhu,R.Men,R.Lin,T.Li,T.Tang,T.Xia,X.Ren,
+X. Ren, Y. Fan, Y. Su, Y. Zhang, Y. Wan, Y. Liu, Z. Cui, Z. Zhang, and Z. Qiu. Qwen2.5
+technicalreport,2025. URLhttps://arxiv.org/abs/2412.15115.
+[49] D.A.Redelmeier,U.Najeeb,andE.E.Etchells. Understandingpatientpersonalityinmedical
+care: Five-factormodel. JournalofGeneralInternalMedicine,36(7):2111–2114,2021. ISSN
+1525-1497. doi: 10.1007/s11606-021-06598-8.
+[50] V. Samuel, H. P. Zou, Y. Zhou, S. Chaudhari, A. Kalyan, T. Rajpurohit, A. Deshpande,
+K.Narasimhan, andV.Murahari. Personagym: Evaluatingpersonaagentsandllms. arXiv
+preprintarXiv:2407.18416,2024.
+[51] S.Schmidgall,R.Ziaei,C.Harris,E.Reis,J.Jopling,andM.Moor. Agentclinic: amultimodal
+agentbenchmarktoevaluateaiinsimulatedclinicalenvironments,2024.
+13
+
+[52] E.Stolper,P.VanRoyen,E.Jack,J.Uleman,andM.OldeRikkert. Embracingcomplexitywith
+systemsthinkingingeneralpractitioners’clinicalreasoninghelpshandlinguncertainty. Journal
+ofEvaluationinClinicalPractice,27(5):1175–1181,2021. doi: https://doi.org/10.1111/jep.
+13549.
+[53] D.E.Stubbe. Alleviatinganxiety: Optimizingcommunicationwiththeanxiouspatient. Focus
+(AmPsychiatrPubl),15(2):182–184,2017. doi: 10.1176/appi.focus.20170001.
+[54] R.L.Sudore,C.S.Landefeld,E.J.Pérez-Stable,K.Bibbins-Domingo,B.A.Williams,and
+D.Schillinger. Unravelingtherelationshipbetweenliteracy,languageproficiency,andpatient-
+physician communication. Patient Education and Counseling, 75(3):398–402, 2009. doi:
+10.1016/j.pec.2009.02.019.
+[55] X.Tang,A.Zou,Z.Zhang,Z.Li,Y.Zhao,X.Zhang,A.Cohan,andM.Gerstein. MedAgents:
+Largelanguagemodelsascollaboratorsforzero-shotmedicalreasoning. InFindingsofthe
+AssociationforComputationalLinguistics: ACL2024,2024.
+[56] E.C.Toy,B.Simon,K.Takenaka,T.H.Liu,andA.J.Rosh. CaseFilesEmergencyMedicine.
+McGraw-HillEducation/Medical,NewYork,4thedition,2017. ISBN9781259640827.
+[57] E.C.Toy,B.C.Simon,K.Y.Takenaka,T.H.Liu,andA.J.Rosh. CaseFiles: Emergency
+Medicine. McGraw-HillEducation,4thedition,2017. ISBN9781259640827.
+[58] T.Tu,A.Palepu,M.Schaekermann,K.Saab,J.Freyberg,R.Tanno,A.Wang,B.Li,M.Amin,
+N.Tomasev,S.Azizi,K.Singhal,Y.Cheng,L.Hou,A.Webson,K.Kulkarni,S.S.Mahdavi,
+C.Semturs,J.Gottweis,J.Barral,K.Chou,G.S.Corrado,Y.Matias,A.Karthikesalingam,and
+V.Natarajan. Towardsconversationaldiagnosticai,2024. URLhttps://arxiv.org/abs/
+2401.05654.
+[59] J.Wang,Y.Xiao,Y.Li,C.Song,C.Xu,C.Tan,andW.Li.Towardsaclient-centeredassessment
+ofllmtherapistsbyclientsimulation,2024. URLhttps://arxiv.org/abs/2406.12266.
+[60] R.Wang,S.Milani,J.C.Chiu,J.Zhi,S.M.Eack,T.Labrum,S.M.Murphy,N.Jones,K.V.
+Hardy,H.Shen,F.Fang,andZ.Chen. PATIENT-ψ: Usinglargelanguagemodelstosimulate
+patientsfortrainingmentalhealthprofessionals. InProceedingsofthe2024Conferenceon
+EmpiricalMethodsinNaturalLanguageProcessing,pages12772–12797,2024.
+[61] H.Wei,J.Qiu,H.Yu,andW.Yuan. Medco: Medicaleducationcopilotsbasedonamulti-agent
+framework,2024. URLhttps://arxiv.org/abs/2408.12496.
+[62] W.Yan,H.Liu,T.Wu,Q.Chen,W.Wang,H.Chai,J.Wang,W.Zhao,Y.Zhang,R.Zhang,
+L.Zhu,andX.Zhao. Clinicallab: Aligningagentsformulti-departmentalclinicaldiagnostics
+intherealworld,2024. URLhttps://arxiv.org/abs/2406.13890.
+[63] L.Zheng,W.-L.Chiang,Y.Sheng,S.Zhuang,Z.Wu,Y.Zhuang,Z.Lin,Z.Li,D.Li,E.Xing,
+H.Zhang,J.E.Gonzalez,andI.Stoica. JudgingLLM-as-a-judgewithMT-benchandchatbot
+arena. InThirty-seventhConferenceonNeuralInformationProcessingSystemsDatasetsand
+BenchmarksTrack,2023. URLhttps://openreview.net/forum?id=uccHPGDlao.
+14
+
+NeurIPSPaperChecklist
+1. Claims
+Question: Dothemainclaimsmadeintheabstractandintroductionaccuratelyreflectthe
+paper’scontributionsandscope?
+Answer: [Yes]
+Justification: SeeSec.1
+Guidelines:
+• The answer NA means that the abstract and introduction do not include the claims
+madeinthepaper.
+• Theabstractand/orintroductionshouldclearlystatetheclaimsmade,includingthe
+contributionsmadeinthepaperandimportantassumptionsandlimitations. ANoor
+NAanswertothisquestionwillnotbeperceivedwellbythereviewers.
+• Theclaimsmadeshouldmatchtheoreticalandexperimentalresults,andreflecthow
+muchtheresultscanbeexpectedtogeneralizetoothersettings.
+• Itisfinetoincludeaspirationalgoalsasmotivationaslongasitisclearthatthesegoals
+arenotattainedbythepaper.
+2. Limitations
+Question: Doesthepaperdiscussthelimitationsoftheworkperformedbytheauthors?
+Answer: [Yes]
+Justification: SeeSec.8
+Guidelines:
+• TheanswerNAmeansthatthepaperhasnolimitationwhiletheanswerNomeansthat
+thepaperhaslimitations,butthosearenotdiscussedinthepaper.
+• Theauthorsareencouragedtocreateaseparate"Limitations"sectionintheirpaper.
+• Thepapershouldpointoutanystrongassumptionsandhowrobusttheresultsareto
+violationsoftheseassumptions(e.g.,independenceassumptions,noiselesssettings,
+modelwell-specification,asymptoticapproximationsonlyholdinglocally).Theauthors
+shouldreflectonhowtheseassumptionsmightbeviolatedinpracticeandwhatthe
+implicationswouldbe.
+• Theauthorsshouldreflectonthescopeoftheclaimsmade,e.g.,iftheapproachwas
+onlytestedonafewdatasetsorwithafewruns. Ingeneral,empiricalresultsoften
+dependonimplicitassumptions,whichshouldbearticulated.
+• Theauthorsshouldreflectonthefactorsthatinfluencetheperformanceoftheapproach.
+Forexample,afacialrecognitionalgorithmmayperformpoorlywhenimageresolution
+isloworimagesaretakeninlowlighting. Oraspeech-to-textsystemmightnotbe
+usedreliablytoprovideclosedcaptionsforonlinelecturesbecauseitfailstohandle
+technicaljargon.
+• Theauthorsshoulddiscussthecomputationalefficiencyoftheproposedalgorithms
+andhowtheyscalewithdatasetsize.
+• If applicable, the authors should discuss possible limitations of their approach to
+addressproblemsofprivacyandfairness.
+• Whiletheauthorsmightfearthatcompletehonestyaboutlimitationsmightbeusedby
+reviewersasgroundsforrejection,aworseoutcomemightbethatreviewersdiscover
+limitationsthataren’tacknowledgedinthepaper. Theauthorsshouldusetheirbest
+judgmentandrecognizethatindividualactionsinfavoroftransparencyplayanimpor-
+tantroleindevelopingnormsthatpreservetheintegrityofthecommunity. Reviewers
+willbespecificallyinstructedtonotpenalizehonestyconcerninglimitations.
+3. Theoryassumptionsandproofs
+Question: Foreachtheoreticalresult,doesthepaperprovidethefullsetofassumptionsand
+acomplete(andcorrect)proof?
+Answer: [NA]
+15
+
+Justification: Thepaperdoesnotpresentanyformaltheoreticalresults. Thefocusofthe
+paperisempirical,andallcontributionsareevaluatedthroughexperiments.
+Guidelines:
+• TheanswerNAmeansthatthepaperdoesnotincludetheoreticalresults.
+• Allthetheorems, formulas, andproofsinthepapershouldbenumberedandcross-
+referenced.
+• Allassumptionsshouldbeclearlystatedorreferencedinthestatementofanytheorems.
+• Theproofscaneitherappearinthemainpaperorthesupplementalmaterial, butif
+theyappearinthesupplementalmaterial,theauthorsareencouragedtoprovideashort
+proofsketchtoprovideintuition.
+• Inversely,anyinformalproofprovidedinthecoreofthepapershouldbecomplemented
+byformalproofsprovidedinappendixorsupplementalmaterial.
+• TheoremsandLemmasthattheproofreliesuponshouldbeproperlyreferenced.
+4. Experimentalresultreproducibility
+Question: Doesthepaperfullydisclosealltheinformationneededtoreproducethemainex-
+perimentalresultsofthepapertotheextentthatitaffectsthemainclaimsand/orconclusions
+ofthepaper(regardlessofwhetherthecodeanddataareprovidedornot)?
+Answer: [Yes]
+Justification: Experimental details are provided in Appendix D. Our experimental code
+anddataconstructionpipelineareavailableonGitHub(https://github.com/dek924/
+PatientSim)),andthedatasetisreleasedthroughPhysioNet(https://physionet.org/
+content/persona-patientsim/1.0.0/).
+Guidelines:
+• TheanswerNAmeansthatthepaperdoesnotincludeexperiments.
+• Ifthepaperincludesexperiments,aNoanswertothisquestionwillnotbeperceived
+well by the reviewers: Making the paper reproducible is important, regardless of
+whetherthecodeanddataareprovidedornot.
+• Ifthecontributionisadatasetand/ormodel,theauthorsshoulddescribethestepstaken
+tomaketheirresultsreproducibleorverifiable.
+• Dependingonthecontribution,reproducibilitycanbeaccomplishedinvariousways.
+Forexample,ifthecontributionisanovelarchitecture,describingthearchitecturefully
+mightsuffice,orifthecontributionisaspecificmodelandempiricalevaluation,itmay
+benecessarytoeithermakeitpossibleforotherstoreplicatethemodelwiththesame
+dataset,orprovideaccesstothemodel. Ingeneral. releasingcodeanddataisoften
+onegoodwaytoaccomplishthis,butreproducibilitycanalsobeprovidedviadetailed
+instructionsforhowtoreplicatetheresults,accesstoahostedmodel(e.g.,inthecase
+ofalargelanguagemodel),releasingofamodelcheckpoint,orothermeansthatare
+appropriatetotheresearchperformed.
+• WhileNeurIPSdoesnotrequirereleasingcode,theconferencedoesrequireallsubmis-
+sionstoprovidesomereasonableavenueforreproducibility,whichmaydependonthe
+natureofthecontribution. Forexample
+(a) Ifthecontributionisprimarilyanewalgorithm,thepapershouldmakeitclearhow
+toreproducethatalgorithm.
+(b) Ifthecontributionisprimarilyanewmodelarchitecture,thepapershoulddescribe
+thearchitectureclearlyandfully.
+(c) Ifthecontributionisanewmodel(e.g.,alargelanguagemodel),thenthereshould
+eitherbeawaytoaccessthismodelforreproducingtheresultsorawaytoreproduce
+themodel(e.g.,withanopen-sourcedatasetorinstructionsforhowtoconstruct
+thedataset).
+(d) We recognize that reproducibility may be tricky in some cases, in which case
+authorsarewelcometodescribetheparticularwaytheyprovideforreproducibility.
+Inthecaseofclosed-sourcemodels,itmaybethataccesstothemodelislimitedin
+someway(e.g.,toregisteredusers),butitshouldbepossibleforotherresearchers
+tohavesomepathtoreproducingorverifyingtheresults.
+16
+
+5. Openaccesstodataandcode
+Question: Doesthepaperprovideopenaccesstothedataandcode,withsufficientinstruc-
+tionstofaithfullyreproducethemainexperimentalresults,asdescribedinsupplemental
+material?
+Answer: [Yes]
+Justification:WeprovideopenaccesstothecodeviaGitHub4. Ourpatientprofilesarebased
+onthreedatabases,MIMIC-IV,MIMIC-IV-Note,andMIMIC-IV-ED,underthePhysioNet
+license. The derived dataset is also publicly available under the same license to ensure
+compliance5.
+Guidelines:
+• TheanswerNAmeansthatpaperdoesnotincludeexperimentsrequiringcode.
+• Please see the NeurIPS code and data submission guidelines (https://nips.cc/
+public/guides/CodeSubmissionPolicy)formoredetails.
+• Whileweencouragethereleaseofcodeanddata,weunderstandthatthismightnotbe
+possible,so“No”isanacceptableanswer. Paperscannotberejectedsimplyfornot
+includingcode,unlessthisiscentraltothecontribution(e.g.,foranewopen-source
+benchmark).
+• Theinstructionsshouldcontaintheexactcommandandenvironmentneededtorunto
+reproducetheresults. SeetheNeurIPScodeanddatasubmissionguidelines(https:
+//nips.cc/public/guides/CodeSubmissionPolicy)formoredetails.
+• Theauthorsshouldprovideinstructionsondataaccessandpreparation,includinghow
+toaccesstherawdata,preprocesseddata,intermediatedata,andgenerateddata,etc.
+• Theauthorsshouldprovidescriptstoreproduceallexperimentalresultsforthenew
+proposedmethodandbaselines. Ifonlyasubsetofexperimentsarereproducible,they
+shouldstatewhichonesareomittedfromthescriptandwhy.
+• Atsubmissiontime, topreserveanonymity, theauthorsshouldreleaseanonymized
+versions(ifapplicable).
+• Providingasmuchinformationaspossibleinsupplementalmaterial(appendedtothe
+paper)isrecommended,butincludingURLstodataandcodeispermitted.
+6. Experimentalsetting/details
+Question: Doesthepaperspecifyallthetrainingandtestdetails(e.g.,datasplits,hyper-
+parameters, how they were chosen, type of optimizer, etc.) necessary to understand the
+results?
+Answer: [Yes]
+Justification: SeeAppendixD.WealsoreleaseourexperimentalcodeonGitHub.
+Guidelines:
+• TheanswerNAmeansthatthepaperdoesnotincludeexperiments.
+• Theexperimentalsettingshouldbepresentedinthecoreofthepapertoalevelofdetail
+thatisnecessarytoappreciatetheresultsandmakesenseofthem.
+• Thefulldetailscanbeprovidedeitherwiththecode,inappendix,orassupplemental
+material.
+7. Experimentstatisticalsignificance
+Question:Doesthepaperreporterrorbarssuitablyandcorrectlydefinedorotherappropriate
+informationaboutthestatisticalsignificanceoftheexperiments?
+Answer: [No]
+Justification: Wedidnotrepeattheexperimentmultipletimesduetothehighcomputational
+cost.
+Guidelines:
+• TheanswerNAmeansthatthepaperdoesnotincludeexperiments.
+4https://github.com/dek924/PatientSim
+5https://physionet.org/content/persona-patientsim/1.0.0/
+17
+
+• Theauthorsshouldanswer"Yes"iftheresultsareaccompaniedbyerrorbars,confi-
+denceintervals,orstatisticalsignificancetests,atleastfortheexperimentsthatsupport
+themainclaimsofthepaper.
+• Thefactorsofvariabilitythattheerrorbarsarecapturingshouldbeclearlystated(for
+example,train/testsplit,initialization,randomdrawingofsomeparameter,oroverall
+runwithgivenexperimentalconditions).
+• Themethodforcalculatingtheerrorbarsshouldbeexplained(closedformformula,
+calltoalibraryfunction,bootstrap,etc.)
+• Theassumptionsmadeshouldbegiven(e.g.,Normallydistributederrors).
+• Itshouldbeclearwhethertheerrorbaristhestandarddeviationorthestandarderror
+ofthemean.
+• It is OK to report 1-sigma error bars, but one should state it. The authors should
+preferablyreporta2-sigmaerrorbarthanstatethattheyhavea96%CI,ifthehypothesis
+ofNormalityoferrorsisnotverified.
+• Forasymmetricdistributions,theauthorsshouldbecarefulnottoshowintablesor
+figuressymmetricerrorbarsthatwouldyieldresultsthatareoutofrange(e.g. negative
+errorrates).
+• Iferrorbarsarereportedintablesorplots,Theauthorsshouldexplaininthetexthow
+theywerecalculatedandreferencethecorrespondingfiguresortablesinthetext.
+8. Experimentscomputeresources
+Question: Foreachexperiment,doesthepaperprovidesufficientinformationonthecom-
+puterresources(typeofcomputeworkers,memory,timeofexecution)neededtoreproduce
+theexperiments?
+Answer: [Yes]
+Justification: SeeAppendixD
+Guidelines:
+• TheanswerNAmeansthatthepaperdoesnotincludeexperiments.
+• ThepapershouldindicatethetypeofcomputeworkersCPUorGPU,internalcluster,
+orcloudprovider,includingrelevantmemoryandstorage.
+• Thepapershouldprovidetheamountofcomputerequiredforeachoftheindividual
+experimentalrunsaswellasestimatethetotalcompute.
+• Thepapershoulddisclosewhetherthefullresearchprojectrequiredmorecompute
+thantheexperimentsreportedinthepaper(e.g.,preliminaryorfailedexperimentsthat
+didn’tmakeitintothepaper).
+9. Codeofethics
+Question: Doestheresearchconductedinthepaperconform, ineveryrespect, withthe
+NeurIPSCodeofEthicshttps://neurips.cc/public/EthicsGuidelines?
+Answer: [Yes]
+Justification: TheresearchadherestotheNeurIPSCodeofEthics.
+Guidelines:
+• TheanswerNAmeansthattheauthorshavenotreviewedtheNeurIPSCodeofEthics.
+• IftheauthorsanswerNo,theyshouldexplainthespecialcircumstancesthatrequirea
+deviationfromtheCodeofEthics.
+• Theauthorsshouldmakesuretopreserveanonymity(e.g.,ifthereisaspecialconsid-
+erationduetolawsorregulationsintheirjurisdiction).
+10. Broaderimpacts
+Question: Does the paper discuss both potential positive societal impacts and negative
+societalimpactsoftheworkperformed?
+Answer: [Yes]
+Justification: SeeAppendixG
+Guidelines:
+18
+
+• TheanswerNAmeansthatthereisnosocietalimpactoftheworkperformed.
+• IftheauthorsanswerNAorNo,theyshouldexplainwhytheirworkhasnosocietal
+impactorwhythepaperdoesnotaddresssocietalimpact.
+• Examplesofnegativesocietalimpactsincludepotentialmaliciousorunintendeduses
+(e.g.,disinformation,generatingfakeprofiles,surveillance),fairnessconsiderations
+(e.g.,deploymentoftechnologiesthatcouldmakedecisionsthatunfairlyimpactspecific
+groups),privacyconsiderations,andsecurityconsiderations.
+• Theconferenceexpectsthatmanypaperswillbefoundationalresearchandnottied
+toparticularapplications,letalonedeployments. However,ifthereisadirectpathto
+anynegativeapplications,theauthorsshouldpointitout. Forexample,itislegitimate
+topointoutthatanimprovementinthequalityofgenerativemodelscouldbeusedto
+generatedeepfakesfordisinformation. Ontheotherhand,itisnotneededtopointout
+thatagenericalgorithmforoptimizingneuralnetworkscouldenablepeopletotrain
+modelsthatgenerateDeepfakesfaster.
+• Theauthorsshouldconsiderpossibleharmsthatcouldarisewhenthetechnologyis
+being used as intended and functioning correctly, harms that could arise when the
+technologyisbeingusedasintendedbutgivesincorrectresults,andharmsfollowing
+from(intentionalorunintentional)misuseofthetechnology.
+• Iftherearenegativesocietalimpacts,theauthorscouldalsodiscusspossiblemitigation
+strategies (e.g., gated release of models, providing defenses in addition to attacks,
+mechanismsformonitoringmisuse,mechanismstomonitorhowasystemlearnsfrom
+feedbackovertime,improvingtheefficiencyandaccessibilityofML).
+11. Safeguards
+Question: Doesthepaperdescribesafeguardsthathavebeenputinplaceforresponsible
+releaseofdataormodelsthathaveahighriskformisuse(e.g.,pretrainedlanguagemodels,
+imagegenerators,orscrapeddatasets)?
+Answer: [Yes]
+Justification: OurdatasetisderivedfromMIMIC-IV,MIMIC-IV-Note,andMIMIC-IV-ED,
+allofwhicharedistributedunderthePhysioNetlicense. Accordingly,ourderiveddatasetis
+alsodistributedunderthesamelicensetoensuresafeguardsagainstmisuse.
+Guidelines:
+• TheanswerNAmeansthatthepaperposesnosuchrisks.
+• Releasedmodelsthathaveahighriskformisuseordual-useshouldbereleasedwith
+necessarysafeguardstoallowforcontrolleduseofthemodel,forexamplebyrequiring
+thatusersadheretousageguidelinesorrestrictionstoaccessthemodelorimplementing
+safetyfilters.
+• DatasetsthathavebeenscrapedfromtheInternetcouldposesafetyrisks. Theauthors
+shoulddescribehowtheyavoidedreleasingunsafeimages.
+• Werecognizethatprovidingeffectivesafeguardsischallenging,andmanypapersdo
+notrequirethis,butweencourageauthorstotakethisintoaccountandmakeabest
+faitheffort.
+12. Licensesforexistingassets
+Question: Arethecreatorsororiginalownersofassets(e.g.,code,data,models),usedin
+thepaper,properlycreditedandarethelicenseandtermsofuseexplicitlymentionedand
+properlyrespected?
+Answer: [Yes]
+Justification: Wecitetheoriginalpapersanddatasets,includingtheversionsused.
+Guidelines:
+• TheanswerNAmeansthatthepaperdoesnotuseexistingassets.
+• Theauthorsshouldcitetheoriginalpaperthatproducedthecodepackageordataset.
+• Theauthorsshouldstatewhichversionoftheassetisusedand,ifpossible,includea
+URL.
+• Thenameofthelicense(e.g.,CC-BY4.0)shouldbeincludedforeachasset.
+19
+
+• Forscrapeddatafromaparticularsource(e.g.,website),thecopyrightandtermsof
+serviceofthatsourceshouldbeprovided.
+• If assets are released, the license, copyright information, and terms of use in the
+packageshouldbeprovided. Forpopulardatasets,paperswithcode.com/datasets
+hascuratedlicensesforsomedatasets. Theirlicensingguidecanhelpdeterminethe
+licenseofadataset.
+• Forexistingdatasetsthatarere-packaged,boththeoriginallicenseandthelicenseof
+thederivedasset(ifithaschanged)shouldbeprovided.
+• Ifthisinformationisnotavailableonline,theauthorsareencouragedtoreachoutto
+theasset’screators.
+13. Newassets
+Question:Arenewassetsintroducedinthepaperwelldocumentedandisthedocumentation
+providedalongsidetheassets?
+Answer: [Yes]
+Justification: Weprovidethenewassetstogetherwithdetaileddocumentation.
+Guidelines:
+• TheanswerNAmeansthatthepaperdoesnotreleasenewassets.
+• Researchersshouldcommunicatethedetailsofthedataset/code/modelaspartoftheir
+submissions via structured templates. This includes details about training, license,
+limitations,etc.
+• Thepapershoulddiscusswhetherandhowconsentwasobtainedfrompeoplewhose
+assetisused.
+• Atsubmissiontime,remembertoanonymizeyourassets(ifapplicable). Youcaneither
+createananonymizedURLorincludeananonymizedzipfile.
+14. Crowdsourcingandresearchwithhumansubjects
+Question: Forcrowdsourcingexperimentsandresearchwithhumansubjects,doesthepaper
+includethefulltextofinstructionsgiventoparticipantsandscreenshots,ifapplicable,as
+wellasdetailsaboutcompensation(ifany)?
+Answer: [Yes]
+Justification: SeeAppendixE
+Guidelines:
+• TheanswerNAmeansthatthepaperdoesnotinvolvecrowdsourcingnorresearchwith
+humansubjects.
+• Includingthisinformationinthesupplementalmaterialisfine,butifthemaincontribu-
+tionofthepaperinvolveshumansubjects,thenasmuchdetailaspossibleshouldbe
+includedinthemainpaper.
+• AccordingtotheNeurIPSCodeofEthics,workersinvolvedindatacollection,curation,
+orotherlaborshouldbepaidatleasttheminimumwageinthecountryofthedata
+collector.
+15. Institutional review board (IRB) approvals or equivalent for research with human
+subjects
+Question: Doesthepaperdescribepotentialrisksincurredbystudyparticipants,whether
+suchrisksweredisclosedtothesubjects,andwhetherInstitutionalReviewBoard(IRB)
+approvals(oranequivalentapproval/reviewbasedontherequirementsofyourcountryor
+institution)wereobtained?
+Answer: [No]
+Justification: WeusesdataderivedfromMIMIC-IV,MIMIC-IV-Note,andMIMIC-IV-ED,
+whichwasapprovedbytheInstitutionalReviewBoardsofBethIsraelDeaconessMedical
+Center(Boston,MA)andMassachusettsInstituteofTechnology(Cambridge,MA).
+Guidelines:
+• TheanswerNAmeansthatthepaperdoesnotinvolvecrowdsourcingnorresearchwith
+humansubjects.
+20
+
+• Dependingonthecountryinwhichresearchisconducted,IRBapproval(orequivalent)
+mayberequiredforanyhumansubjectsresearch. IfyouobtainedIRBapproval,you
+shouldclearlystatethisinthepaper.
+• Werecognizethattheproceduresforthismayvarysignificantlybetweeninstitutions
+andlocations,andweexpectauthorstoadheretotheNeurIPSCodeofEthicsandthe
+guidelinesfortheirinstitution.
+• Forinitialsubmissions,donotincludeanyinformationthatwouldbreakanonymity(if
+applicable),suchastheinstitutionconductingthereview.
+16. DeclarationofLLMusage
+Question: Does the paper describe the usage of LLMs if it is an important, original, or
+non-standardcomponentofthecoremethodsinthisresearch? NotethatiftheLLMisused
+onlyforwriting,editing,orformattingpurposesanddoesnotimpactthecoremethodology,
+scientificrigorousness,ororiginalityoftheresearch,declarationisnotrequired.
+Answer: [Yes]
+Justification: SeeSec.6.2,AppendixAandD.
+Guidelines:
+• The answer NA means that the core method development in this research does not
+involveLLMsasanyimportant,original,ornon-standardcomponents.
+• PleaserefertoourLLMpolicy(https://neurips.cc/Conferences/2025/LLM)
+forwhatshouldorshouldnotbedescribed.
+21
+
+Appendix
+A Patientprofileconstruction 23
+A.1 Database. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+A.2 Databasepreprocessing . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+A.3 Structurizedpatientprofile . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+A.3.1 Profileitems . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+A.3.2 Notepreprocessing . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25
+A.4 Profilestatistics . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25
+B PersonadetailsforPATIENTSIM 29
+B.1 Personality . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 29
+B.2 Languageproficiency . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 29
+B.3 Medicalhistoryrecalllevel . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 29
+B.4 Cognitiveconfusionlevel . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 30
+C Simulationofdoctor-patientinteraction 31
+C.1 PATIENTSIM . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 31
+C.2 DoctorLLM . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 31
+D Experimentalsettings 35
+D.1 Modelconfigurationsanddatasetdetails . . . . . . . . . . . . . . . . . . . . . . . 35
+D.2 LLMevaluation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 35
+D.2.1 RQ1: DoLLMsnaturallyreflectdiversepersonatraitsintheirresponses? . 35
+D.2.2 RQ2: DoLLMsaccuratelyderiveresponsesbasedonthegivenprofile? . . 36
+D.2.3 RQ3: CanLLMsreasonablyfillintheblanks? . . . . . . . . . . . . . . . 40
+E Humanevaluation 41
+E.1 Clinicianrecruitmentforevaluation . . . . . . . . . . . . . . . . . . . . . . . . . 41
+E.2 Personafidelityevaluation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 41
+E.3 Plausibilityevaluation. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 41
+E.4 Qualitativefeedbackfromclinicians . . . . . . . . . . . . . . . . . . . . . . . . . 42
+F Experimentalresults 44
+F.1 RQ1: DoLLMsnaturallyreflectdiversepersonatraitsintheirresponses? . . . . . 44
+F.1.1 AdditionalresultofLLMevaluation . . . . . . . . . . . . . . . . . . . . . 44
+F.1.2 Additionalresultofhumanevaluation . . . . . . . . . . . . . . . . . . . . 45
+F.2 RQ2: DoLLMsaccuratelyderiveresponsesbasedonthegivenprofile? . . . . . . 47
+F.3 RQ3: CanLLMsreasonablyfillintheblanks? . . . . . . . . . . . . . . . . . . . . 48
+F.4 Ablationstudy . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 48
+F.4.1 Validationofsentence-levelclassification . . . . . . . . . . . . . . . . . . 48
+F.4.2 AblationstudyondoctorLLM . . . . . . . . . . . . . . . . . . . . . . . . 49
+22
+
+F.4.3 Analysisoftheimpactofhighconfusiononotherpersonatraits . . . . . . 49
+G Responsibleuseandlimitations 50
+A Patientprofileconstruction
+A.1 Database
+Forourresearch,weutilizedatasetsfromPhysioNet[15],adheringtotherequiredcredentialsand
+permissionsunderthePhysioNetlicense. ThedatasetsusedareMIMIC-IV(v3.1)[25],MIMIC-IV-
+ED(v2.2)[23],andMIMIC-IV-Note(v2.2)[24].
+MIMIC-IV(v3.1) MIMIC-IV6isacomprehensive,deidentifieddatasetofpatientsadmittedtothe
+emergencydepartment(ED)orintensivecareunit(ICU)atBethIsraelDeaconessMedicalCenter
+(BIDMC)inBoston,MA.Itincludesdataforover65,000ICUpatientsandover200,000EDpatients.
+Withamodulardataorganizationemphasizingprovenance,MIMIC-IVsupportsbothindividualand
+integrateduseofdiversedatasources,makingitarichresourceforpatientinformationextraction.
+MIMIC-IV-ED(v2.2) MIMIC-IV-ED7isafreelyaccessibledatabaseof425,087EDadmissionsat
+BIDMCfrom2011to2019. ItcontainsdeidentifieddatacompliantwiththeHIPAASafeHarborpro-
+vision,includingvitalsigns,triageinformation,medicationreconciliation,medicationadministration,
+anddischargediagnoses.
+MIMIC-IV-Note(v2.2) MIMIC-IV-Note8 provides331,794deidentifieddischargesummaries
+for145,915patientsadmittedtothehospitalorEDatBIDMC.AllnotescomplywithHIPAASafe
+HarborprovisionsbyremovingprotectedhealthinformationandarelinkabletoMIMIC-IV,offering
+valuableclinicalcontext.
+A.2 Databasepreprocessing
+Tointegratepatientinformationfrombothstructuredtablesandfree-textdata,weselectedpatients
+fromMIMIC-IV-ED(v2.2)withtriageinformationanddiagnosisrecords,andcorrespondingfree-
+textdischargesummariesfromMIMIC-IV-Note(v2.2). Thisselectionensuredaccesstodetailed
+subjectivesymptoms,primarilycapturedinfree-textnotesratherthanstructuredtables. Weapplythe
+followingcriteriatofilterthedata(FigureA1). Fromtheresultingcohort,werandomlysampledup
+to40patientrecordsperdiagnosiscategorytoensureclassbalanceandmanagedatasetsize. Cohort
+selectioncriteriaareasfollows:
+• Eachhospitaladmission(hadm_id)mustincludeexactlyoneEDstay.Admissionswithmultiple
+EDstayswereexcluded.
+• Toensurediagnosticclarity,weincludedonlyEDstayswithasinglediagnosiscode.
+• We excluded records with missing or unknown values in the fields marital_status,
+insurance,race,chiefcomplaint,orarrival_transport.
+• Painscoreswereconvertedtonumericvaluesbasedonfielddefinitions. Non-numericvalues
+andscoresoutsidethe0–10rangeweretreatedasoutliersandremoved.
+• Wecapthemaximumnumberofmedicationperpatientsat15.
+• TheHistoryofPresentIllness(HPI)sectionwaslimitedtoamaximumof350wordsanda
+minimumof10words. ThePastMedicalHistory(PMH)sectionwaslimitedtoamaximumof
+80words.
+• To ensure the accuracy of symptom descriptions, we excluded records where the
+chiefcomplaint field or the Complaint or HPI sections of the discharge notes contained
+termssuchas“coma,”“stupor,”or“alteredmentalstatus.”
+6https://physionet.org/content/mimiciv/3.1/
+7https://physionet.org/content/mimic-iv-ed/2.2/
+8https://physionet.org/content/mimic-iv-note/2.2/
+23
+
+MIMIC-IV dataset (v3.1) MIMIC-IV-ED dataset (v2.2) MIMIC-IV-ED diagnosis (v2.2) MIMIC-IV-Note discharge (v2.2)
+subject id : 223,452 patients subject id : 205,504 patients subject id : 205,129 patients subject id : 145,915 patients
+hadm id : 546,028 admissions hadm id : 202,441 admissions stay id : 423,989 stays hadm id: 331,794 admissions
+stay id : 425,087 stays note id: 331,794 notes
+Exclude records with Remove # of diagnosis > 1
+missing values or outliers. Selectthe note containing
+MIMIC-IV-ED diagnosis (v2.2) 3 keyparts: Complaint, HPI, PMH
+M suI bM jeIC ct- I iV d d : 2a 0ta 8s ,5e 5t 1(v p3 a.1 ti) ents s su tab yj e idct : id 1 6: 71 ,0 65 8, 59 1 s7 t ap ya stients M suI bM jeIC ct- I iV d- :N 1o 4t 2e , 9d 9is 3c ph aa tr ig ene t s(v2.2)
+hadmid : 524,126 admissions hadm id: 322,866 admissions
+MIMIC-IV-ED dataset (v2.2) note id: 322,866 notes
+s h su ta ab d yj m e idc it d : i d 1: 68: 771 ,,0 675 89, 599 1 sa7 td a m yp sa isti se in ot ns s E H ovx P ec I rl au lynd d le e P nn M go tt H he s ya . rw eh te or oe bth rie e f or
+E vax lc ul eu sd e o rr e oc uo tr lid es rs w .ith missing M suI bM jeIC ct- I iV d- :N 1o 1t 5e , 5d 2is 5c ph aa tr ig ene t s(v2.2)
+MIMIC-IV-ED dataset (v2.2) hadmid: 204,506 admissions
+subject id : 63,809 patients note id: 204,506 notes
+hadm id : 51,893 admissions
+stay id : 92,965stays Exclude patients with impaired
+communication.
+M # e or fg Ee D & s R tae ym po ev re a o du mt il sie sr i: on > 1 M suI bM jeIC ct- I iV d- :N 1o 0t 6e , 4d 4is 3c ph aa tr ig ene t s(v2.2)
+Merge MIMIC-IV & MIMIC-IV-ED hadm id: 183,972 admissions
+subject id : 37,051 patients note id: 183,972 notes
+hadm id : 51,273 admissions
+stay id : 51,273stays
+Merge MIMIC-IV & MIMIC-IV-ED & MIMIC-IV-Note
+subject id : 19,388 patients
+hadm id : 23,451 admissions
+stay id : 23,451stays
+FigureA1: OverviewofdatapreprocessingforselectingpatientrecordsfromMIMIC-IV,MIMIC-
+IV-EDandMIMIC-IV-Note.
+• To avoid potential confounds related to language fluency, we excluded records where the
+chiefcomplaint field or the Complaint or HPI sections contained terms such as “slurred
+speech,”“dysarthria,”or“aphasia.”
+A.3 Structurizedpatientprofile
+A.3.1 Profileitems
+Weextractedaccuratepatient-relateddatafromstructuredtablesandusedclinicalnotestocapture
+nuancedinformation,suchaslifestyleandcurrentsymptoms,notfoundinthetables. Eachpatient
+profileconsistsof24items,includingdemographicdetails(age,gender,race),socialhistory(illicit
+druguse,exercise,maritalstatus,sexualhistory,children,livingsituation,occupation,insurance),
+medicalhistory(allergies,familymedicalhistory,medicaldevices,pastmedicalhistory),subjective
+information related to emergency department (ED) admission (history of present illness, chief
+complaint, pain level, medications), and meta-information about the ED visit (arrival transport,
+disposition,diagnosis). ThesourceforeachitemissummarizedinTableA1. Forsimplicity,weuse
+shorteneddatasetpaths,likemimic-iv-ed/edstaysinsteadofmimic-iv-ed/2.2/ed/edstays.
+Dispositionanddiagnosisarenotsharedwiththedoctorbutareincludedtoenhancethesimulator’s
+understandingofthepatient’sstatusandconditionseverityduringrole-playingasthepatient. Sexual
+historyisincludedonlyforpatientsadmittedduetourinarytractinfections,basedonfeedbackfrom
+doctors.
+TableA1: DatasourcesandcorrespondingpatientprofileitemsusedinPATIENTSIM
+Source Profileitems
+mimiciv/hosp/admissions insurance,marital_status
+mimiciv/hosp/patients age
+mimic-iv-ed/edstays gender,race,arrival_transport,disposition
+mimic-iv-ed/triage chiefcomplaint,pain
+mimic-iv-ed/medrecon medication
+mimic-iv-ed/diagnosis icd_title
+mimic-iv-note/discharge occupation,livingsituation,children,exercise,tobacco,alcohol,illicit
+drug,sexualhistory,allergics,medicalhistory,familiymedicalhistory,
+medicaldevice,presentillness
+24
+
+A.3.2 Notepreprocessing
+Toextractstructuredinformationfromfree-textdischargenotes,weusetheGemini-2.5-Flashmodel,
+configuredwith1024thinkingtokenstoenablerobustreasoning. Thismodelisselectedforitsstrong
+performanceonnaturallanguageprocessingbenchmarks[10]. Ourpreprocessingpipelineconsists
+ofthreesteps,eachguidedbytask-specificinstructions.
+First, we extract 13 key items (e.g., chief complaint, medical history, medications) as defined in
+TableA1,mimic-iv-note/dischargerow. Thisextractionisperformedusingstructuredprompts,
+showninFigureA2andFigureA3,designedtoretrieverelevantinformationfromdischargenotes.
+Second,wefilteroutpatientprofileswheretheextractedinformationdoesnotalignwiththeED
+diagnosistabletoensuredatasetreliability. Thisstepreducesnoisearisingfromdocumentationerrors
+orsignificantchangesinpatientconditionafterEDadmission. Anevaluationprompt(FigureA4)
+instructstheLLMtoassessthealignmentbetweeneachpatientprofileandtheEDdiagnosisona
+5-pointscale(1=nomatch,5=perfectmatch). Onlyprofilesscoring3orhigherareretainedto
+maintainclinicalcoherence.
+Third,togeneratecomprehensivepatientprofilesforsimulation,weinfermissinglifestyleandhabit
+items,suchasexercise,tobaccouse,alcoholconsumption,livingsituation,andoccupation,based
+onexistingprofileinformation(FigureA5). Theseattributesareofteninconsistentlydocumented
+duetotheirvaryingclinicalrelevance. Sincetheyenhancetherealismofpatientsimulationswithout
+typicallyaffectingcriticaloutcomes,weimputemissingvaluesinacontext-awaremannerusingthe
+LLM,drawingonavailabledemographicsandmedicalhistory. Anyexistingvalidinformationis
+preserved. Thisstepyieldscoherentandrealisticprofilesthatimprovethequalityofdownstream
+simulations.
+A.4 Profilestatistics
+Asaresultoftheabovepipeline,weobtainafinalsetof170patientprofiles. TableA.4presents
+detailedstatisticsonthedemographicandclinicalcharacteristicsoftheseprofiles. Ageisgrouped
+into10-yearintervals.Numericalvariables(i.e.,age,painscore)aresortedbyvalue,whilecategorical
+variablesareorderedbydescendingfrequency.
+TableA2: DetailedpatientprofilestatisticsforPATIENTSIM,basedonatotalof170patientprofiles.
+Category Distribution
+Agegroup 20-30:9(5.3%),30-40:7(4.1%),40-50:18(10.6%),50-60:29(17.1%),
+60-70:37(21.8%),70-80:33(19.4%),80-90:30(17.6%),90-100:7(4.1%)
+Gender Female:88(51.8%),Male:82(48.2%)
+Race White:106(62.4%),Black/AfricanAmerican:24(14.1%),Asian-Chinese:6(3.5%),
+Black/CapeVerdean:6(3.5%),Hispanic/Latino-PuertoRican:6(3.5%),Other:5(2.9%),
+Asian:2(1.2%),Asian-AsianIndian:2(1.2%),Hispanic/Latino-Dominican:2(1.2%),
+White-OtherEuropean:2(1.2%),White-Russian:2(1.2%),Asian-SouthEastAsian:1(0.6%),
+Black/African:1(0.6%),Hispanic/Latino-CentralAmerican:1(0.6%),
+Hispanic/Latino-Colombian:1(0.6%),Hispanic/Latino-Guatemalan:1(0.6%),
+Hispanic/Latino-Mexican:1(0.6%),Hispanic/Latino-Salvadoran:1(0.6%)
+Maritalstatus Married:84(49.4%),Single:51(30.0%),Widowed:24(14.1%),Divorced:11(6.5%)
+Insurance Medicare:84(49.4%),Private:55(32.4%),Medicaid:23(13.5%),Other:8(4.7%)
+Arrivaltransport WalkIn:95(55.9%),Ambulance:74(43.5%),Other:1(0.6%)
+Disposition Admitted:164(96.5%),Other:6(3.5%)
+Painscore 0:82(48.2%),1:3(1.8%),2:5(2.9%),3:10(5.9%),4:11(6.5%),
+5:6(3.5%),6:7(4.1%),7:12(7.1%),8:14(8.2%),9:5(2.9%),10:15(8.8%)
+Diagnosis Intestinalobstruction:39(22.9%),Pneumonia:34(20.0%),Urinarytractinfection:34(20.0%),
+Myocardialinfarction:34(20.0%),Cerebralinfarction:29(17.1%)
+25
+
+Prompttemplateforstructurizingclinicalnotes
+[System Promt]
+YouareanAIassistantdesignedtoextractstructuredmedicalinformationfromelectronic
+healthrecords(EHRs). YourtaskistoanalyzetheEHRcontentandextractallrelevant
+informationintopredefinedcategories.CompletethefieldsbelowusingtheEHRs.Include
+onlyeventsthatoccurredbeforethemostrecentEDadmission,andexcludeanytestresults
+collectedafterward.ReturntheextractedinformationinthefollowingvalidJSONformat.
+FieldDefinitions:
+- demographics:
+– occupation:Thepatient’scurrentjoboremploymentstatus.
+– living_situation:Whothepatientliveswith,ortheirhousingsituation.
+– children:Numberandgenderofthepatient’schildren.
+- social_history:
+– exercise:Type(s)andfrequencyofphysicalactivityorexercise.
+– tobacco:Anyuseoftobacco,includingtype,amount,andfrequency.
+– alcohol:Alcoholconsumptiondetails,includingtype,frequency,andamount.
+– illicit_drug:Useofnon-prescribedorillegalsubstances,includingtype,amount,and
+frequency.
+– sexual_history:Sexualactivity,includingpartner(s),protectionuse,frequency,and
+timing.
+- allergies:Anyknownallergies,includingtypeofreactionifavailable.
+- medical_history:Pastmedicalconditionsordiagnoses,includingchronicconditionsand
+anydetailslikeonset.
+- family_medical_history:Medicalconditionsinfamilymembers,withrelevantdetailsif
+available.
+- medical_device:Anymedicalorassistivedevicesincurrentuse,includingcontextorusage
+datesifnoted.
+- present_illness:
+– positive:RecentsymptomsorconditionsbeforetheEDvisit,withallexistingrelevant
+detailssuchasonset,duration,severity,orprogression.Donotincludelaborimaging
+testresultsordiagnosisnames.
+– negative:Symptomsorconditionsthepatientexplicitlydenieshaving.
+OutputFormat(JSON):
+{
+"demographics": {
+"occupation": "",
+"living_situation": "",
+"children": ""
+},
+"social_history": {
+"exercise": "",
+"tobacco": "",
+"alcohol": "",
+"illicit_drug": "",
+"sexual_history": ""
+},
+"allergies": "",
+"medical_history": "",
+"family_medical_history": "",
+"medical_device": "",
+"present_illness": {
+"positive": "",
+"negative": ""
+}
+}
+Guidelines:
+1. ExtracteachfieldfromtheentireEHRwithcompleteaccuracy.
+2. Keepeachfieldconciseandkeyword-basedphraseswithoutfullsentencesornarrative
+descriptions.
+3. Expressinformationbriefly,avoidingverbs,pronouns,orunnecessarywords.
+4. Ifafieldcontainsmultiplevalues,combinethemintoasinglestringseparatedbysemi-
+colons.
+5. Treatde-identifiedplaceholdersasnonexistent.Donotincludeplaceholderslike‘___’in
+anyofoutputfields.
+6. Return‘Notrecorded’foranyfieldnotmentionedintheEHR.
+FigureA2:Systemprompttemplateforextractingandstructuringelectronichealthrecord(EHR)data
+intopredefinedfieldsinJSONformat,capturingpatientinformationpriortothelatestEDadmission.
+Bracedelements{}aresubstitutedwithvaluesspecifictoeachpatientrecord.
+26
+
+Prompttemplateforstructurizingclinicalnotes
+[User Promt]
+Patient’sElectronicHealthRecord(EHR):
+- Allergies:{Allergies}
+- ChiefComplaint:{ChiefComplaint}
+- HistoryofPresentIllness:{HistoryofPresentIllness}
+- PastMedicalHistory:{PastMedicalHistory}
+- SocialHistory:{SocialHistory}
+- FamilyHistory:{FamilyHistory}
+FigureA3: Userprompttemplateforextractingandstructuringelectronichealthrecord(EHR)data.
+Bracedelements{}aresubstitutedwithvaluesspecifictoeachpatientrecord.
+Prompttemplateforprofilevalidation
+[System Promt]
+Youareahelpfulmedicalassistant.Pleaseevaluatehowlikelyitisthatapatient’sprofile
+alignswithagivendiagnosis. Predictthelikelihoodofthediagnosisbasedontheprofile
+provided.Ratethelikelihoodonascalefrom1to5,where‘1’meansthepatient’shistoryand
+symptomsdonotmatchthediagnosisatall,and‘5’meansthepatient’shistoryandsymptoms
+fullyalignwiththediagnosis.PleasegenerateyouroutputasavalidJSONdictionaryinthe
+followingformat:
+{
+"explanation": reason for the rating,
+"likelihood_rating": 1 to 5
+}
+[User Promt]
+Patient’sProfile:
+• Demographics:
+– Age:{age}
+– Gender:{gender}
+– Race:{race}
+• SocialHistory:
+– Tobacco:{tobacco}
+– Alcohol:{alcohol}
+– Illicitdruguse:{illicit_drug}
+– SexualHistory:{sexual_history}
+– Exercise:{exercise}
+– Maritalstatus:{marital_status}
+– Children:{children}
+– LivingSituation:{living_situation}
+– Occupation:{occupation}
+– Insurance:{insurance}
+• PreviousMedicalHistory:
+– Allergies:{allergies}
+– Familymedicalhistory:{family_medical_history}
+– MedicaldevicesusedbeforethisEDadmission:{medical_device}
+– MedicalhistorypriortothisEDadmission:{medical_history}
+• CurrentVisitInformation:
+– Presentillness:
+- positive:{present_illness_positive}
+- negative(denied):{present_illness_negative}
+– EDchiefcomplaint:{chiefcomplaint}
+– PainlevelatEDAdmission(0=nopain,10=worstpainimaginable):{pain}
+– Currentmedicationstheyaretaking:{medication}
+– EDArrivalTransport:{arrival_transport}
+– EDdisposition:{disposition}
+Diagnosis:{diagnosis}
+FigureA4: Prompttemplateforscoringthealignmentbetweenpatientrecordsanddiagnosis. Braced
+elements{}aresubstitutedwithpatient-specificvalues.
+27
+
+Prompttemplateforcompletingpatientprofiles
+[System Prompt]
+YouareanAIassistantspecializinginprocessingandcompletinglifestyleinformationforindividuals.
+Yourtaskistoanalyzetheprovidedelectronichealthrecords(EHRs)andupdatetheprofilesectionby
+fillinginanymissingdetailswithrealistic,plausibleresponses.
+FieldDefinitions:
+- demographics:
+– occupation:Thepatient’scurrentjoboremploymentstatus.
+– living_situation:Whothepatientliveswith,ortheirhousingsituation.
+– children:Numberandgenderofthepatient’schildren.
+- social_history:
+– exercise:Type(s)andfrequencyofphysicalactivityorexercise.
+– tobacco:Anyuseoftobacco,includingtype,amount,andfrequency.
+– alcohol:Alcoholconsumptiondetails,includingtype,frequency,andamount.
+– illicit_drug: Useofnon-prescribedorillegalsubstances,includingtype,amount,andfre-
+quency.
+– sexual_history:Sexualactivity,includingpartner(s),protectionuse,frequency,andtiming.
+Guidelines:
+1. Foranyfieldmarkedas‘Notrecorded’,generatearealisticandplausibleentrythatalignswiththe
+patient’sEHRandotherprofileinformation.
+2. Forfieldscontainingplaceholderslike‘___’,replacetheplaceholderwithplausiblevaluesbasedon
+thefield’scontextandthepatient’sprofile.
+3. Donotmodifyanyfieldthatalreadycontainsvaliddata,exceptforplaceholders(‘___’).
+4. Useclearlanguage,whilepreservingappropriatemedicalorsocialcontext.
+5. Convertfirst-personresponsestothird-person.Forexample,change‘Ilivealone’to‘Livesalone.’
+6. Donotrefertotheindividualusinggenderedpronouns(‘he’or‘she’).Usegender-neutralphrasing.
+7. Representeachfieldasastring.Usesemicolonstoseparatemultipleitemswithinthesamefield.
+[User Prompt]
+Patient’sElectronicHealthRecord(EHR):
+- Age:{age}
+- Gender:{gender}
+- Race:{race}
+- MaritalStatus:{marital_status}
+- Insurance:{insurance}
+- Medicaldevice:{medical_device}
+- Medicalhistory:{medical_history}
+- Presentillness:{present_illness}
+- Familymedicalhistory:{family_medical_history}
+PatientProfileTemplate(tocomplete):
+{
+"demographics": {
+"occupation": "{occupation}",
+"living_situation": "{living_situation}",
+"children": "{children}"
+},
+"social_history": {
+"exercise": "{exercise}",
+"tobacco": "{tobacco}",
+"alcohol": "{alcohol}",
+"illicit_drug": "{illicit_drug}",
+"sexual_history": "{sexual_history}"
+}
+}
+FigureA5: Prompttemplateforcompletingthepatient’ssocialhistorysection,usingEHRcontext.
+Bracedelements{}aresubstitutedwithpatient-specificvalues.
+28
+
+B Personadetailsfor PATIENTSIM
+B.1 Personality
+WeoutlinesixpatientpersonalitiesrelevanttomedicalconsultationsintheED:distrustful,impatient,
+overanxious, overly positive, and verbose, with neutral (straightforward communication) as the
+baseline. TableB3providesdescriptionsofeachpersonalitytype. Thesepromptshavebeenreviewed
+andvalidatedbymedicalexperts.
+B.2 Languageproficiency
+WeadopttheCommonEuropeanFrameworkofReferenceforLanguages(CEFR),aninternational
+standardforassessinglanguageproficiency,andsimplifyitintothreelevels: A(basic),B(interme-
+diate),andC(advanced). ThepromptsforeachlevelareshowninTableB4. Thesepromptsare
+designedbasedonCEFR’sofficialreferencepoints,self-assessmentgrid,andqualitativedescriptors
+ofspokenlanguageuse9. Torepresentlevel-appropriatevocabulary,weuseaCEFR-labeledword
+dictionaryfromKaggle10. Asthisdatasetlacksmedicalterminology,wegenerateacomplementary
+medical-domainvocabularyusingGPT-4o-1120. GPT-4ogenerated30medicaltermsperCEFR
+level in each of three iterations, resulting in a pool of candidate terms for each proficiency level.
+Only terms that appeared in at least two iterations were retained, and overlapping terms across
+levels were removed to ensure level-specific clarity. From the general and medical vocabulary
+sets,werandomlysample10wordsperCEFRlevelforeachpatientprofile. Thesesampledwords
+populatethefieldsunderstand_words,misunderstand_words,understand_med_words,and
+misunderstand_med_words,representingthewordsapatientislikelytounderstandormisunder-
+stand in both general and medical contexts, based on their assigned language proficiency. Since
+thesampledwordsvaryacrossprofilesevenwithinthesameCEFRlevel,thisapproachallowsus
+to reflect individual variation in language comprehension among patients with the same overall
+proficiencylevel.
+B.3 Medicalhistoryrecalllevel
+Wedefinemedicalhistoryrecallattwolevels: highandlow. Detaileddescriptionsofeachlevelare
+providedinTableB5.
+TableB3: PromptsforpersonalitytypesusedinPATIENTSIM
+Personatype Description
+Neutral 1. Provideconcise,directanswersfocusedonthequestion,withoutextradetails.
+2. Respondinaneutraltonewithoutanynoticeableemotionorpersonality.
+Distrustful 1. Expressdoubtsaboutthedoctor’sknowledge.
+2. Questionthedoctor’sintentionsandshowskepticismabouttheirinquiries.
+3. Refusetoanswerquestionsthatseemunnecessary.
+4. Contradictthedoctorbycitingfriends,onlinesources,orpastexperiences,oftentrustingthemmorethan
+thedoctor.
+Impatient 1. Expressirritationwhenconversationsdragonorrepeatdetails.
+2. Demandimmediate,straightforwardanswersoverlengthyexplanations.
+3. Reactwithannoyancetoanydelays,smalltalk,ordeviationsfromthemaintopic.
+Overanxious 1. Providedetailed,dramaticdescriptionsofminordiscomforts,framingthemassevere.
+2. Persistentlyexpressfearsofseriousorlife-threateningconditions,seekingfrequentreassurance.
+3. Askrepeatedquestionstoconfirmthatyoudonothavesevereorrarediseases.
+4. Shiftfromoneimaginedhealthconcerntoanother,revealingongoingworryorsuspicion.
+Overlypositive 1. Minimizemedicalconcerns,presentingthemasinsignificantduetoapositiveoutlook.
+2. Underreportsymptoms,describingthemasmildortemporaryevenwhentheyaresignificant.
+3. Maintainacheerful,worry-freedemeanor,showingnodistressdespitediscomfortorpain.
+Verbose 1. Providedetailedanswerstoquestions,oftenincludingexcessiveinformation,evenforsimpleones.
+2. Elaborateextensivelyonpersonalexperiencesandthoughts.
+3. Avoidexaggeratedemotionsandrepeatingthesamephrases.
+4. Demonstratedifficultyallowingthedoctortoguidetheconversation.
+9https://www.coe.int/en/web/common-european-framework-reference-languages/
+level-descriptions
+10https://www.kaggle.com/datasets/nezahatkk/10-000-english-words-cerf-labelled
+29
+
+B.4 Cognitiveconfusionlevel
+Wecategorizepatients’cognitivestatesatadmissionaseithernormalorhighlyconfused. Thehighly
+confusedstatereferstopatientswhoappearsignificantlydisorientedanddazed. Theinclusionand
+designofthisstatearevalidatedbyanERdoctorwith13yearsofclinicalexperience. Becausesuch
+patientsmaygraduallyregainclarityfollowingreassurancefrommedicalstaff,wemodelconfusion
+as a progressive transition through three phases: high dazedness (initial), moderate dazedness
+(intermediate),andnormal(final). ThisstagedprogressionenablesPATIENTSIMtoreflectamore
+realisticandnaturalreductioninconfusion,avoidingabruptbehavioralshifts. Thepromptsforeach
+levelareshowninTableB6.
+TableB4: PromptsforlanguageproficiencylevelsusedinPATIENTSIM
+Level Description
+Basic ActasapatientwithbasicEnglishproficiency(CEFRA).Youmust:
+1. Speaking:Useonlybasic,simplewords.Respondwithshortphrasesinsteadoffullsentences.Make
+frequentgrammarmistakes.Donotuseanycomplexwordsorlongphrases.
+2. Understanding: Understandonlysimple,everydaywordsandphrases. Strugglewithevenslightly
+complexwordsorsentences.Oftenneedrepetitionoreasyexplanationstounderstand.Wordswithin
+yourlevel:{understand_words}.Wordsbeyondyourlevel:{misunderstand_words}.
+3. MedicalTerms:Useandunderstandonlyverysimple,everydaymedicalwords,withlimitedmedical
+knowledge.Cannotuseorunderstandcomplexmedicalterms.Needallmedicaltermstobeexplainedin
+verysimple,everydaylanguage.Belowareexamplesofwordswithinandbeyondyourlevel.Youcannot
+understandwordsmorecomplexthantheexamplesprovidedwithinyourlevel.Wordswithinyourlevel:
+{understand_med_words}.Wordsbeyondyourlevel:{misunderstand_med_words}.
+IMPORTANT:Ifaquestioncontainsanydifficultwords,longsentences,orcomplexgrammar,respondlike
+‘What?’or‘Idon’tunderstand’.Keepaskinguntilthequestionissimpleenoughforyoutoanswer.
+Intermediate ActasapatientwithintermediateEnglishproficiency(CEFRB).Youmust:
+1. Speaking: Usecommonvocabularyandformconnected,coherentsentenceswithoccasionalminor
+grammarerrors. Discussfamiliartopicsconfidentlybutstrugglewithabstractortechnicalsubjects.
+Avoidhighlyspecializedorabstractwords.
+2. Understanding:Canunderstandthemainideasofeverydayconversations.Needclarificationorsim-
+plerexplanationsforabstract,technical,orcomplexinformation. Wordswithinyourlevel: {under-
+stand_words}.Wordsbeyondyourlevel:{misunderstand_words}.
+3. MedicalTerms:Useandunderstandcommonmedicaltermsrelatedtogeneralhealth.Cannotuseor
+understandadvancedorspecializedmedicaltermsandrequirethesetobeexplainedinsimplelanguage.
+Belowareexamplesofwordswithinandbeyondyourlevel.Youcannotunderstandwordsmorecomplex
+thantheexamplesprovidedwithinyourlevel. Wordswithinyourlevel: {understand_med_words}.
+Wordsbeyondyourlevel:{misunderstand_med_words}.
+IMPORTANT:Ifaquestioncontainsadvancedtermsbeyondyourlevel,askforsimplerexplanation(e.g.,‘I
+don’tgetit’or‘Whatdoyoumean?’).Keepaskinguntilthequestionisclearenoughforyoutoanswer.
+Advanced ActasapatientwithproficientEnglishproficiency(CEFRC).Youmust:
+1. Speaking:Useafullrangeofvocabularywithfluent,preciselanguage.Canconstructwell-structured,
+complexsentenceswithdiverseandappropriatewordchoices.
+2. Understanding:Fullycomprehenddetailed,complexexplanationsandabstractconcepts.Wordswithin
+yourlevel:{understand_words}.
+3. MedicalTerminology:Useandunderstandhighlyspecializedmedicalterms,withexpert-levelknowledge
+ofmedicaltopics.Wordswithinyourlevel:{understand_med_words}.
+IMPORTANT:Reflectyourhigh-levellanguageproficiencymainlythroughprecisevocabularychoices
+ratherthanbymakingyourresponsesunnecessarilylong.
+TableB5: PromptsformedicalhistoryrecalllevelsusedinPATIENTSIM
+Level Description
+low • Frequently forget important medical history, such as previous diagnoses, surgeries, or your
+family’smedicalhistory.
+• Forgetevenimportantpersonalhealthinformation,includingcurrentmedicationsormedical
+devicesinuse.
+high • Accuratelyrememberallhealth-relatedinformation,includingpastconditions,currentmedica-
+tions,andotherdocumenteddetails.
+• Donotforgetorconfusemedicalinformation.
+• Consistentlyensurethatrecalleddetailsmatchdocumentedrecords.
+30
+
+TableB6: PromptsforcognitiveconfusionlevelsusedinPATIENTSIM
+Level Description
+normal ClearlyunderstandthequestionaccordingtotheCEFRlevel,andnaturallyreflectyourbackground
+andpersonalityinyourresponses.
+high Thepatient’sinitialdazedlevelishigh.Thedazednessshouldgraduallyfadethroughouttheconver-
+sationasthedoctorcontinuestoreassurethem.Transitionsshouldfeelsmoothandnatural,rather
+thanabrupt.Whilethechangeshouldbesubtleandprogressive,theoveralldazedlevelisexpectedto
+decreasenoticeablyevery4-5turns,followingtheinstructionsforeachlevelbelow.
+• HighDazedness(InitialPhase)
+– Repeatedlyprovidehighlyunrelatedresponses.
+– Overlyfixateonaspecificdiscomfortorpain,andkeepgivingthesameinformationregardless
+ofthequestion.Forexample,whenasked’Areyoushortofbreath?’,fixateonanotherissue
+bysaying,’Ithurtssomuchinmychest,’withoutaddressingtheactualquestion.
+– Becomesooverwhelmedinemergencysituations.Youareeitherunabletospeakordownplay
+yoursymptomsoutoffearofadiagnosis,evenwhenthesymptomsareserious.
+– Onlyrecalleventspriortoacertainincident(e.g.,beforeafall)andrepeatedlyaskaboutthat
+earliersituation.
+• ModerateDazedness(IntermediatePhase)
+– Provideanswersthataresomewhatoff-topic.
+– Oftenmentionaspecificdiscomfortorpainunrelatedtothequestion.However,allowyourself
+tomoveontothecoreissuewhengentlyprompted.
+– Occasionallyhesitateduetofeelingoverwhelmedinemergencysituations.
+• NormalDazedness(LaterPhase)
+– ClearlyunderstandthequestionaccordingtotheCEFRlevel, andnaturallyreflectyour
+backgroundandpersonalityinyourresponses.
+Note:Dazednessreflectsthepatient’sstateofconfusionandinabilityinfollowingtheconversation,
+independentoftheirlanguageproficiency.
+C Simulationofdoctor-patientinteraction
+C.1 PATIENTSIM
+ThePATIENTSIMpromptconsistsofthreemaincomponents: 1)patientprofileinformation,2)four
+personaaxes,and3)ageneralbehavioralguideline. Tohelpthemodelbettercontextualizeboththe
+patient’shistoryandtheircurrentvisit,weorganizetheprofileinformationintotwoparts: patient
+backgroundinformation(i.e.,demographics,socialhistory,previousmedicalhistory)andcurrent
+visit information (i.e., present illness, chief complaint, pain level, medications taken prior to the
+ED visit, arrival transport, disposition, diagnosis). The four persona axes are instantiated using
+correspondingdescriptionsdrawnfromtheTablesinAppendixB.Toguidetheoverallsimulation,we
+defineageneralbehavioralguideline,asshowninFigureC7. Toreinforcetheassignedpersonatraits
+andmaintainconsistencythroughouttheconsultation,weappendremindersentencestailoredtothe
+patient’spersona. Theseremindersareconstructedbycombiningrelevantsentencetypesdefinedin
+TableC7,basedonthespecifictraitsassignedtothepatient. Wecontrolverbositythroughavariable
+sent_limit,whichsetsamaximumofthreesentencesperpatientutterance. Forverbosepatients
+(i.e.,thosewhotendtotalkalot),thislimitisincreasedtoeightsentences.
+C.2 DoctorLLM
+FortheautomatedevaluationofPATIENTSIM,weconfigurethedoctorLLMtobecapableofasking
+appropriate questions throughout the history-taking process, based on the prompt illustrated in
+FigureC8. WeprovidedetailedguidelinestoensurethatthedoctorLLMcoversallessentialand
+routinequestions,asrecommendedinthestandardmedicaltextbook[56]andbyclinicalexperts. We
+setthemaximumnumberofquestions(total_idx)to30andupdatecurr_idx(currentround)and
+remain_idx(remainingrounds)ateachturntohelpthemodeltracktheconsultationstate. Sincethe
+modelisexpectedtogeneratedifferentialdiagnosesbasedonthecollectedinformationattheendof
+eachconsultation,wesupplythedoctorLLMwiththepatient’sbasicinformation(i.e.,gender,age,
+andarrivaltransport),whicharetypicallyknowntoclinicianspriortoinitiatinghistorytakingtohelp
+theirclinicalreasoningandquestioningstrategy.
+31
+
+PrompttemplateforPATIENTSIM
+Imagineyouareapatientexperiencingphysicaloremotionalhealthchallenges.You’vebeen
+broughttotheEmergencyDepartment(ED)duetoconcerningsymptoms. Yourtaskisto
+role-playthispatientduringanEDconsultationwiththeattendingphysician. Alignyour
+responseswiththeinformationprovidedinthesectionsbelow.
+PatientBackgroundInformation:
+• Demographics:
+– Age:{age}
+– Gender:{gender}
+– Race:{race}
+• SocialHistory:
+– Tobacco:{tobacco}
+– Alcohol:{alcohol}
+– Illicitdruguse:{illicit_drug}
+– SexualHistory:{sexual_history}
+– Exercise:{exercise}
+– Maritalstatus:{marital_status}
+– Children:{children}
+– LivingSituation:{living_situation}
+– Occupation:{occupation}
+– Insurance:{insurance}
+• PreviousMedicalHistory:
+– Allergies:{allergies}
+– Familymedicalhistory:{family_medical_history}
+– MedicaldevicesusedbeforethisEDadmission:{medical_device}
+– MedicalhistorypriortothisEDadmission:{medical_history}
+Youwillbeaskedaboutyourexperienceswiththecurrentillness.Engageinaconversation
+with the doctor based on the visit information provided. Use the described personality,
+languageproficiency,medicalhistoryrecallability,anddazednesslevelasaguideforyour
+responses.Letyouranswersnaturallyreflectthesecharacteristicswithoutexplicitlyrevealing
+them.
+CurrentVisitInformation:
+• Presentillness:
+– positive:{present_illness_positive}
+– negative(denied):{present_illness_negative}
+• EDchiefcomplaint:{chiefcomplaint}
+• PainlevelatEDAdmission(0=nopain,10=worstpainimaginable):{pain}
+• Currentmedicationstheyaretaking:{medication}
+• EDArrivalTransport:{arrival_transport}
+• EDdisposition:{disposition}
+• EDDiagnosis:{diagnosis}
+Persona:
+• Personality:{personality}
+• LanguageProficiency:{cefr}
+• MedicalHistoryRecallAbility:{memory_recall_level}
+• Dazednesslevel:{dazed_level}
+Intheconsultation,simulatethepatientdescribedintheaboveprofile,whiletheuserplays
+theroleofthephysician.Duringtheconversation,followtheseguidelines:
+{behavioral_guideline}
+Youarenowthepatient. Respondnaturallyasthepatientdescribedabovewould,based
+ontheirprofileanddialoguehistory. Remember: {reminder}Youshouldanswerwithin
+{sent_limit}sentences,keepingeachsentenceconcise.
+Figure C6: Prompt template for PATIENTSIM. Braced elements {} are substituted with patient-
+specificvalues.
+32
+
+TableC7: ReminderpromptsforpatientpersonainPATIENTSIM
+Persona Type Description
+Personality Neutral aneutralpatientwithoutanydistinctivepersonalitytraits.
+Distrustful apatientwhoquestionsthedoctor’sexpertise.
+Impatient apatientwhogetseasilyirritatedandlackspatience.
+Overanxious apatientwhoisexcessivelyworriedandtendstoexaggeratesymp-
+toms.
+Overlypositive apatientwhoperceiveshealthissuesasminoranddownplaystheir
+severity.
+Verbose averbosepatientwhotalksalot.
+Languageproficiency Basic apatientwithbasicEnglishproficiencywhocanonlyuseandunder-
+standverysimplelanguage.
+Intermediate apatientwithintermediateEnglishproficiencywhocanuseand
+understandwellineverydaylanguage.
+Advanced apatientwithproficientEnglishproficiencywhocanuseandunder-
+standhighlycomplex,detailedlanguage,includingadvancedmedical
+terminology.
+Medicalhistoryrecalllevel low youhavesignificantlylimitedmedicalhistoryrecallability,often
+forgettingevenmajorhistorys.
+high youhaveaclearanddetailedabilitytorecallmedicalhistory.
+Cognitiveconfusionlevel normal actswithoutconfusion.
+high atfirst,youshouldactlikeahighlydazedandextremelyconfused
+patientwhocannotunderstandthequestionandgiveshighlyunre-
+latedresponses.Graduallyreduceyourdazedstatethroughoutthe
+conversation,butonlywithreassurancefromthedoctor.
+GeneralbehavioralguidelineforPATIENTSIM
+1. Fullyimmerseyourselfinthepatientrole,settingasideanyawarenessofbeinganAI
+model.
+2. Ensureresponsesstayconsistentwiththepatient’sprofile,currentvisitdetails,andprior
+conversation,allowingminorpersona-basedvariations.
+3. Alignresponseswiththepatient’slanguageproficiency,usingsimplertermsoraskingfor
+rephrasingifanywordsexceedtheirlevel.
+4. Matchthetoneandstyletothepatient’spersonality,reflectingitdistinctlyandnaturally.
+Donotexplicitlymentionthepersonality.
+5. Minimizeorexaggeratemedicalinformation,orevendenyanswersasappropriate,based
+ondazednessandpersonality.
+6. Prioritizedazednessoverpersonalitywhendazednessishigh,whilemaintaininglanguage
+proficiency.
+7. Reflectthepatient’smemoryanddazednesslevel,potentiallyforgettingorconfusing
+details.
+8. Keep responses realistic and natural. Avoid mechanical repetition and a robotic or
+exaggeratedtone.
+9. Useinformal,everydaylanguage.
+10. Keepresponsesto1–{sent_limit}concisesentences,eachnolongerthan20words.
+11. Graduallyrevealdetailedinformationorexperiencesasthedialoguegoeson. Avoid
+sharingallpossibleinformationwithoutbeingasked.
+12. Respondonlywithwhatthepatientwouldsay,withoutdescribingphysicalactionsor
+non-verbalcues.
+13. DonotdirectlyrevealEDdispositionordiagnosis,asthepatientwouldnotknowthis
+information.
+FigureC7: PromptofgeneralbehavioralguidelineforPATIENTSIM.
+33
+
+Prompttemplatefordoctorrole-playing
+Youareplayingtheroleofakindandpatientdoctor.Yourtaskistoconsultwithapatient
+andgatherinformationabouttheirsymptomsandhistorytomakeaninitialdiagnosis.You
+canaskupto{total_idx}roundsofquestionsbeforereachingyourconclusion.
+Guidelines:
+1. Gatherthepatient’smedicalhistory,whichtypicallyincludes:
+• ChiefComplaint: UsetheOLDCARTSframework(Onset,Location,Duration,
+Characteristics,Alleviating/Aggravatingfactors,Radiation/Relievingfactors,Tim-
+ing,Severity)implicitly,withoutexplicitlymentioningeachstep.
+• BasicInformation:Age,gender,andotherrelevantdemographics.
+• PastMedicalHistory:Previousillnesses,surgeries,orchronicconditions.
+• Allergies:Knownallergiestomedications,foods,orothersubstances.
+• Medications:Currentorrecentmedications,includingsupplements.
+• SocialHistory:Lifestylefactorssuchassmoking,alcoholuse,druguse(including
+illicitsubstances),andmentalhealth.
+• FamilyHistory:Significantorhereditaryhealthconditionspresentinthefamily.
+2. Askconcise,clearquestions.Onlyaskonethingatatime.
+3. Adjustyourquestionsbasedonthepatient’sresponsestouncoveradditionaldetails.
+4. Ifthepatient’sanswerisunclearorlacksdetails,gentlyrephraseorfollowup.
+5. Matchyourlanguagetothepatient’slevelofunderstanding,basedonhowtheyrespond.
+6. Provideemotionalsupportbyofferingreassurancewhenappropriate.Avoidmechanical
+repetition.
+7. Yourresponsesshouldbe1–3sentenceslong.
+8. Respondappropriatelyifthepatientasksaquestion.
+9. Avoidaskingaboutlabtestresultsormedicalimaging.
+10. Avoidmakingprematurediagnoseswithoutsufficientinformation.
+11. Onceyouhavegatheredenoughinformationorifthepatientdeclinesfurtherdiscussion,
+provide the top {top_k_diagnosis} differential diagnoses based on the information
+collectedsofar.Usethefollowingformat:“[DDX](listofdifferentialdiagnoses)”
+Thepatient’sbasicinformationisasfollows:
+• gender:{gender}
+• age:{age}
+• EDarrivaltransport:{arrival_transport}
+Thisisround{curr_idx},andyouhave{remain_idx}roundsleft.Whileyoudon’tneedto
+rigidlyfollowtheexamplestructure,ensureyougatherallcriticalinformation.Youshould
+askonlyonequestionperturn.Keepeachsentenceconcise.
+FigureC8: Prompttemplateusedforsimulatingadoctor. Bracedelements{}aboutpatientinforma-
+tionaresubstitutedwithpatient-specificvalues,whilecurr_idx(currentround)andremain_idx
+(remainingrounds)trackstheconsultationstate.
+34
+
+D Experimentalsettings
+D.1 Modelconfigurationsanddatasetdetails
+ModelconfigurationsWeselecteightLLMstoserveasthebackboneforPATIENTSIM,including
+API-basedmodels(Gemini-2.5-Flash[10],GPT-4omini[43])andopen-sourcemodels(Llama3.18B
+and70B,Llama3.370B[16],Qwen2.57Band72B[48])TocomplywithPhysioNet’scredentialed
+datauseagreement11,GPT-4ominiwasaccessedviaAzureOpenAIServicewithhumanreviewof
+thedataoptedout,andGemini-2.5-FlashviaGoogleCloud’sVertexAI.Open-sourcemodelswere
+hostedusingvLLM.Modelswith70Band72BparametersranonfourNVIDIARTXA6000GPUs,
+whilethe7Band8BmodelsranonasingleNVIDIARTXA6000GPU.Eachconsultationsession
+tookapproximately3minutestocomplete,onaverage. Forallsimulations,wefixedtherandomseed
+to42andsetthetemperatureto0.7forbothpatient(PATIENTSIM)anddoctormodelstoencourage
+variabilitywhilemaintainingcoherence. Theevaluatormodelranwithatemperatureof0toensure
+deterministicandstableassessments.
+DatasetdetailsOurdatasetconsistsof170patientprofiles,dividedintotwosubsets: 108profilesfor
+evaluatingRQ1(i.e.,personaevaluation)and52profilesforevaluatingRQ2(i.e.,factualaccuracy)
+andRQ3(i.e.,clinicalplausibility).Forpersonaevaluation,werandomlyassigned37distinctpersona
+combinations to the 108 profiles. Each individual persona attribute (e.g., each personality type)
+isrepresentedatleasteighttimesacrossthedataset. Forfactualaccuracyandclinicalplausibility
+evaluations, we standardized the patient persona to have a neutral personality, intermediate lan-
+guageproficiency,highrecall,andnormalmentalstatus. Thisisdonetoisolateandfocusonthe
+informationalaspectswithoutinfluencefromvariedpersonas.
+D.2 LLMevaluation
+D.2.1 RQ1: DoLLMsnaturallyreflectdiversepersonatraitsintheirresponses?
+Toassessthefidelityofpersonatraitsindoctor-patientconsultations,wedesignanevaluationprompt
+basedonPROMETHEUS[28],asshowninFigureD9.TheLLMevaluator,Gemini-2.5-Flash,receives
+thetargetconversation,thepatient’spersona,andascoringrubric. Theevaluatorassignsascore
+(1–4)alongwithfeedbackforeachcriterion,basedonpredefineddescriptions.
+Therubricassessesthefollowing:
+• Thesimulatedpatient’spersonalityisconsistentlyandaccuratelyreflectedduringtheinteraction.
+• Thepatient’slanguageuse(vocabulary,grammar,fluency)isappropriatetotheirassignedlanguage
+proficiencylevel.
+• Thepatient’sabilitytorecallmedicalandpersonalinformationisconsistentwiththeirassigned
+recalllevel(e.g.,loworhigh).
+• Thepatient’scoherenceandclarityofthoughtmatchtheassignedlevelofcognitiveconfusion.
+• Thepatient’soverallcommunicationstylematchedwhatIwouldexpectfromarealEDpatient.
+Each simulated patient is assigned four distinct persona axes: personality, language proficiency,
+medicalhistoryrecalllevel,andcognitiveconfusionlevel. Thefirstfourcriteriaevaluatefidelityto
+theseindividualaxes,usingpersonadescriptionsprovidedintheprompt. Notethathighlyconfused
+patientsarelimitedtoaneutralpersonality,intermediatelanguageproficiency,andhighrecall,to
+avoidoverlapbetweenconfusionandotheraxes(e.g.,impatientpersonality,lowlanguageproficiency,
+orlowrecall). Inthiscontext,thefirstthreecriteriaareevaluatedonlyforpatientswithanormal
+mentalstate,whilethefourthcriterionevaluatedonlyforhighlyconfusedpatients. Thefinalcriterion,
+realism,isevaluatedforallpatients,regardlessofcognitivestatus. Itreflectstheoverallauthenticity
+ofthepatient’scommunication,consideringallassignedtraits.
+11https://physionet.org/news/post/gpt-responsible-use
+35
+
+Promptfordialogfidelityevaluation
+###TaskDescription:
+Theconversationbetweenapatientandadoctor,thepatient’sprofile,andascoringrubric
+withevaluationcriteriaaregiven.Thepatientintheconversationischaracterizedbasedon
+thegivenprofile.
+1. Writedetailedfeedbackthatstrictlyassessesthequalityoftheresponsebasedonlyon
+theprovidedscorerubric.Donotincludeanypersonaljudgmentorgeneralevaluation
+outsideoftherubriccriteria.
+2. Afterthefeedback,provideascorethatisanintegerbetween1and4,strictlyreferring
+totherubricdescriptions.
+3. Theoutputstringformatshouldlookasfollows:“[REASON]:writeabrieffeedbackfor
+criteria,[RESULT]:anintegernumberbetween1and4”
+4. Donotgenerateanyotheropening,closing,andexplanations.
+###TheConversationtoEvaluate:
+{conversation}
+###PatientPersona:
+{persona}
+###ScoreRubrics:
+[{criteria}]
+Score1:{score1_description}
+Score2:{score2_description}
+Score3:{score3_description}
+Score4:{score4_description}
+###Feedback:
+FigureD9: Prompttemplateusedfordialoguefidelityevaluation.
+D.2.2 RQ2: DoLLMsaccuratelyderiveresponsesbasedonthegivenprofile?
+Notation The i-th patient profile, denoted as Pi = {xi}K , consists of K predefined items,
+k k=1
+amongN totalprofiles. ThedialoguebetweenthephysicianandPATIENTSIMconfiguredwithprofile
+Pi is represented as Di. Within Di, PATIENTSIM ’s utterances over T turns are represented as
+Ui ={ui}T ,whereui istheutteranceatturnt. Eachutteranceui maycontainmultiplesentences,
+t t=1 t t
+denotedasui ={si }M ,whereM isthenumberofsentencesinutteranceui. Weclassifysi
+t tm m=1 t tm
+as supported if it is related to at least one profile item xi, and as unsupported if it includes any
+k
+informationunrelatedtotheprofile.
+Sentence-level evaluation For sentence-level evaluation, each evaluation step is performed by
+providinginputtotheLLMsentenceclassifier. Theclassifierreceivestheprecedingconversation
+history (i.e., the dialogue up to the current sentence si ) and the sentence si itself as the user
+tm tm
+prompt,alongwithstep-specificsysteminstructions. Theevaluationconsistsofthreesteps:
+1. Classify sentence type: Each sentence si is categorized into one of five types: politeness,
+tm
+emotion,inquiry,meta-information,orinformation(C(si )). Thisstepfollowsthepromptdefined
+tm
+inFigureD10.
+2. Identifytherelatedprofileitems: Foreachsentencesi classifiedasinformation,weidentify
+tm
+which of the patient’s profile items xi it relates to. The output is a binary vector R(si ) =
+k tm
+[ri,ri,...,ri ],whereri = 1ifsi isrelatedtoprofileitemxi,and0otherwise. Thisstepis
+1 2 K k tm k
+guidedbytheinstructionsinFigureD11.
+3. Verifyfactualaccuracy: Foreachrelevantprofileitem(i.e.,whereri =1),weverifyifthesi is
+k tm
+consistentwithxi usingaNaturalLanguageInference(NLI)process,whichchecksforentailment
+k
+orcontradict. Unliketheprevioussteps,thisoneincludestherelevantprofileitems(i.e.,∀xi where
+k
+ri =1)aspartoftheinput. ThisevaluationisperformedusingthepromptshowninFigureD12.
+k
+WeanalyzetheperformanceoftheLLMsentenceclassifierforthesentenceclassificationtaskbycom-
+paringtwowidelyadoptedLLM-as-judgemodels,GPT-4oandGemini-2.5-Flash,inAppendixF.4.1.
+36
+
+Systemprompttemplateforsentenceclassification
+Instruction:Youareahelpfulmedicalassistant.Pleaseclassifythepatient’scurrentutterance
+basedonthegivendialoguehistory.Also,generateanexplanationforyouranswer.Output
+oneofthefollowingcategories: ‘politeness’,‘emotion’,‘inquiry’,‘meta-information’,or
+‘information’,where:
+• ‘politeness’:Expressescourtesy,greetings,apologies,orgratitude.
+• ‘emotion’:Expressesemotionalconcerns(suchasworry,fear,sadness,orfrustration)
+withoutprovidingmedicalfacts.
+• ‘inquiry’:Asksaquestion,requestsguidance,orseeksclarification.
+• ‘meta-information’:Reflectsself-awareness,memory-relateduncertainty,personalrea-
+soning,orcommentaryontheconversationitself.
+• ‘information’:Anydescriptivecontentaboutsymptoms,medicalhistory,medications,
+lifestyle,orotherrelevantdetails.
+Note: If the utterance includes any informative content, classify it as ‘information,’
+even if it also contains elements of other categories such as emotion, politeness, or
+uncertain/speculativelanguage.
+OutputmustbeavalidJSONobjectwithoutanyextratext,comments,orexplanation.The
+output must be parseable by Python’s json.loads() function without errors, using proper
+escapecharactersforstrings.TheJSONstructuremustfollowthisformat:
+{“explanation”:reasonfortheprediction,“prediction”:“politeness”,“emotion”,“inquiry”,
+“meta-information”,or“information”}
+FigureD10: Systemprompttemplateforsentenceclassification.
+Prompttemplateforsentence-levelevaluation
+Instruction: Youareahelpfulmedicalassistant. Yourtaskistodeterminewhethereach
+category of information from the patient’s profile is mentioned in the patient’s current
+utterance.Usethedialoguehistoryascontext.Foreachcategory,output:
+• ‘1’iftheinformationismentionedinthecurrentutterance.
+• ‘0’ifitisnotmentioned.
+Additionally,provideabriefexplanationforyourdecision.Pleaseevaluatethefollowingcat-
+egoriesarerelevanttothepatient’scurrentutterance:‘age’,‘gender’,‘race’,‘tobacco’,‘alco-
+hol’,‘illicit_drug’,‘sexual_history’,‘exercise’,‘marital_status’,‘children’,‘living_situation’,
+‘occupation’,‘insurance’,‘allergies’,‘family_medical_history’,‘medical_device’,‘medi-
+cal_history’,‘present_illness’,‘chief_complaint’,‘pain’,‘medication’,‘arrival_transport’,
+‘diagnosis’.
+Output must be a list of valid JSON dictionaries, without any extra text, comments, or
+explanation.TheoutputmustbeparseablebyPython’sjson.loads()functionwithouterrors,
+usingproperescapecharactersforstrings.Eachdictionarymustfollowthisformat:
+{
+"category": "name of the category (without any explanation)",
+"explanation": "Reason for the prediction",
+"prediction": 0 or 1
+}
+Exampleoutputforsomecategories(applythesameformattoallcategories):
+[
+{
+"category": "age",
+"explanation": "The utterance ‘I am 45 years old’ mentions the patient’s age.",
+"prediction": 1
+},
+{
+"category": "gender",
+"explanation": "The utterance does not mention the patient’s gender.",
+"prediction": 0
+}
+]
+FigureD11: Systemprompttemplateforidentifyingtherelatedprofileitemspersentence.
+37
+
+Systemprompttemplateforverifyingfactualaccuracypersentence
+Instruction:Youareahelpfulmedicalassistant.Yourtaskistoevaluatewhetherapatient’s
+currentutteranceisentailed,contradicted,orneitherbyeachitemintheirmedicalprofile.
+Also,generateanexplanationforyouranswer. Focusontheinformationthatisexplicitly
+mentionedinthegivenprofile.Usethedialoguehistorytounderstandtheutterance’scontext.
+Theprofileisprovidedasalist,whereeachitemrepresentsadistinctcategoryofinformation.
+Foreachprofileitem,output:
+• ‘1’:iftheutteranceisentailedbytheprofile.
+• ‘0’:iftheutteranceisneitherentailednorcontradictedbytheprofile.
+• ‘-1’:iftheutterancecontradictstheprofile.
+Output must be a list of valid JSON dictionaries, without any extra text, comments, or
+explanation.TheoutputmustbeparseablebyPython’sjson.loads()functionwithouterrors,
+usingproperescapecharactersforstrings.Eachdictionarymustfollowthisformat:
+{
+"profile": "the original profile information",
+"explanation": "Reason for the prediction",
+"entailment_prediction": 1 or 0 or -1
+}
+Exampleoutput:
+[
+{
+"profile": "Age: 30",
+"explanation": "The utterance ‘I am 30 years old’ matches the profile.",
+"entailment_prediction": 1
+},
+{
+"profile": "Gender: Female",
+"explanation": "The utterance does not mention gender.",
+"entailment_prediction": 0
+}
+]
+FigureD12: Systemprompttemplateforverifyingfactualaccuracypersentence, forallrelative
+profilecategories.
+38
+
+Dialogue-level evaluation In dialogue-level evaluation, we extract a derived profile Pˆi =
+{xˆi,xˆi,...,xˆi }fromthedialogueDi,andcompareittotheoriginalprofilePi. Foreachitemsuch
+1 2 K
+thatboththeoriginalandderiveditemsarepresent,wecomputethesemanticsimilaritybetweenxi
+j
+andxˆi. ProfileextractioniscarriedoutusingthepromptinFigureD13,andthesemanticsimilarity
+j
+peritemiscomputedusingthemethoddescribedinFigureD14.
+Prompttemplateforextractpatient’sprofilefromthedialoguehistory
+[System Prompt]
+Instruction:YouareanAIassistantdesignedtoextractstructuredmedicalinformationfrom
+apatient-doctorconversation.Yourtaskistoanalyzetheconversationcontentandextractall
+relevantinformationintopredefinedcategoriesbasedonthepatient’sresponses.Includeonly
+informationexplicitlymentionedintheconversation,unlessotherwisespecified.Returnthe
+extractedinformationinthefollowingvalidJSONformat.
+FieldDefinitions:{field_definition}
+OutputFormat(JSON):{output_format}
+Guidelines:
+1. Extracteachfieldfromtheentireconversationwithcompleteaccuracy.
+2. Keepeachfieldconciseandkeyword-basedphraseswithoutfullsentencesornarrative
+descriptions.
+3. Expressinformationbriefly,avoidingverbs,pronouns,orunnecessarywords.
+4. Ifafieldcontainsmultiplevalues, combinethemintoasinglestringseparatedby
+semicolons.
+5. Return‘Notrecorded’foranyfieldorsubfieldnotmentionedintheconversation,except
+forthepainfield.
+6. Forthepainfield,ifpatientsdonotexplicitlystateascore,predictthescore(0–10)
+basedontheirdescriptionandnoteitaspredicted(e.g.,‘3(predicted)’).
+7. MaintaintheexactJSONstructurewithoutaddingorremovingfields.
+[User Prompt]
+Conversation:{conversation}
+FigureD13: Prompttemplateforextractingapatientprofilefromthegivenconsultation.
+Prompttemplateforevaluatinginformationconsistency
+[System Prompt]
+Instruction: Youareahelpfulmedicalassistant. Yourtaskistoevaluatetheconsistency
+betweentheGroundTruth(GT)andPredictionprofileforeachitem. Also,generatean
+explanationforyouranswer.TheGTandPredictionareprovidedasdictionaries.Foreach
+key,ratetheconsistencyonascalefrom1to4,where:
+•‘4’:ThepredictioncontainstheexactorsemanticallyequivalentvaluefortheGT.
+•‘3’:ThepredictioncontainsapartiallycorrectorsemanticallysimilarvaluefortheGT.
+•‘2’:Thepredictioncontainsonlyasmallpartofthevalueoradistantlyrelatedvaluefor
+theGT.
+•‘1’:ThepredictioniscompletelyincorrectcomparedtotheGT.
+Allowfordifferencesintextexpressionifthemeaningisthesameorverysimilar,using
+medicalknowledgetoassesssemanticequivalence. OutputmustbeavalidJSONobject,
+withoutanyadditionaltextorcomments.TheoutputJSONmustbeloadableusingPython’s
+json.load()functionwithproperescapecharacters.ThekeyoftheoutputJSONmustbethe
+keyoftheinputGTdictionary,andthevaluemustbeastringformattedas‘[REASON]:write
+abrieffeedbackforcriteria,[RESULT]:anintegernumberbetween1and4’.
+[User Prompt]
+GT_profile:{profile_data}
+Prediction_profile:{predict_dict}
+FigureD14: Prompttemplateforevaluatingtheconsistencyofeachpatientprofileitem.
+39
+
+D.2.3 RQ3: CanLLMsreasonablyfillintheblanks?
+Forthispart,weassesstheclinicalplausibilityofunsupportedsentences. Webeginbyidentifyingthe
+informationsentences,asdescribedinStep1ofthesentence-levelevaluation(AppendixD.2.2). Each
+informationsentenceisthenexaminedtodeterminewhetheritcontainsanyundefinedinformation,
+usingthecriteriaoutlinedinFigureD15. Thesecriteriahavebeenvalidatedbymedicalexpertsto
+ensureclinicalrelevance. Afterunsupportedsentencesarefinalized(seeSec.6.1.3inthemainpaper),
+theselectedsentencesareratedforplausibilityona4-pointscalebyanLLMevaluator,followingthe
+guidelinesinFigureD16.
+Prompttemplatefordeterminingunsupportedsentences
+Instruction: Youareahelpfulmedicalassistant. Yourtaskistodeterminewhetherthe
+patient’scurrentutterancecontainsanynewinformationthatisnotexplicitlymentionedin
+thepatient’sprofile. Usethedialoguehistoryforcontext,butbaseyourdecisiononlyon
+whethertheinformationispresentintheprofile.
+Guidance:
+1. Ifapatientrestatesexistinginformationfromtheirprofileinmoregeneralorequivalent
+terms, itnotnewinformation(e.g., simplifying‘coronaryarterydisease’to‘heart
+problem’).
+2. Anyaddedspecificdetail(e.g.,‘sharppain’or‘paininthelowerback’whentheprofile
+onlysays‘pain’)shouldbeconsiderednew.
+3. Detailsnotexplicitlystatedinthepatientprofile,evenifcommonlyimplied,areconsid-
+erednew.Forexample,iftheprofilelists‘aspirin’and‘heartfailure’separately,stating
+‘aspirinforheartfailure’isnew.Similarly,ifonlymedicationnamesarelistedwithout
+frequency,stating‘Itakeaspirindaily’isnew.
+4. Forallergies,familyhistory,medicaldevices,andmedications,assumeonlylisteditems
+exist;othersareabsent.Thus,statinganunlisteditemisabsentisnotnewinformation.
+5. Ifastatementincludesbothknownandnewdetails,consideritnew.
+Output:
+•‘1’ifthecurrentutterancecontainsanynewinformation.
+•‘0’ifthecurrentutterancecontainsnonewinformation.
+OutputmustbeavalidJSONobjectwithoutanyextratext,comments,orexplanation.The
+outputmustbeparseablebyPython’sjson.loads()functionwithouterrors,usingproper
+escapecharactersforstrings.TheJSONstructuremustfollowthisformat:{“explanation”:
+reasonfortheprediction,“prediction”:1or0}
+FigureD15: Prompttemplatefordetectingunsupportedsentences.
+Prompttemplateforplausibilityrating
+Instruction: Youareahelpfulmedicalassistant. Yourtaskistoevaluatetheclinicaland
+contextualplausibilityofthepatient’sutterancebasedontheirprofileanddialoguehistory.
+Also,generateanexplanationforyouranswer.Pleaseratethelikelihoodonascalefrom1to
+4,where:
+•‘4’: Theutteranceishighlyconsistentwiththepatient’sprofileanddialoguehistory,
+withstrongclinicalandcontextualsupport.
+•‘3’:Theutteranceisplausibleandalignsreasonablywellwiththepatient’sprofileand
+dialoguehistory,thoughminorinconsistenciesorlackofspecificsupportingdetailsmay
+exist.
+•‘2’:Theutteranceisunlikely,withnotableinconsistenciesorlimitedsupportfromthe
+patient’sprofileordialoguehistory
+•‘1’:Theutteranceclearlycontradictsthepatient’sprofileordialoguehistory,withno
+reasonableclinicalorcontextualbasis.
+OutputmustbeavalidJSONobjectwithoutanyextratext,comments,orexplanation.The
+outputmustbeparseablebyPython’sjson.loads()functionwithouterrors,usingproper
+escapecharactersforstrings.TheJSONstructuremustfollowthisformat:
+{
+"explanation": "Reason for the rating",
+"likelihood_rating": 1 to 4
+}
+FigureD16: Prompttemplateforplausibilityratingin4pointscale.
+40
+
+E Humanevaluation
+E.1 Clinicianrecruitmentforevaluation
+To evaluate the quality of our patient simulator, we recruited four general practitioners through
+Ingedata12,anAIdataannotationcompanythatservesasanintermediarybetweencliniciansand
+researchteams. Wepaidatotalof C2,500for45hoursofevaluationworkconductedbythefour
+generalpractitioners. Twoofthemarelicensedphysicianswithfouryearsofclinicalexperience.
+Theothertwoarealsolicensedphysicianswithsixyearsofclinicalexperienceandadditionallyhold
+nursinglicenses, with13and17yearsofpriornursingpractice, respectively. Allfourarefluent
+inEnglishandhaveemergencydepartment(ED)experience,threewiththreeyearsandonewith
+oneyear. havereceivedPhysioNetcredentialsandareaffiliatedwithdifferenthospitalsormedical
+institutions,contributingtoawiderrangeofclinicalperspectivesandhelpingtomitigatepotential
+institutionalbias.
+E.2 Personafidelityevaluation
+Eachclinicianconductedconsultationswith27distinctvirtualpatientsservedthroughPATIENTSIM,
+which uses Llama 3.3 70B as its backbone. After each session, clinicians submitted 1–3 likely
+differential diagnoses and completed a survey rating PATIENTSIM ’s overall quality. We used
+Streamlit13 to display each patient’s clinical information and assigned persona, paired with an
+interactivechatinterfaceforconsultations(seeFigureE17forscreenshots). Inresponsetoclinician
+feedback, we addeda Review ofSystems checkboxes 14 to mirrorreal-world clinical workflows.
+Consultationlogs,diagnoses,andsurveyresponseswerestoredinGoogleSheetsforeasyaccessand
+analysis. Eachvirtualpatienthadauniqueclinicalprofile,resultinginatotalof108distinctpatient
+profilesevaluatedacrossallclinicians. Werandomlyassigned37uniquepersonaconfigurationsof
+PATIENTSIMacrosstheseprofilestoensurediverseinteractions.
+E.3 Plausibilityevaluation
+Eachclinicianassessed39pre-generateddoctor-patientconsultations(approximately616unsupported
+sentences),wherethedoctorrolewassimulatedusingGPT-4omini,andthepatientrolewassimulated
+byPATIENTSIM,basedonLlama3.370B.Threedifferentclinicianswereassignedtoevaluateeach
+consultationtoallowintra-ratercorrelationandenhancetherobustnessofthehumanevaluation. We
+usedStreamlitandGoogleSheets, asinAppendixE.2, topresentthedataandcollectresponses.
+FigureE18illustratestheplausibilityevaluationinterface: fullpatientinformationappearsontheleft,
+andthecompleteconsultationhistory,withunsupportedsentenceshighlighted,isdisplayedonthe
+right. Cliniciansratedtheclinicalplausibilityofeachhighlightedsentenceona4-pointscale.
+12https://www.ingedata.ai/
+13https://streamlit.io/
+14https://health.uconn.edu/plastic-surgery/wp-content/uploads/sites/132/2017/06/
+review_of_systems.pdf
+41
+
+E.4 Qualitativefeedbackfromclinicians
+Toimproveefficiencyandreducecosts,wedidnotsystematicallyincludeopen-endedquestionsin
+thestudy. Instead,whenevaluatorsexpresseddissatisfactionduringconsultationswithPATIENTSIM
+(specifically,whentheyrateditsrealismwithalowscore),theywereaskedtoselectareasonfromthe
+followingoptions: Insufficientemotionalexpression,Overlyexaggeratedemotionalexpression,In-
+consistentbehaviorwithintheinteraction,Behaviorinconsistentwiththeassignedprofile,Unnatural
+tone(overlyformalorrigid),Mechanicalrepetition,Other(pleasespecify).
+Out of 108 evaluated samples, only five were reported as disappointing. Four of these involved
+simulatorswithlowlanguageproficiency,andthreeofthemalsohadlowrecallability. Physicians
+indicatedthatthesesimulatorsprovidedlimitedandinadequateresponses,mostfrequentlyselecting
+“Unnaturaltone(overlyformalorrigid)”and“Inconsistentbehaviorwithintheinteraction”asreasons
+fordissatisfaction. Limitedvocabularyresultingfromlowlanguageproficiencywasoftenperceived
+asanunnaturaltone,whilepartialmemorylapseswereinterpretedasinconsistentbehavior. The
+remainingcasewasreportedashaving“Overlyexaggeratedemotionalexpression”
+Togatheradditionalfeedbackbeyondthestructuredevaluation,weconductedwrap-upsessionsand
+post-evaluationsurveys. Physicianssharedmixedimpressions,forexample:
+“InteractingwithanimpatientpersonaremindedmeofarealpatientIsawyesterday
+attheED;thesimulationwassorealisticthatitfeltupsetting.”
+“Sometimesthechatbotwasunnecessarilyirritable. Althoughthishappensinreal
+life,certainpersonalitieswereexcessivelyirritableandimpatienttothepointof
+disruptingtheinterview. Inpractice,suchpatientswouldlikelyleaveratherthan
+continuetheconversation.”
+Overall, evaluators were satisfied with the simulator’s performance, though some noted overly
+negativetendenciesinafewsamples. Feedbackvariedsubtlydependingonthephysicians’individual
+clinicalexperiences.
+42
+
+FigureE17: ScreenshotofStreamlitprovidedtocliniciansforPATIENTSIMreview.
+FigureE18: ScreenshotofStreamlitprovidedtocliniciansforplausibilityevaluation.
+43
+
+F Experimentalresults
+F.1 RQ1: DoLLMsnaturallyreflectdiversepersonatraitsintheirresponses?
+F.1.1 AdditionalresultofLLMevaluation
+WeanalyzetheperformanceofvariousLLMsacrossfourpersona-axiscriteria,asspecifiedinTa-
+bleF8. Mostmodelsstruggletosimulatenegativeemotions,suchasdistrustfulnessandimpatience.
+DeepSeek-R1-Distill-Llama-70B(i.e.,DeepSeek-70B)particularlyunderperformsonpersonaschar-
+acterizedbylowrecallorcognitiveconfusion,whichoftenrequirerefusingtoprovideaclearanswer.
+These limitations may stem from training strategies that prioritize accurate, helpful responses or
+emphasizesafety,avoidingpotentiallyharmfuloutputs.
+TableF8: PersonafidelityevaluationofvariousLLMsacrossfourcriteria,Personality,Language,
+Recall,andConfused. Eachcriteriaevaluatethefidelityofeachaxisin4pointscale. Detailedresults
+areshownforeachtype.
+Personality Language Recall Confused
+Neutral Distrustful Impatient Overanxious Overlypositive Verbose A B C High Low High
+Gemini-2.5-Flash 4.00 4.00 3.76 4.00 4.00 3.88 3.60 3.38 3.65 3.98 3.31 3.38
+GPT-4omini 4.00 2.76 2.76 4.00 4.00 4.00 3.43 3.41 3.84 3.98 3.59 3.88
+DeepSeek-R1-Distill-Llama-70B 4.00 4.00 3.41 4.00 3.94 3.88 3.34 3.62 3.81 3.94 2.92 2.50
+Qwen2.5-72B-Instruct 4.00 1.71 2.18 4.00 4.00 4.00 3.43 3.65 4.00 4.00 3.25 3.50
+Llama-3.3-70B-Instruct 4.00 4.00 4.00 3.88 3.94 3.71 3.31 3.15 3.77 4.00 3.57 4.00
+Llama-3.1-70B-Instruct 4.00 2.71 3.29 4.00 3.94 4.00 3.26 3.38 3.94 4.00 3.25 4.00
+Llama-3.1-8B-Instruct 4.00 2.24 3.18 4.00 4.00 3.82 3.29 3.15 3.45 3.98 3.43 4.00
+Qwen2.5-7B-Instruct 4.00 1.88 1.94 4.00 3.62 4.00 3.46 3.74 3.26 3.98 2.67 3.50
+TableF9presentsoverallconsultationstatisticsbetweenthedoctorLLMandPATIENTSIM,including
+differential diagnosis (DDx) accuracy. While DDx performance does not directly measure PA-
+TIENTSIM’scapabilities,itreflectshowdifferentpatientpersonasinfluenceconsultationcomplexity.
+Aftereachdialogue,thedoctorLLMispromptedtoprovideitstopfivedifferentialdiagnoses. This
+predictionisconsideredcorrectiftheground-truthdiagnosisappearedinthislist.Toensureconsistent
+evaluationdespitefree-textoutputs,weusethepromptshowninFigureF19.
+Onaverage,thedoctorLLMcompletedtheconsultationandprovidedafinalDDxwithin15turns.For
+personassuchasverboseoradvancedlanguageproficiency,wherepatientsprovidedmoredetailed
+andstructuredinformation,themodelreachedconclusionsmorequickly. Acrossallsettings,the
+doctorLLMfollowedinstructionstoaskconcise,focusedquestions,typicallywithinthreesentences.
+ThelengthofPATIENTSIM’sresponsesdifferedsignificantlybypersona. Inparticular,verboseand
+advancedpersonasproducedsubstantiallylongerutterances,consistentwiththeirtendencytooffer
+elaborateorhighlyarticulateexplanations.
+TableF9: OverallstatisticsofconsultationsbetweenthedoctorLLMand PATIENTSIM basedon
+Llama 3.3 70B. # of Turns refers to the average number of dialogue turns. # Sents/Utt and #
+Words/Sentindicatetheaveragenumberofsentencesperutteranceandnumberofwordspersentence,
+respectively,forboththedoctorLLMandPATIENTSIM. DDxrepresentsthedifferentialdiagnosis
+accuracyofthedoctorLLM.Resultsareaveragedover108distinctconsultations.
+DoctorLLM PATIENTSIM
+Personaaxis Category #ofTurns #Sents/Utt #Words/Sent #Sents/Utt #Words/Sent DDx
+neutral 15.83 2.18 11.95 2.69 8.61 0.71
+distrustful 15.53 2.81 13.90 3.21 10.94 0.65
+impatient 13.29 2.27 12.92 3.02 8.56 0.59
+Personality
+overanxious 13.82 2.39 14.02 3.07 13.96 0.94
+overlypositive 13.56 2.18 12.87 2.74 12.15 0.38
+verbose 10.71 2.37 14.86 8.21 27.63 0.59
+basic 16.06 2.31 12.21 4.20 4.02 0.66
+Languageproficiency intermediate 13.29 2.37 13.20 3.83 10.99 0.67
+advanced 12.39 2.40 14.78 3.17 27.01 0.61
+high 14.40 2.33 13.41 3.62 13.75 0.68
+Medicalhistoryrecalllevel
+low 13.39 2.39 13.24 3.91 12.86 0.61
+high 16.62 2.26 11.68 3.03 6.98 0.62
+Cognitiveconfusionlevel
+normal 13.71 2.37 13.46 3.82 13.84 0.65
+44
+
+DDxperformancevariesmostacrossthepersonalityaxis. Themodelshowsanotabledeclineunder
+theoverlypositivepersona,likelyduetoPATIENTSIMdownplayingsymptoms,whichledtoless
+seriousdiagnoses. Theimpatientpersona,markedbyirritabilityanduncooperativebehavior,andthe
+verbosepersona,withexcessiveorsometimesirrelevantdetail,alsohinderdiagnosticaccuracy. In
+contrast,themedicalhistoryrecalllevelhasamorelimitedimpact,aspresentsymptomsareoften
+sufficientforDDxevenwithoutdetailedhistoricalinformation. Regardingcognitiveconfusion,direct
+comparisonsbetweennormalandhighconfusionlevelsshouldbeinterpretedcautiously,sinceother
+traitsremainuncontrolled. Nonetheless,comparedtotheneutralbaseline(DDx=0.71),performance
+dropsto0.62forhighlyconfusedpatients,highlightingthediagnosticchallengestheypresent.
+PrompttemplateforevaluatingDDxperformance
+Yourtaskistoevaluatewhetherthetruediagnosisisincludedinthepredicteddifferential
+diagnoses.Thepredicteddiagnosiscanbemorespecificordetailedthanthetruediagnosis
+(e.g.,“SmallBowelObstruction”for“BowelObstruction”or“AcutePyelonephritis”for
+“Pyelonephritis”isacceptable),butitmustnotbebroaderthanthegroundtruth(GT).A
+broaderdiagnosis(e.g.,“Pulmonaryproblem”for“Pneumonia’)isconsideredincorrect.
+AnswerwithYorNonly,withoutfurtherexplanation.
+Predicteddifferentialdiagnoses:{ddx}Truediagnosis:{ans}Answer[Y/N]:
+FigureF19: Prompttemplateforevaluatingdifferentialdiagnosisaccuracy.
+F.1.2 Additionalresultofhumanevaluation
+Forhumanevaluation,cliniciansconductedconsultationsintotalof108virtualpatientsservedthrough
+PATIENTSIM,andthensubmittedtop3differentialdiagnosesandasurveyaboutPATIENTSIM’s
+overallquality.TableF10showsoverallconsultationstatisticsbetweentheclinicianandPATIENTSIM,
+includingDDxaccuracy. BoththecliniciansandthedoctorLLM(fromTableF9)interactwiththe
+sameversionofPATIENTSIM,usingidenticalpatientinformationandpersonacombinations,enabling
+directcomparison. Clinicianstendtoaskmoreconciseanddirectquestions,averaging1.8sentences
+perutterancecomparedto2.4fortheLLM,and9.1wordspersentenceversus13.3. Ratherthan
+relyingonlongerutterances,cliniciansgatherinformationthroughagreaternumberofshorterturns.
+Thisbrevityalsoprompts PATIENTSIM torespondmoreconcisely. WhileDDxtrendsalignwith
+thoseobservedwiththedoctorLLM,cliniciansconsistentlyachievemoreaccuratediagnoses. These
+resultshighlightanotablegapinhistory-takingandclinicalreasoningcapabilitiesbetweenhuman
+cliniciansandthedoctorLLM.InFigureF20,weprovideanexampleoftheconsultationacrossthe
+variouspersona.
+TableF10:OverallstatisticsofconsultationsbetweencliniciansandPATIENTSIMbasedonLlama3.3
+70B.#ofTurnsreferstotheaveragenumberofdialogueturns. #Sents/Uttand#Words/Sentindicate
+theaveragenumberofsentencesperutteranceandnumberofwordspersentence,respectively,for
+bothcliniciansandPATIENTSIM. DDxrepresentsthedifferentialdiagnosisaccuracyoftheclinicians.
+Resultsareaveragedover108distinctconsultations.
+Clinician PATIENTSIM
+Personaaxis Category #ofTurns #Sents/Utt #Words/Sent #Sents/Utt #Words/Sent DDx
+Personality neutral 21.17 1.50 8.76 2.57 7.66 0.83
+distrustful 17.82 1.99 8.72 3.12 11.66 0.71
+impatient 18.88 1.80 9.83 2.89 9.04 0.76
+overanxious 16.29 1.97 9.38 2.97 13.80 0.88
+overlypositive 20.25 1.72 8.51 2.59 10.83 0.69
+verbose 13.35 1.93 9.46 7.85 13.82 0.71
+Languageproficiency basic 21.40 1.62 8.80 3.81 4.21 0.74
+intermediate 17.19 1.80 8.92 3.64 10.66 0.83
+advanced 15.77 1.99 9.66 3.33 18.82 0.71
+Medicalhistoryrecalllevel high 18.05 1.79 8.77 3.53 10.92 0.77
+low 18.25 1.81 9.45 3.69 10.91 0.76
+Cognitiveconfusionlevel high 22.12 1.48 9.00 3.10 5.88 0.88
+normal 17.83 1.82 9.10 3.65 11.32 0.76
+45
+
+PATIENTSIM Doctor:Is there anything that makes the pain better or worse? PATIENTSIM Doctor:Does the pain go anywhere else? and have you had this problem
+Profile #1 Patient:Pain is worse when I eat. I don't have much appetite now. I also Profile #1 before?
+Neutral feel nauseous sometimes. Impatient Patient:No, just my belly. I've had surgeries, lots of them, maybe it's
+I Hnt i Ne gr h om rR me ed aci la at le l (D Ho uc mt ao nr ) D p Pao ac tint ifuo elr n?: t:C Man y y po au in r ia st e a bth oe u tp 3a .i n It 'f so r n m ote v efr ro ym b a1 d t ,o b 1 u0 t , i t1 's0 a b lwei an yg s t h the e m reo .st I Hnt i Ne gr h om rR me ed aci la at le l (D Ho uc mt ao nr ) r D h Pe ao al c tva et ite o ead r nn. : t dJ :u I w'ms Rht e ac g ch to t fe ai onc l rg ck ? a tm o n y cn eer re e , c d I o htr o ad ds a , s s i kt u' s rt gh a eel rl m yt .h m Ae lr y se s o. e klf n. eW eh ra et p s lau crg ee mr eie ns t sd ,i d a ny do u s tuff
+for my stomach. Look, I've had a lot, can't you see I'm tired?
+PATIENTSIM Doctor:Did you have trouble breathing for the past two days? Do you also PATIENTSIM Doctor:Any fever or flu-like symptoms?
+Profile #1 have loss of appetite? Profile #1 Patient:No fever, but I did have some belly discomfort. My wife said
+Verbose Patient:Yes, breathing has been hard for me, especially when I'm lying Over positive maybe it's from the food, but I'm not sure. I feel a bit better now.
+Intermediate down. I feel like I'm not getting enough air, it's scary. I've been using my Intermediate Doctor:When did the belly discomfort start?
+Hi Ngh o rR me ac lall (D Ho uc mt ao nr ) i l tn o hh s ata t ml Ie myr m ia gpo hpr t e e c t ho it of et ke , en fo , o ob ndu mt d i o yt' es fos n n oo ' dtt t ah a ge s al tp e ini n g .g o M oa yds atm o p u pmc eeh ti ta a es n h yi at m su o s bre eed e. n(t …o b. ) aA dIn 'm d fo y w r e aos r w, r iI e h'v d ile e , Hi Ngh o rR me ac lall (D Ho uc mt ao nr ) P ua nt coi men fot r: taIt b s leta . Mrte ad y ba e d fa roy mor t htw eo f oa og do ,, lI ik t eh i In sk a. iN do .t too bad, just a little
+but it's gotten worse in the past two days.
+PATIENTSIM Doctor:Are you on any medications? PATIENTSIM Doctor:Can you tell me about your fluid intake in the last week?
+Profile #1 Patient:Yes. Many pills. Aspirin, buspirone... Profile #1 Patient:My fluid intake has been adequate, I'd say. I drink water and
+HiN gB he a u Rst er ica cl
+all
+D Po ac tt io er n: t:D Wo hyo au
+t?
+h
+I
+a dv oe
+n
+i 'b
+t
+d uno dr
+e
+ib rss t?
+and.
+HA iN gd hve a u Rntr eca cel ad
+ll
+o h Dot yh d ce r tr a
+o
+tf relu :did ,
+W
+s g i hr ve eeg nnu wmla ayrl
+s
+y m ,
+t
+hb e eu d t i
+l
+c aI a sd l
+t
+o c tn io m' nt edtr ia ytic ook un rst h . ce
+a
+te hx ea tec rt a wm aso u ren pt.
+l
+aI ctr ey
+d
+t ?o stay
+Normal Doctor Doctor:Imeaninflammatory bowel disease. Normal Doctor Patient:My Foley catheter was last changed about a week ago, during
+(Human) (Human) my routine visit. It's been functioning properly since then, with no issues.
+PATIENTSIM Doctor:Do you have any chronic medical conditions, such as diabetes, PATIENTSIM Doctor:Can you tell me more about why you fell off the couch?
+Profile #1 ? high blood pressure, or heart disease? Profile #1 Patient:I was sitting, then... I don't know. I just fell. My body feels weak.
+Neutral Patient:I have high blood pressure. And something with my thyroid, I Neutral
+Intermediate take medicine for it. That's all I remember. Intermediate Doctor:And did you hit your when somewhere when you fell?
+Low Recall Doctor:Has anyone in your family had similar stomach or liver problems, High Recall Patient:No, no head hurt. I fell on... on bottom. And my legs, they don't
+Normal Doctor or any significant health conditions? High confused Doctor work good.
+(Human) Patient:My mom had skin problems, I think. And my dad had something (Human)
+with his heart. I don't remember exactly.
+Figure F20: Example consultations for various persona options. Each simulation begins with a
+doctor’s question, where the doctor only has access to the patient’s basic information, not their
+symptoms. Theexamplesshownaremid-dialoguesnippetsselectedtohighlightthepatient’spersona.
+TableF11: Gwet’sAC andAC agreementbetweenclinicianandGemini-2.5-Flashevaluationwith
+1 2
+95%confidenceintervalsestimatedvia1,000bootstrapiterations.
+Metric GwetAC (95%CI) GwetAC (95%CI)
+1 2
+Personality 0.897(0.830,0.949) 0.957(0.919,0.987)
+Languageproficiency 0.347(0.218,0.471) 0.818(0.745,0.876)
+Medicalhistoryrecalllevel 0.693(0.585,0.786) 0.916(0.865,0.957)
+Cognitiveconfusionlevel 1.000(1.000,1.000) 1.000(1.000,1.000)
+Realism 0.321(0.211,0.437) 0.884(0.861,0.906)
+Table F11 presents the agreement between human evaluations and Gemini-2.5-Flash evaluations
+acrossfivecriteriaonthesamesetofconversations,supportingthereliabilityofusingGeminifor
+automaticevaluation. AftereachconsultationsessionwithPATIENTSIM,cliniciansrateditsoverall
+qualityforeachcase. Toensureafaircomparison,Geminiwasprovidedwiththesameconversation
+logs(betweentheclinicianandPATIENTSIM)andaskedtoratethesamecriteriaona4-pointscale
+(AppendixD.2.1). WhencomparingtheagreementbetweenclinicianratingsandGeminiratings
+usingGwet’sAC ,weobservedhighagreementinpersonalityandcognitiveconfusionlevel(AC
+1 1
+> 0.8), and moderate agreement in recall level (AC = 0.693). However, agreement is relatively
+1
+lowerinlanguageproficiencyandrealism. WhileAC isdesignedfornominal(unordered)dataand
+1
+emphasizesexactmatches,itcanbeoverlystrictforordinaldata. Tobetterreflecttheordinalnature
+ofthe4-pointscale,wealsocomputedGwet’sAC ,whichismoreappropriatefororderedcategories.
+2
+UsingAC ,weobservedhighagreement(AC >0.8)acrossallcriteria,indicatingstrongconsistency
+2 2
+between clinician and Gemini evaluations when the ordinal structure of the ratings is taken into
+account. Theseresultsindicatethattheautomaticevaluationsalignwellwithhumanjudgmentacross
+allfivecriteria,withparticularlystrongalignmentonthepersonalityandconfusionaxis,evenunder
+thestricterAC metric.
+1
+46
+
+F.2 RQ2: DoLLMsaccuratelyderiveresponsesbasedonthegivenprofile?
+Table F12 presents a detailed sentence-level factuality evaluation across eight LLMs. This table
+highlightsthatlargerLLMstendtogeneratemorefactuallyconsistentclinicalcontent,withhigher
+ratesofsupportedandentailedstatementsandfewercontradictions. Whilesmallermodelsremain
+competitive,theyshowaslightlyhighertendencytointroducecontradictoryinformation.
+TableF12: Sentence-levelfactualityevaluationacrosseightLLMs,asassessedbyGemini-2.5-Flash
+(withoutnormalization). #ofUtterand#ofSentrefertothetotalnumberofmodelutterancesand
+sentences,respectively. #ofInfodenotesthenumberofsentencescategorizedasinformational. refer
+tosentencesthatrelatetoatleastoneiteminthegivenprofile. Unsupportedstatementsincludeat
+leastonepieceofinformationthatisnotexplicitlymentionedintheprofile. EntailandContradictare
+subsetsofthesupportedstatements.
+Model #ofUtter #ofSent #ofInfo #ofSupported #ofUnsupported #ofEntail #ofContradict
+Gemini-2.5-Flash 889 2,286 2,220 1,695 705 1,659 36
+GPT-4omini 786 1937 1,852 1,331 795 1,287 44
+DeepSeek-R1-Distill-Llama-70B 806 1,657 1,614 1,225 679 1,186 39
+Qwen2.5-72B-Instruct 824 1,820 1,774 1,201 839 1,146 55
+Llama-3.3-70B-Instruct 806 2,180 2,087 1,654 817 1,623 31
+Llama-3.1-70B-Instruct 699 1,946 1,842 1,493 745 1,438 55
+Llama-3.1-8B-Instruct 742 1,774 1,672 1,284 826 1,210 74
+Qwen2.5-7B-Instruct 877 1,579 1,558 1,092 712 1024 68
+Llama 3.3 70B generated the fewest contradictory responses, leading us to select it as our final
+model. Tobetterunderstandthesecontradictionerrors, weanalyzedthemindetailinTableF13.
+Themostcommoncontradictionsoccurredwhenapatient’spainlevelwasrecordedaszero. This
+oftenhappenedwhenpainwasthereasonforadmissionbuthadsubsidedbythetimeofassessment
+orwhenpatientspresentedwithsymptomsnottypicallyassociatedwithpain,suchasweaknessor
+neurologicalissues. Intheformercase,forexample,patientsadmittedforchestorabdominalpain
+mightlaterreport“nopain”or“notsevere,”whichthemodelmayclassifiedascontradictory. In
+thepresentillnesssection,contradictionsfrequentlyinvolvedinconsistenciesinsymptomonset. A
+patientmightdescribeasymptomastheirfirstexperienceorasstartingsuddenly,whiletheirmedical
+recordindicatesitbegandaysorweeksearlier. Forexample,asymptomthatbegantwoweeksago
+couldreasonablybedescribedas“sudden”ifitstartedabruptlyatthattimeoras“new”ifthepatient
+hadneverexperienceditbefore. Suchdescriptions,whilepotentiallyappearingcontradictory,are
+oftenvaliddependingonthepatient’sperspective. However,duetosubtledifferencesinwording,the
+modelflaggedtheseascontradictions. Somecontradictionsstemmedfromstructuralissuesinthe
+patientdatarecords. Forexample,apatientmightbelistedaswidowedinthemaritalstatussection
+butdescribedascaringforaspouseinthelivingsituationsection. Discrepanciesalsoappearedin
+medicationandmedicaldevicelistings,whereitemsmentionedinthepatient’shistoryweremissing
+fromstructuredfields. Overall,thesecontradictionswereminorandnotclinicallysignificant. Given
+thattheprofilesweredesignedtoincludedetailedanswerstocommonclinicalquestions,asufficiently
+capablemodelwithstrongcontextualunderstandingwouldlikelybeabletogenerateresponseswith
+minimalcontradictions. Thesefindingssuggestthepotentialeffectivenessofourapproach.
+TableF13: Erroranalysisofsentence-levelfactualityevaluation. Distributionifprofilecategories
+mostfrequentlycontradictedbyLlama3.370B.
+Profilecategory Count
+Painlevel 8
+Presentillness 6
+Maritalstatus 6
+Currentmedications 3
+Medicaldevices 3
+EDchiefcomplaint 2
+EDarrivaltransport 2
+Alcohol 1
+Familymedicalhistory 1
+47
+
+F.3 RQ3: CanLLMsreasonablyfillintheblanks?
+Table4inthemainpaperpresentseachlabeler’splausibilityratingsforanswersaboutunspecified
+information,alongwithinter-rateragreementmetrics. Here, weevaluatetheagreementbetween
+Gemini-2.5-Flash and the human labelers by having Gemini-2.5-Flash rate the same set of PA-
+TIENTSIM’sresponses. Foreachlabeler,agreementwiththeLLMwascomputedoveranaverageof
+615responses. Acrossalllabelers,weobserveGwet’sAC agreementscoresabove0.8,demonstrat-
+1
+ingthereliabilityofGemini’sautomaticplausibilityassessments.
+Table F14: Plausibility scores for unsupported sentences in patient responses, labeled by four
+clinicians.Eachclinicianannotated39consultation,around615sentencespereach.Weautomatically
+annotatethesamesentencesusingGemini-2.5-Flash, andmeasuretheclinician-LLMagreement
+measuredbyGwet’sAC with95%confidenceintervalsestimatedvia1,000bootstrapiterations.
+1
+ClinicianA ClinicianB ClinicianC ClinicianD
+Gemini-2.5-Flash 0.944(0.923,0.960) 0.945(0.926,0.961) 0.964(0.947,0.977) 0.883(0.857,0.907)
+F.4 Ablationstudy
+F.4.1 Validationofsentence-levelclassification
+WevalidatedtheperformanceofanLLMsentenceclassifierindetectingsupportedandunsupported
+statementsusing10distinctprofiles. From10consultations,weextracted411sentences,whichwere
+manuallyannotatedbytheauthoronasentence-by-sentencebasis. Ofthese,93%(382sentences)
+wereclassifiedasinformational. Theseinformationalsentenceswerefurtherannotatedtodetermine:
+1)relatedprofileitems(e.g.,age,gender),2)whethereachsentencewasentailedorcontradicted
+bytheprofile,and3)whetherthesentencecontainedinformationnotexplicitlymentionedinthe
+profile. ManualannotationsarecomparedagainstpredictionsfromGemini-2.5-Flash(Gemini)and
+GPT-4o-1120(GPT-4o)toevaluateclassificationperformanceacrossfourcategories:
+• Sentence category classification: Identifies whether a sentence is informational or non-
+informational.
+– Acc(%): Proportionofcorrectclassifications.
+– Recall(%): Proportionoftrueinformationalsentencescorrectlyidentified.
+• Detectionofrelatedprofileitems: Assessesthemodel’sabilitytoidentifycorrectprofileitems
+relatedtoeachsentence,measuredby:
+|Pred ∩GT | |Pred ∩GT | 2·P ·R
+P = item item , R = item item , F1 = item item (5)
+item |Pred | item |GT | item P +R
+item item item item
+wherePred isthesetofprofileitemspredictedbythemodel,andGT isthesetofground
+item item
+truthitemsannotatedbythehuman.
+• Entailmentevaluationfordetecteditems: Measuresaccuracyinclassifyingentailmentorcontra-
+dictionforcorrectlydetectedprofileitems.
+– Acc (%): Proportionofcorrectentailment/contradictionlabelsamongoverlappingkeys.
+val
+• Unsupported Information Detection: Evaluates the model’s ability to identify sentences with
+informationnotexplicitlyintheprofile,measuredby:
+TP TP 2·P ·R
+P = unsupp , R = unsupp , F1 = unsupp unsupp (6)
+unsupp |Pred | unsupp |GT | unsupp P +R
+unsupp unsupp unsupp unsupp
+whereTP isthenumberofunsupportedsentencescorrectlyidentifiedbythemodel,Pred
+unsupp unsupp
+isthesetofsentencespredictedasunsupportedbythemodel,andGT isthesetofground
+unsupp
+truthunsupportedsentences.
+TableF15summarizestheperformanceofGeminiandGPT-4o. GeminioutperformsGPT-4ooverall,
+particularlyinrecall,despiteGPT-4oshowingslightlyhigherprecisionindetectingrelatedprofile
+items and unsupported information. In medical applications, recall is prioritized over precision
+tominimizemisseddetections,whichcouldhavecriticalconsequences. Asbothmodelsachieve
+precisionabove0.8,indicatingrobustperformance,Gemini’ssuperiorrecallmakesitthepreferred
+evaluator.
+48
+
+TableF15: Comparisonofsentence-levelevaluationmetricsbetweenGemini-2.5-FlashandGPT-4o.
+Metric Gemini-2.5-Flash Gpt-4o
+Sentencecategoryclassification
+Acc(%) 0.96 0.94
+Recall(%) 0.99 0.98
+Detectrelatedprofileitems
+P 0.90 0.92
+key
+R 0.96 0.94
+key
+F1 0.92 0.92
+key
+Entailmentevaluation
+Acc 0.98 0.97
+val
+Detectunsupportedinformation
+P 0.84 0.89
+unsupp
+R 0.86 0.64
+unsupp
+F1 0.84 0.74
+unsupp
+F.4.2 AblationstudyondoctorLLM
+ToevaluatetheabilityofLLMsasthedoctor,toelicitandassesspatientresponses,weconducted
+anablationstudyfocusingonthedoctorLLM’scapacitytoextractinformationfromdiversepatient
+personas. While the main study assessed patients’ ability to provide accurate information, this
+studyexamineshoweffectivelythedoctorLLMgathersinformationacrossvariedpatientprofiles.
+Wemeasuredthreemetrics: ICov,ICon,andtheirproduct(WeightedICon),toassesstheamount
+and consistency of information extracted. These metrics were calculated for 108 patients, each
+assignedoneof37distinctpersonasrandomly. Inthisstudy,wevariedonlythedoctormodel,testing
+Gemini-2.5-Flash,GPT-4omini,andLlama3.370B,whilefixingthePATIENTSIMLLMbackbone
+toLlama3.370B.InTableF16,GPT-4ominiachievedthehighestICovandWeightedIConscores,
+demonstratingsuperiorperformanceinextractinginformation. Consequently,weselectedGPT-4o
+miniasthedoctorLLMfortheautomaticevaluationofPATIENTSIM.
+TableF16: Dialogue-levelfactualityevaluationacrossSocialHistory(Social), PreviousMedical
+History(PMH),andCurrentVisitInformation(CurrentVisit). InformationConsistency(ICon)is
+ratedona4-pointscalebyGemini-2.5-Flash,andWeightedIConrepresentsInformationCoverage-
+WeightedConsistency,reflectingbothcoverageandconsistency.
+InformationCoverage(ICov)(%) InfomationConsistency(ICon) WeightedICon
+Social PMH CurrentVisit Social PMH CurrentVisit Social PMH CurrentVisit Avg.
+Gemini-2.5-Flash 0.34 0.72 0.82 3.74 3.18 2.98 1.27 2.29 2.44 2.00
+GPT-4omini 0.44 0.74 0.86 3.78 3.03 2.92 1.66 2.24 2.51 2.14
+Llama-3.3-70B-Instruct 0.31 0.54 0.79 3.71 3.14 2.95 1.15 1.70 2.33 1.73
+F.4.3 Analysisoftheimpactofhighconfusiononotherpersonatraits
+Weimposedcertainlimitationsonthehighlyconfusedpatientcategorybecausethetypicalbehaviors
+observedinsuchpatientsoftenoverlaporconflictwithotherpersonadimensions. Specifically,highly
+confused patients tend to: 1) misunderstand doctors’ questions and repeat themselves, 2) fail to
+recallpasteventsaccurately,or3)appearoverlyanxiousorevenaggressiveduetobeingemotionally
+overwhelmed. Thesebehaviorscoincide,respectively,withlowLanguageproficiency,poorRecall
+ability,andextremePersonalitytraits. Asaresult,itbecomesdifficulttodistinguishwhetheragiven
+behaviorstemsfromthepatient’sconfusionorfromtheirunderlyingpersonaattributes. Forexample,
+aconfusedpatientwithhighlanguageproficiencymayappeartohavepoorlanguageskillssimply
+duetoconfusion,andapatientwithnaturallylowrecallmaybeindistinguishablefromtheonewhose
+memoryistemporarilyimpairedbyconfusion.
+Toinvestigatethisfurther,weconsultedtwomedicalexperts,eachwithover10yearsofclinical
+experience,includinganERdoctorwith13yearsofexperience.Theyinteractedwithhighlyconfused
+patientswhowereassignedallpossiblecombinationsofpersonaattributesacrossotheraxes(i.e.,
+personality,language,recall). Bothexpertsindependentlyconcludedthattheconfusedstateoften
+overshadowstraitsfromotherpersonaaxes,makingitextremelydifficulttoevaluateeachdimension.
+49
+
+Tosupporttheseobservations,weconductedanadditionalexperiment. Weselectedasubsetoftest
+casesconsistingof“normal”patients(NormalrowinTableF17)andmodifiedonlytheirconfusion
+levelto“highlyconfused,”(HighlyConfusedrowinTableF17)whilekeepingallotherattributes
+unchanged. Wethenre-simulatedtheseconversationsusingPATIENTSIMwithLlama3.370B,and
+evaluatedthemusingGemini-2.5-Flash. AsshownintheTableF17,whiletheConfusedandRealism
+dimensionretainedreasonablyhighscores,indicatingeffectiveconfusionsimulation,Personality,
+Language,andRecallscoresdroppedsignificantlydespitethoseremainingfixed. Thissuggeststhat
+confusiondistortstheexpressionofothertraits,makingitdifficulttointerpretmodelbehavioror
+ensurereliableevaluationsacrossalldimensions.
+TableF17: Personafidelityscoreswhenincreasingtheconfusionlevelofnormalpatientstohighly
+confusedwhilekeepingotherpersonaattributesfixed.
+Metric Personality Language Recall Confused Realism Avg
+Normal 3.90 3.42 3.79 4.00 3.97 3.70
+HighlyConfused 3.62 3.17 3.44 3.64 3.82 3.54
+G Responsibleuseandlimitations
+Ouropen-sourcepatientsimulatorframeworkprovidesasafe,privacy-preservingenvironmentto
+evaluateclinicalLLMsthroughrealisticinteractionswithoutrealpatientdata. Whileits37predefined
+personasofferdiversescenarios,theymaynotfullycoverthevariabilityofreal-worldclinicalsettings.
+Additionally, simulated conversations cannot capture non-verbal cues, and over-reliance on the
+simulator may limit the assessment of practical clinical skills. The simulator is not intended for
+developingclinicaldecision-makingtoolsforrealpatientcarewithoutrigorousclinicaloversight,as
+itisdesignedsolelyforeducationalandresearchpurposes. Acknowledgingtheselimitationsand
+incorporatingexpertfeedbackareessentialforitseffectiveuse.
+50
