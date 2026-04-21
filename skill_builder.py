@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "openai/gemini-2.5-flash"
 DEFAULT_OUTPUT = "skill.md"
+RAW_DIR = Path("data/raw")  
 
 # ═════════════════════════════════════════════════════════
 # 全域問題清單（針對 Cascade 語音虛擬病人系統設計）
@@ -336,6 +337,44 @@ INTEGRATION_SYSTEM_PROMPT = """你是一個技術文件撰寫專家，專精於�
 - 整份文件讀起來像一份「Cascade 語音虛擬病人系統開發指南」"""
 
 
+def classify_source(filename: str, raw_dir: Path) -> tuple[str, str]:
+    """
+    從檔名推斷類型，日期優先從 arXiv ID 解析，其餘從檔案修改時間讀取。
+    回傳 (類型, 日期)
+    """
+    import re
+    from datetime import datetime
+
+    # ── 日期：優先從 arXiv ID 解析（格式 YYMM.NNNNN）──────
+    arxiv_match = re.search(r'(\d{2})(\d{2})\.\d+', filename)
+    if arxiv_match:
+        year, month = arxiv_match.group(1), arxiv_match.group(2)
+        date_str = f"20{year}-{month}"
+    else:
+        # 從檔案修改時間讀取
+        file_path = raw_dir / filename
+        if file_path.exists():
+            mtime = file_path.stat().st_mtime
+            date_str = datetime.fromtimestamp(mtime).strftime("%Y-%m")
+        else:
+            date_str = "—"
+
+    # ── 類型：依命名慣例判斷 ──────────────────────────────
+    name_lower = filename.lower()
+    if arxiv_match:
+        kind = "arXiv 論文"
+    elif "readme" in name_lower:
+        kind = "開源專案 README"
+    elif name_lower.startswith("intro_"):
+        kind = "個人筆記"
+    elif any(kw in filename for kw in ["導尿管", "插管", "醫病"]):
+        kind = "醫療教育文件"
+    else:
+        kind = "個人筆記"
+
+    return kind, date_str
+
+
 def build_skill_md(results: dict, stats: dict, model_name: str) -> str:
     """將所有查詢結果整合成 skill.md 內容"""
 
@@ -344,7 +383,13 @@ def build_skill_md(results: dict, stats: dict, model_name: str) -> str:
         for key, val in results.items()
     )
 
-    sources_list = "\n".join(f"- {s}" for s in stats["sources"])
+    # ── 來源表格：類型 + 日期由程式推導，不依賴 LLM ────────
+    table_header = "| 檔案名稱 | 類型 | 日期 |\n|---|---|---|"
+    table_rows = []
+    for s in stats["sources"]:
+        kind, date_str = classify_source(s, RAW_DIR)
+        table_rows.append(f"| {s} | {kind} | {date_str} |")
+    sources_table = table_header + "\n" + "\n".join(table_rows)
 
     integration_prompt = f"""以下是針對「Cascade 語音虛擬病人系統技術知識庫」的多個查詢結果：
 
@@ -353,8 +398,6 @@ def build_skill_md(results: dict, stats: dict, model_name: str) -> str:
 知識庫統計：
 - 文件數量：{stats['doc_count']} 份
 - Chunk 數量：{stats['chunk_count']} 個
-- 來源清單：
-{sources_list}
 
 請根據以上所有資訊，生成一份完整的 skill.md，格式如下（請嚴格遵守，包含所有 section）：
 
@@ -401,7 +444,9 @@ Error Propagation、Chunking、SER fine-tuning、Virtual Patient vs SP 等]
 [5 組開發者實際會問的技術決策問題與具體答案]
 
 ## Source References
-[列出資料來源清單，包含文件名稱、類型、日期等]
+請將以下表格**原樣**放入此 section，不要修改任何內容：
+
+{sources_table}
 """
 
     messages = [
