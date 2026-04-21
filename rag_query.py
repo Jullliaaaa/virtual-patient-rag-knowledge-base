@@ -1,7 +1,9 @@
 """
 rag_query.py
 RAG 問答 CLI 介面
-流程：Embed Query → Similarity Search → Prompt 組裝 → LiteLLM → 回應含引用來源
+流程：[HyDE] 生成假設答案 → Embed → Similarity Search → Prompt 組裝 → LiteLLM → 回應含引用來源
+HyDE（Hypothetical Document Embeddings）：先讓 LLM 生成假設性答案再 embed，
+解決查詢語言與文件用詞不一致（lexical gap）的問題。
 """
 
 import argparse
@@ -17,7 +19,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 logger = logging.getLogger(__name__)
 
 DEFAULT_TOP_K = 5
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "openai/gemini-2.5-flash"
 
 
 # ═════════════════════════════════════════════════════════
@@ -102,6 +104,14 @@ def build_prompt(query: str, chunks: list[dict]) -> str:
 # ═════════════════════════════════════════════════════════
 
 def call_llm(messages: list[dict], model: str = DEFAULT_MODEL) -> str:
+    """
+    LLM 呼叫，優先使用 LiteLLM，失敗時自動 fallback 到 openai SDK 直打 endpoint。
+    若完全未設定 API key 則回傳 placeholder（第一階段 CI 用）。
+    model 名稱直接使用傳入值，支援：
+      - "gemini-2.5-flash"        → LiteLLM 自動路由
+      - "openai/gemini-2.5-flash" → 強制走 openai-compatible 路由
+      - "gpt-oss-20b"             → 老師本地模型
+    """
     api_key = os.getenv("LITELLM_API_KEY", "")
     base_url = os.getenv("LITELLM_BASE_URL", "")
 
@@ -109,28 +119,88 @@ def call_llm(messages: list[dict], model: str = DEFAULT_MODEL) -> str:
         logger.warning("LITELLM_API_KEY / LITELLM_BASE_URL 未設定，回傳 placeholder 回應")
         return "[LLM Placeholder] 請設定 .env 中的 LITELLM_API_KEY 與 LITELLM_BASE_URL 後再查詢。"
 
+    # ── 方案 A：LiteLLM ──────────────────────────────────
     try:
-        from openai import OpenAI
-        client = OpenAI(api_key=api_key, base_url=base_url)
-        response = client.chat.completions.create(
+        from litellm import completion
+        import litellm
+        litellm.api_key = api_key
+        litellm.api_base = base_url
+
+        response = completion(
             model=model,
             messages=messages,
+            api_base=base_url,
+            api_key=api_key,
         )
         return response.choices[0].message.content
 
     except Exception as e:
-        logger.error(f"LLM 呼叫失敗：{e}")
-        return f"[錯誤] LLM 呼叫失敗：{e}"
+        logger.warning(f"LiteLLM 呼叫失敗（{e}），切換到 fallback...")
+
+    # ── 方案 B：openai SDK 直打 endpoint ─────────────────
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key, base_url=base_url)
+        # openai SDK 不認識 "openai/" 前綴，去掉後直接傳
+        clean_model = model.removeprefix("openai/")
+        response = client.chat.completions.create(
+            model=clean_model,
+            messages=messages,
+        )
+        return response.choices[0].message.content
+
+    except Exception as e2:
+        logger.error(f"Fallback 也失敗：{e2}")
+        return f"[錯誤] LLM 呼叫失敗。\nFallback error: {e2}"
+
 
 # ═════════════════════════════════════════════════════════
-# 5. 單次查詢
+# 5. HyDE（Hypothetical Document Embeddings）
 # ═════════════════════════════════════════════════════════
 
-def run_query(query: str, top_k: int, model_name: str, embed_model, conn) -> str:
+HYDE_SYSTEM_PROMPT = """你是一個語音處理與醫療對話系統的技術專家。
+請根據使用者的問題，提供 3 個不同的搜尋關鍵字組合，以繁體中文與英文術語呈現。僅回傳關鍵字，不需解釋。"""
+
+
+def hyde_query(query: str, model_name: str) -> str:
+    """
+    HyDE：先讓 LLM 生成一段假設性的技術說明，
+    再用這段說明去做 embedding 搜尋，解決 lexical gap 問題。
+    若 LLM 不可用則直接回傳原始查詢。
+    """
+    api_key = os.getenv("LITELLM_API_KEY", "")
+    base_url = os.getenv("LITELLM_BASE_URL", "")
+    if not api_key or not base_url:
+        return query  # LLM 不可用時退回原始查詢
+
+    messages = [
+        {"role": "system", "content": HYDE_SYSTEM_PROMPT},
+        {"role": "user", "content": query},
+    ]
+    hypothetical = call_llm(messages, model=model_name)
+
+    # 若 LLM 回傳錯誤訊息則退回原始查詢
+    if hypothetical.startswith("["):
+        return query
+
+    logger.info(f"HyDE 假設答案：{hypothetical[:80]}...")
+    return hypothetical
+
+
+# ═════════════════════════════════════════════════════════
+# 6. 單次查詢
+# ═════════════════════════════════════════════════════════
+
+def run_query(query: str, top_k: int, model_name: str, embed_model, conn, use_hyde: bool = True) -> str:
     logger.info(f"查詢：{query}")
 
+    # HyDE：用假設答案做 embedding（預設開啟）
+    search_text = hyde_query(query, model_name) if use_hyde else query
+    if use_hyde and search_text != query:
+        logger.info("HyDE 模式：使用假設答案進行向量搜尋")
+
     # Embed
-    query_vec = embed_query(embed_model, query)
+    query_vec = embed_query(embed_model, search_text)
 
     # Retrieve
     chunks = retrieve_chunks(conn, query_vec, top_k)
@@ -168,6 +238,7 @@ def main():
     parser.add_argument("--query", "-q", type=str, help="單次查詢模式：輸入問題")
     parser.add_argument("--top-k", type=int, default=DEFAULT_TOP_K, help=f"取回最相關的 chunk 數量（預設：{DEFAULT_TOP_K}）")
     parser.add_argument("--model", type=str, default=DEFAULT_MODEL, help=f"LLM 模型名稱（預設：{DEFAULT_MODEL}）")
+    parser.add_argument("--no-hyde", action="store_true", help="停用 HyDE（預設啟用）")
     args = parser.parse_args()
 
     # 初始化
@@ -176,7 +247,7 @@ def main():
 
     if args.query:
         # 單次查詢模式
-        result = run_query(args.query, args.top_k, args.model, embed_model, conn)
+        result = run_query(args.query, args.top_k, args.model, embed_model, conn, use_hyde=not args.no_hyde)
         print("\n" + "="*60)
         print(result)
         print("="*60)
@@ -198,8 +269,9 @@ def main():
                 print("結束對話")
                 break
 
-            # Retrieve
-            query_vec = embed_query(embed_model, query)
+            # Retrieve（HyDE）
+            search_text = hyde_query(query, args.model) if not args.no_hyde else query
+            query_vec = embed_query(embed_model, search_text)
             chunks = retrieve_chunks(conn, query_vec, args.top_k)
 
             if not chunks:
