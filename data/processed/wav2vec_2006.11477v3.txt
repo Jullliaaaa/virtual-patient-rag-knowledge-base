@@ -1,0 +1,1039 @@
+wav2vec 2.0: A Framework for Self-Supervised
+Learning of Speech Representations
+AlexeiBaevski HenryZhou AbdelrahmanMohamed MichaelAuli
+{abaevski,henryzhou7,abdo,michaelauli}@fb.com
+FacebookAI
+Abstract
+We show for the first time that learning powerful representations from speech
+audioalonefollowedbyfine-tuningontranscribedspeechcanoutperformthebest
+semi-supervisedmethodswhilebeingconceptuallysimpler. wav2vec2.0masks
+thespeechinputinthelatentspaceandsolvesacontrastivetaskdefinedovera
+quantizationofthelatentrepresentationswhicharejointlylearned. Experiments
+using all labeled data of Librispeech achieve 1.8/3.3 WER on the clean/other
+test sets. When lowering the amount of labeled data to one hour, wav2vec 2.0
+outperformsthepreviousstateoftheartonthe100hoursubsetwhileusing100
+timeslesslabeleddata. Usingjusttenminutesoflabeleddataandpre-training
+on53khoursofunlabeleddatastillachieves4.8/8.2WER.Thisdemonstratesthe
+feasibilityofspeechrecognitionwithlimitedamountsoflabeleddata.1
+1 Introduction
+Neuralnetworksbenefitfromlargequantitiesoflabeledtrainingdata. However,inmanysettings
+labeleddataismuchhardertocomebythanunlabeleddata: currentspeechrecognitionsystems
+require thousands of hours of transcribed speech to reach acceptable performance which is not
+availableforthevastmajorityofthenearly7,000languagesspokenworldwide[31]. Learningpurely
+fromlabeledexamplesdoesnotresemblelanguageacquisitioninhumans: infantslearnlanguageby
+listeningtoadultsaroundthem-aprocessthatrequireslearninggoodrepresentationsofspeech.
+In machine learning, self-supervised learning has emerged as a paradigm to learn general data
+representationsfromunlabeledexamplesandtofine-tunethemodelonlabeleddata. Thishasbeen
+particularlysuccessfulfornaturallanguageprocessing[43,45,9]andisanactiveresearchareafor
+computervision[20,2,36,19,6].
+Inthispaper,wepresentaframeworkforself-supervisedlearningofrepresentationsfromrawaudio
+data. Ourapproachencodesspeechaudioviaamulti-layerconvolutionalneuralnetworkandthen
+masks spans of the resulting latent speech representations [26, 56], similar to masked language
+modeling[9]. ThelatentrepresentationsarefedtoaTransformernetworktobuildcontextualizedrep-
+resentationsandthemodelistrainedviaacontrastivetaskwherethetruelatentistobedistinguished
+fromdistractors[54,49,48,28] (§2).
+As part of training, we learn discrete speech units [53, 32, 7, 18] via a gumbel softmax [24, 5]
+torepresentthelatentrepresentationsinthecontrastivetask(Figure1)whichwefindtobemore
+effectivethannon-quantizedtargets. Afterpre-trainingonunlabeledspeech,themodelisfine-tuned
+1Codeandmodelsareavailableathttps://github.com/pytorch/fairseq
+Preprint.Underreview.
+0202
+tcO
+22
+]LC.sc[
+3v77411.6002:viXra
+
+AAAB8nicbVDLSgMxFM3UV62vqks3wSK4KjNSUHeFblxWsQ+YDiWTZtrQTDIkd4Qy9DPcuFDErV/jzr8x085CWw8EDufcS849YSK4Adf9dkobm1vbO+Xdyt7+weFR9fika1SqKetQJZTuh8QwwSXrAAfB+olmJA4F64XTVu73npg2XMlHmCUsiMlY8ohTAlbyBzGBCSUia82H1ZpbdxfA68QrSA0VaA+rX4ORomnMJFBBjPE9N4EgIxo4FWxeGaSGJYROyZj5lkoSMxNki8hzfGGVEY6Utk8CXqi/NzISGzOLQzuZRzSrXi7+5/kpRDdBxmWSApN0+VGUCgwK5/fjEdeMgphZQqjmNiumE6IJBdtSxZbgrZ68TrpXda9Rv71v1JoPRR1ldIbO0SXy0DVqojvURh1EkULP6BW9OeC8OO/Ox3K05BQ7p+gPnM8ffAiRdQ==
+
+AAAB8nicbVDLSgMxFM3UV62vqks3wSK4KjNSUHcFNy5bsQ+YDiWTZtrQTDIkd4Qy9DPcuFDErV/jzr8x085CWw8EDufcS849YSK4Adf9dkobm1vbO+Xdyt7+weFR9fika1SqKetQJZTuh8QwwSXrAAfB+olmJA4F64XTu9zvPTFtuJKPMEtYEJOx5BGnBKzkD2ICE0pE1p4PqzW37i6A14lXkBoq0BpWvwYjRdOYSaCCGON7bgJBRjRwKti8MkgNSwidkjHzLZUkZibIFpHn+MIqIxwpbZ8EvFB/b2QkNmYWh3Yyj2hWvVz8z/NTiG6CjMskBSbp8qMoFRgUzu/HI64ZBTGzhFDNbVZMJ0QTCralii3BWz15nXSv6l6jfttu1JoPRR1ldIbO0SXy0DVqonvUQh1EkULP6BW9OeC8OO/Ox3K05BQ7p+gPnM8fkU6Rgw==
+
+AAAB8nicbVDLSgMxFL1TX7W+qi7dBIvgqsxIQd0V3LisYh84HUomzbShmWRIMkIZ+hluXCji1q9x59+YaWehrQcCh3PuJeeeMOFMG9f9dkpr6xubW+Xtys7u3v5B9fCoo2WqCG0TyaXqhVhTzgRtG2Y47SWK4jjktBtObnK/+0SVZlI8mGlCgxiPBIsYwcZKfj/GZkwwzx5ng2rNrbtzoFXiFaQGBVqD6ld/KEkaU2EIx1r7npuYIMPKMMLprNJPNU0wmeAR9S0VOKY6yOaRZ+jMKkMUSWWfMGiu/t7IcKz1NA7tZB5RL3u5+J/npya6CjImktRQQRYfRSlHRqL8fjRkihLDp5ZgopjNisgYK0yMbaliS/CWT14lnYu616hf3zVqzfuijjKcwCmcgweX0IRbaEEbCEh4hld4c4zz4rw7H4vRklPsHMMfOJ8/nvuRjA==
+
+AAAB8nicbVDLSgMxFL1TX7W+qi7dBIvgqsxIQd0V3LhwUcU+YDqUTJppQzPJkGSEMvQz3LhQxK1f486/MdPOQlsPBA7n3EvOPWHCmTau++2U1tY3NrfK25Wd3b39g+rhUUfLVBHaJpJL1QuxppwJ2jbMcNpLFMVxyGk3nNzkfveJKs2keDTThAYxHgkWMYKNlfx+jM2YYJ7dzQbVmlt350CrxCtIDQq0BtWv/lCSNKbCEI619j03MUGGlWGE01mln2qaYDLBI+pbKnBMdZDNI8/QmVWGKJLKPmHQXP29keFY62kc2sk8ol72cvE/z09NdBVkTCSpoYIsPopSjoxE+f1oyBQlhk8twUQxmxWRMVaYGNtSxZbgLZ+8SjoXda9Rv75v1JoPRR1lOIFTOAcPLqEJt9CCNhCQ8Ayv8OYY58V5dz4WoyWn2DmGP3A+fwCJtZF+ 
+Contrastive loss
+`
+L
+Context
+representations C
+Transformer
+… …
+Masked
+Quantized
+representations q q q q q
+Q
+Latent speech
+representations Z
+CNN
+raw waveform
+X >>>AAAAAAAAAAAABBBB8888nnnniiiiccccbbbbVVVVBBBBNNNNSSSS8888NNNNAAAAFFFFHHHHyyyyppppXXXX7777VVVV++++VVVVTTTT11116666WWWWSSSSyyyyCCCCpppp5555KKKKIIIIooooMMMMeeeeCCCCFFFF44449999VVVVbbbbCCCC2222kkkkooooWWWWyyyy2222mmmm3333bbbbppppJJJJhhhhtttt2222XXXX4444QQQQSSSS++++jjjjOOOO8888eeeeFFFFDDDDEEEEqqqq7777////GGGGmmmm////////GGGGTTTTZZZZuuuuDDDDttttgggg4444ssssDDDDDDDDPPPPvvvvssssffffMMMMmmmmTTTTKKKKUUUUwwww6666LLLLrrrrffffTTTTmmmmVVVVttttffffWWWWNNNNzzzzqqqq7777ppppdddd22229999nnnndddd2222zzzz++++ooooHHHHxxxx55551111jjjjccccoooo00004444xxxx2222mmmmppppNNNNKKKK9999kkkkBBBBoooouuuuRRRRccccIIII7777KKKKFFFFDDDDyyyyXXXXqqqqoooo5555jjjjUUUUPPPPJJJJHHHH8888PPPPJJJJTTTTeeeeEEEE////PPPPnnnnFFFFtttthhhhEEEEooooeeeeccccJJJJrrrryyyyIIIIKKKKaaaajjjjRRRREEEESSSSCCCCUUUUbbbbSSSSSSSS333344448888ppppjjjjhhhhmmmmVVVVeeeeWWWW88882222qqqqDDDDffffccccppppjjjjssssHHHHWWWWSSSSVVVVeeeeSSSSRRRRppppQQQQoooojjjj2222ooooffff////WWWWHHHHiiiimmmmUUUUxxxxTTTT5555BBBBJJJJaaaaoooozzzzvvvvuuuuSSSSkkkkGGGGOOOOddddUUUUoooommmmOOOOSSSSzzzzWWWWjjjj8888zzzzPPPPKKKKVVVVssssQQQQkkkkffffccccttttzzzzSSSShhhhMMMMTTTTddddBBBBPPPPoooo88888888IIII2222ddddWWWWGGGGZZZZJJJJIIIIaaaaffffssssSSSSJJJJHHHHPPPP111199990000ZZZZOOOOYYYY2222OOOOmmmmccccWWWWggggnnnniiii4444hhhhmmmm2222SSSSvvvvEEEE////zzzzwwww////wwww++++gggg6666yyyyEEEEWWWWSSSSZZZZssssggggTTTTttttvvvvggggooooyyyyiiiiRRRRBBBBRRRRYYYYrrrr7777yyyyVVVVBBBBoooozzzzllllBBBBOOOOLLLLaaaaFFFFMMMMCCCC5555uuuuVVVVssssDDDDHHHHVVVVllllKKKKFFFFttttqqqqWWWWZZZZLLLL8888JJJJZZZZPPPPXXXXiiiiXXXXddddiiii6666bbbbnnnnNNNNrrrr22227777yyyy0000bbbbrrrrvvvvqqqqyyyyjjjjCCCCiiiiddddwwwwCCCCuuuuffffggggwwwwRRRRWWWW00004444BBBBbbbbaaaa0000AAAAEEEEGGGGCCCCpppp7777hhhhFFFFdddd4444ccccddddFFFF6666ccccdddd++++ddddjjjjMMMMVVVVppppxxxxyyyypppp1111jjjj++++AAAAPPPPnnnn8888wwwweeeeYYYYEEEEZZZZFFFF++++ >>>
+Figure1: Illustrationofourframeworkwhichjointlylearnscontextualizedspeechrepresentations
+andaninventoryofdiscretizedspeechunits.
+on labeled data with a Connectionist Temporal Classification (CTC) loss [14, 4] to be used for
+downstreamspeechrecognitiontasks(§3)
+Previousworklearnedaquantizationofthedatafollowedbyacontextualizedrepresentationswitha
+self-attentionmodel[5,4],whereasourapproachsolvesbothproblemsend-to-end. Maskingparts
+oftheinputwithTransformernetworksforspeechhasbeenexplored [4,26],butpriorworkrelies
+eitheronatwo-steppipelineortheirmodelistrainedbyreconstructingthefilterbankinputfeatures.
+Otherrelatedworkincludeslearningrepresentationsfromauto-encodingtheinputdata[52,11]or
+directlypredictingfuturetimesteps[8].
+Our results show that jointly learning discrete speech units with contextualized representations
+achievessubstantiallybetterresultsthanfixedunitslearnedinapriorstep[4]. Wealsodemonstrate
+thefeasibilityofultra-lowresourcespeechrecognition: whenusingonly10minutesoflabeleddata,
+our approach achieves word error rate (WER) 4.8/8.2 on the clean/other test sets of Librispeech.
+WesetanewstateoftheartonTIMITphonemerecognitionaswellasthe100hourcleansubset
+of Librispeech. Moreover, when we lower the amount of labeled data to just one hour, we still
+outperform the previous state of the art self-training method of [42] while using 100 times less
+labeleddataandthesameamountofunlabeleddata. Whenweuseall960hoursoflabeleddatafrom
+Librispeech,thenourmodelachieves1.8/3.3WER(§4,§5).
+2 Model
+Ourmodeliscomposedofamulti-layerconvolutionalfeatureencoderf : whichtakesas
+X (cid:55)→Z
+inputrawaudio andoutputslatentspeechrepresentationsz ,...,z forT time-steps. Theyare
+1 T
+X
+thenfedtoaTransformerg : tobuildrepresentationsc ,...,c capturinginformationfrom
+1 T
+Z (cid:55)→C
+theentiresequence[9,5,4]. Theoutputofthefeatureencoderisdiscretizedtoq withaquantization
+t
+module torepresentthetargets(Figure1)intheself-supervisedobjective(§3.2). Compared
+Z (cid:55)→Q
+tovq-wav2vec[5],ourmodelbuildscontextrepresentationsovercontinuousspeechrepresentations
+andself-attentioncapturesdependenciesovertheentiresequenceoflatentrepresentationsend-to-end.
+Featureencoder. Theencoderconsistsofseveralblockscontainingatemporalconvolutionfol-
+lowedbylayernormalization[1]andaGELUactivationfunction[21]. Therawwaveforminputto
+theencoderisnormalizedtozeromeanandunitvariance. Thetotalstrideoftheencoderdetermines
+thenumberoftime-stepsT whichareinputtotheTransformer(§4.2).
+ContextualizedrepresentationswithTransformers. Theoutputofthefeatureencoderisfedto
+acontextnetworkwhichfollowstheTransformerarchitecture[55,9,33]. Insteadoffixedpositional
+embeddings which encode absolute positional information, we use a convolutional layer similar
+to[37,4,57]whichactsasrelativepositionalembedding. Weaddtheoutputoftheconvolution
+followedbyaGELUtotheinputsandthenapplylayernormalization.
+Quantizationmodule. Forself-supervisedtrainingwediscretizetheoutputofthefeatureencoder
+z to a finite set of speech representations via product quantization [25]. This choice led to good
+2
+
+resultsinpriorworkwhichlearneddiscreteunitsinafirststepfollowedbylearningcontextualized
+representations [5]. Product quantization amounts to choosing quantized representations from
+multiplecodebooksandconcatenatingthem. GivenGcodebooks, orgroups, withV entriese
+RV×d/G,wechooseoneentryfromeachcodebookandconcatenatetheresultingvectorse ,...,e∈
+1 G
+andapplyalineartransformationRd Rf toobtainq Rf.
+(cid:55)→ ∈
+TheGumbelsoftmaxenableschoosingdiscretecodebookentriesinafullydifferentiableway[16,24,
+35]. Weusethestraight-throughestimator[26]andsetupGhardGumbelsoftmaxoperations[24].
+Thefeatureencoderoutputzismappedtol RG×V logitsandtheprobabilitiesforchoosingthe
+∈
+v-thcodebookentryforgroupgare
+exp(l +n )/τ
+p = g,v v , (1)
+g,v (cid:80)V
+exp(l +n )/τ
+k=1 g,k k
+whereτ isanon-negativetemperature,n= log( log(u))anduareuniformsamplesfrom (0,1).
+− − U
+Duringtheforwardpass,codewordiischosenbyi = argmax p andinthebackwardpass,the
+j g,j
+truegradientoftheGumbelsoftmaxoutputsisused.
+3 Training
+Topre-trainthemodelwemaskacertainproportionoftimestepsinthelatentfeatureencoderspace
+(§3.1),similartomaskedlanguagemodelinginBERT[9]. Thetrainingobjectiverequiresidentifying
+thecorrectquantizedlatentaudiorepresentationinasetofdistractorsforeachmaskedtimestep
+(§3.2)andthefinalmodelisfine-tunedonthelabeleddata(§3.3).
+3.1 Masking
+Wemaskaproportionofthefeatureencoderoutputs,ortimestepsbeforefeedingthemtothecontext
+networkandreplacethemwithatrainedfeaturevectorsharedbetweenallmaskedtimesteps;we
+donotmaskinputstothequantizationmodule. Tomaskthelatentspeechrepresentationsoutputby
+theencoder,werandomlysamplewithoutreplacementacertainproportionpofalltimestepstobe
+startingindicesandthenmaskthesubsequentM consecutivetimestepsfromeverysampledindex;
+spansmayoverlap.
+3.2 Objective
+Duringpre-training,welearnrepresentationsofspeechaudiobysolvingacontrastivetask which
+m
+L
+requirestoidentifythetruequantizedlatentspeechrepresentationforamaskedtimestepwithinaset
+ofdistractors. Thisisaugmentedbyacodebookdiversityloss toencouragethemodeltousethe
+d
+L
+codebookentriesequallyoften.
+= +α (2)
+m d
+L L L
+whereαisatunedhyperparameter.
+ContrastiveLoss. Givencontextnetworkoutputc centeredovermaskedtimestept,themodel
+t
+needs to identify the true quantized latent speech representation q in a set of K +1 quantized
+t
+candidate representations q˜ Q which includes q and K distractors [23, 54]. Distractors are
+t t
+∈
+uniformlysampledfromothermaskedtimestepsofthesameutterance. Thelossisdefinedas
+exp(sim(c ,q )/κ)
+= log t t (3)
+Lm − (cid:80) exp(sim(c ,q˜)/κ)
+q˜∼Qt t
+wherewecomputethecosinesimilaritysim(a,b)=aTb/ a b betweencontextrepresentations
+(cid:107) (cid:107)(cid:107) (cid:107)
+andquantizedlatentspeechrepresentations[19,6].
+Diversity Loss. The contrastive task depends on the codebook to represent both positive and
+negativeexamplesandthediversityloss isdesignedtoincreasetheuseofthequantizedcodebook
+d
+L
+representations[10]. WeencouragetheequaluseoftheV entriesineachoftheGcodebooksby
+maximizingtheentropyoftheaveragedsoftmaxdistributionloverthecodebookentriesforeach
+3
+
+codebookp¯ acrossabatchofutterances;thesoftmaxdisributiondoesnotcontainthegumbelnoise
+g
+noratemperature:2
+G G V
+1 (cid:88) 1 (cid:88)(cid:88)
+= H(p¯ )= p¯ logp¯ (4)
+Ld GV − g GV g,v g,v
+g=1 g=1v=1
+3.3 Fine-tuning
+Pre-trained models are fine-tuned for speech recognition by adding a randomly initialized linear
+projectionontopofthecontextnetworkintoC classesrepresentingthevocabularyofthetask[4].
+ForLibrispeech,wehave29tokensforcharactertargetsplusawordboundarytoken. Modelsare
+optimizedbyminimizingaCTCloss[14]andweapplyamodifiedversionofSpecAugment[41]
+bymaskingtotime-stepsandchannelsduringtrainingwhichdelaysoverfittingandsignificantly
+improvesthefinalerrorrates,especiallyontheLibri-lightsubsetswithfewlabeledexamples.
+4 ExperimentalSetup
+4.1 Datasets
+AsunlabeleddataweconsidertheLibrispeechcorpus[40]withouttranscriptionscontaining960
+hoursofaudio(LS-960)ortheaudiodatafromLibriVox(LV-60k). Forthelatterwefollowthepre-
+processingof[27]resultingin53.2khoursofaudio. Wefine-tuneonfivelabeleddatasettings: 960
+hoursoftranscribedLibrispeech,thetrain-clean-100subsetcomprising100hours(100hourslabeled),
+as well as the Libri-light limited resource training subsets originally extracted from Librispeech,
+thesearetrain-10h(10hourslabeled),train-1h(1hourlabeled),train-10min(10minlabeled). We
+followtheevaluationprotocolofLibri-lightforthesesplitsandevaluateonthestandardLibrispech
+dev-other/cleanandtest-clean/othersets.
+Wefine-tunethepre-trainedmodelsforphonemerecognitionontheTIMITdataset[13]. Itcontains
+fivehoursofaudiorecordingswithdetailedphonemelabels. Weusethestandardtrain,devandtest
+splitandfollowthestandardprotocolofcollapsingphonelabelsto39classes.
+4.2 Pre-training
+Modelsareimplementedinfairseq[39]. Formasking,wesamplep=0.065ofalltime-stepstobe
+startingindicesandmaskthesubsequentM =10time-steps. Thisresultsinapproximately49%of
+alltimestepstobemaskedwithameanspanlengthof14.7,or299ms(seeAppendixAformore
+detailsonmasking).
+Thefeatureencodercontainssevenblocksandthetemporalconvolutionsineachblockhave512
+channelswithstrides(5,2,2,2,2,2,2)andkernelwidths(10,3,3,3,3,2,2). Thisresultsinanencoder
+outputfrequencyof49hzwithastrideofabout20msbetweeneachsample,andareceptivefieldof
+400inputsamplesor25msofaudio.Theconvolutionallayermodelingrelativepositionalembeddings
+haskernelsize128and16groups.
+Weexperimentwithtwomodelconfigurationswhichusethesameencoderarchitecturebutdifferin
+theTransformersetup: BASEcontains12transformerblocks,modeldimension768,innerdimension
+(FFN)3,072and8attentionheads. Batchesarebuiltbycropping250kaudiosamples,or15.6sec,
+fromeachexample. Cropsarebatchedtogethertonotexceed1.4msamplesperGPUandwetrainon
+atotalof64V100GPUsfor1.6days[38];thetotalbatchsizeis1.6h.
+TheLARGEmodelcontains24transformerblockswithmodeldimension1,024,innerdimension
+4,096and16attentionheads. Wecrop320kaudiosamples,or20sec,withalimitof1.2msamples
+perGPUandtrainon128V100GPUsover2.3daysforLibrispeechand5.2daysforLibriVox;the
+totalbatchsizeis2.7h. Weusedropout0.1intheTransformer,attheoutputofthefeatureencoder
+andtheinputtothequantizationmodule. Layersaredroppedatarateof0.05forBASEand0.2for
+LARGE [22,12];thereisnolayerdropforLV-60k.
+2Ourimplementationmaximizesperplexity GV−(cid:80)G g=1exp(−(cid:80)V v=1pgvlogpgv) whichisequivalent.
+GV
+4
+
+WeoptimizewithAdam[29],warmingupthelearningrateforthefirst8%ofupdatestoapeakof
+5 10−4 for BASE and3 10−4 for LARGE,andthenlinearlydecayit. LARGE trainsfor250k
+× ×
+updates,BASEfor400kupdates,andLARGEonLV-60kfor600kupdates. Weuseweightα=0.1
+forthediversitylossEquation2. ForthequantizationmoduleweuseG=2andV =320forboth
+models,resultinginatheoreticalmaximumof102.4kcodewords. Entriesareofsized/G = 128
+for BASE amd d/G = 384 for LARGE. The Gumbel softmax temperature τ is annealed from 2
+toaminimumof0.5for BASE and0.1for LARGE byafactorof0.999995ateveryupdate. The
+temperatureinthecontrastiveloss(Equation3)issettoκ=0.1. ForthesmallerLibrispeechdataset,
+weregularizethemodelbyapplyinganL2penaltytotheactivationsofthefinallayerofthefeature
+encoderandscaledownthegradientsfortheencoderbyafactorof10.Wealsouseaslightlydifferent
+encoderarchitecturewherewedonotuselayernormalization,andinsteadofnormalizingtheraw
+waveform,theoutputofthefirstencoderlayerisnormalized. InthecontrastivelossweuseK =100
+distractors. Wechoosethetrainingcheckpointwiththelowest onthevalidationset.
+m
+L
+4.3 Fine-tuning
+After pre-training we fine-tune the learned representations on labeled data and add a randomly
+initializedoutputlayerontopoftheTransformertopredictcharacters(Librispeech/Libri-light)or
+phonemes(TIMIT).ForLibri-light,wetrainthreeseedswithtwodifferentlearningrates(2e-5and
+3e-5)forallsubsetsandchoosetheconfigurationwithlowestWERondev-othersubsetdecodedwith
+theofficial4-gramlanguagemodel(LM)withbeam50andfixedmodelweights(LMweight2,word
+insertionpenalty-1). ForBASEonthelabeled960hsubsetweusealearningrateof1e-4.
+WeoptimizewithAdamandatri-staterateschedulewherethelearningrateiswarmedupforthefirst
+10%ofupdates,heldconstantforthenext40%andthenlinearlydecayedfortheremainder. BASE
+usesabatchsizeof3.2msamplesperGPUandwefine-tuneon8GPUs,givingatotalbatchsize
+of1,600sec. LARGEbatches1.28msamplesoneachGPUandwefine-tuneon24GPUs,resulting
+inaneffectivebatchsizeof1,920sec. Forthefirst10kupdatesonlytheoutputclassifieristrained,
+afterwhichtheTransformerisalsoupdated. Thefeatureencoderisnottrainedduringfine-tuning.
+WemaskthefeatureencoderrepresentationswithastrategysimilartoSpecAugment[41]detailed
+inAppendixB.
+4.4 LanguageModelsandDecoding
+Weconsidertwotypesoflanguagemodels(LM):a4-grammodelandaTransformer[3]trainedon
+theLibrispeechLMcorpus. TheTransformerLMisidenticalto[51]andcontains20blocks,model
+dimension1,280,innerdimension6,144and16attentionheads. Wetunetheweightsofthelanguage
+model(interval[0,5])andawordinsertionpenalty([ 5,5])viaBayesianoptimization3: werun128
+−
+trialswithbeam500forthe4-gramLMandbeam50fortheTransformerLMandchoosethebestset
+ofweightsaccordingtoperformanceondev-other. Testperformanceismeasuredwithbeam1,500
+forthen-gramLMandbeam500fortheTransformerLM.Weusethebeamsearchdecoderof[44].
+5 Results
+5.1 Low-ResourceLabeledDataEvaluation
+Wefirstevaluateourpre-trainedmodelsinsettingswheretheamountoflabeleddataislimitedtoget
+asenseofhowtherepresentationslearnedonunlabeleddatacanimprovelowresourcesettings. Ifa
+pre-trainedmodelcapturesthestructureofspeech,thenitshouldrequirefewlabeledexamplesto
+fine-tuneitforspeechrecognition. Themodelsarepre-trainedontheaudiodataofeitherLibrispeech
+(LS-960) or LibriVox (LV-60k) and most results are obtained by decoding with a Transformer
+languagemodel(Transf.);AppendixCshowsresultswithnolanguagemodelatallaswellaswithan
+n-gramlanguagemodel.
+TheLARGEmodelpre-trainedonLV-60kandfine-tunedononly10minutesoflabeleddataachieves
+aworderrorrateof5.2/8.6ontheLibrispeechclean/othertestsets. Tenminutesoflabeleddata
+correspondstojust48recordingswithanaveragelengthof12.5seconds. Thisdemonstratesthat
+ultra-lowresourcespeechrecognitionispossiblewithself-supervisedlearningonunlabeleddata.
+3https://github.com/facebook/Ax
+5
+
+Table1: WERontheLibrispeechdev/testsetswhentrainingontheLibri-lightlow-resourcelabeled
+datasetupsof10min,1hour,10hoursandtheclean100hsubsetofLibrispeech. Modelsuseeither
+theaudioofLibrispeech(LS-960)orthelargerLibriVox(LV-60k)asunlabeleddata. Weconsider
+two model sizes: BASE (95m parameters) and LARGE (317m parameters). Prior work used 860
+unlabeledhours(LS-860)butthetotalwithlabeleddatais960hoursandcomparabletooursetup.
+Unlabeled dev test
+Model LM
+data clean other clean other
+10minlabeled
+DiscreteBERT[4] LS-960 4-gram 15.7 24.1 16.3 25.2
+BASE LS-960 4-gram 8.9 15.7 9.1 15.6
+Transf. 6.6 13.2 6.9 12.9
+LARGE LS-960 Transf. 6.6 10.6 6.8 10.8
+LV-60k Transf. 4.6 7.9 4.8 8.2
+1hlabeled
+DiscreteBERT[4] LS-960 4-gram 8.5 16.4 9.0 17.6
+BASE LS-960 4-gram 5.0 10.8 5.5 11.3
+Transf. 3.8 9.0 4.0 9.3
+LARGE LS-960 Transf. 3.8 7.1 3.9 7.6
+LV-60k Transf. 2.9 5.4 2.9 5.8
+10hlabeled
+DiscreteBERT[4] LS-960 4-gram 5.3 13.2 5.9 14.1
+Iter. pseudo-labeling[58] LS-960 4-gram+Transf. 23.51 25.48 24.37 26.02
+LV-60k 4-gram+Transf. 17.00 19.34 18.03 19.92
+BASE LS-960 4-gram 3.8 9.1 4.3 9.5
+Transf. 2.9 7.4 3.2 7.8
+LARGE LS-960 Transf. 2.9 5.7 3.2 6.1
+LV-60k Transf. 2.4 4.8 2.6 4.9
+100hlabeled
+HybridDNN/HMM[34] - 4-gram 5.0 19.5 5.8 18.6
+TTSdataaugm.[30] - LSTM 4.3 13.5
+DiscreteBERT[4] LS-960 4-gram 4.0 10.9 4.5 12.1
+Iter. pseudo-labeling[58] LS-860 4-gram+Transf. 4.98 7.97 5.59 8.95
+LV-60k 4-gram+Transf. 3.19 6.14 3.72 7.11
+Noisystudent[42] LS-860 LSTM 3.9 8.8 4.2 8.6
+BASE LS-960 4-gram 2.7 7.9 3.4 8.0
+Transf. 2.2 6.3 2.6 6.3
+LARGE LS-960 Transf. 2.1 4.8 2.3 5.0
+LV-60k Transf. 1.9 4.0 2.0 4.0
+Ourapproachofjointlylearningdiscreteunitsandcontextualizedrepresentationsclearlyimproves
+overpreviousworkwhichlearnedquantizedaudiounitsinaseparatestep[4],reducingWERbya
+aboutathird.
+Arecentiterativeself-trainingapproach[42]representsthestateoftheartontheclean100hour
+subsetofLibrispeechbutitrequiresmultipleiterationsoflabeling,filtering,andre-training. Our
+approachissimpler: wepre-trainontheunlabeleddataandfine-tuneonthelabeleddata. Onthe100
+hoursubsetofLibrispeech,theirmethodachievesWER4.2/8.6ontest-clean/otherwhichcomparesto
+WER2.3/5.0withtheLARGEmodelinalikeforlikesetup,arelativeWERreductionof45%/42%.
+When the LARGE model uses an order of magnitude less labeled data (10h labeled), then it still
+achievesWER3.2/6.1,anerrorreductionof24%/29%relativetoiterativeself-training. Usingonlya
+singlehouroflabeleddata,thesamemodelachievesWER3.9/7.6whichimprovesonbothtest-clean
+andtest-otherby7%/12%-withtwoordersofmagnitudelesslabeleddata. WenotethattheLibri-
+6
+
+Table2: WERonLibrispeechwhenusingall960hoursoflabeleddata(cf. Table1).
+Unlabeled dev test
+Model LM
+data clean other clean other
+Supervised
+CTCTransf[51] - CLM+Transf. 2.20 4.94 2.47 5.45
+S2STransf. [51] - CLM+Transf. 2.10 4.79 2.33 5.17
+Transf. Transducer[60] - Transf. - - 2.0 4.6
+ContextNet[17] - LSTM 1.9 3.9 1.9 4.1
+Conformer[15] - LSTM 2.1 4.3 1.9 3.9
+Semi-supervised
+CTCTransf. +PL[51] LV-60k CLM+Transf. 2.10 4.79 2.33 4.54
+S2STransf. +PL[51] LV-60k CLM+Transf. 2.00 3.65 2.09 4.11
+Iter. pseudo-labeling[58] LV-60k 4-gram+Transf. 1.85 3.26 2.10 4.01
+Noisystudent[42] LV-60k LSTM 1.6 3.4 1.7 3.4
+Thiswork
+LARGE-fromscratch - Transf. 1.7 4.3 2.1 4.6
+BASE LS-960 Transf. 1.8 4.7 2.1 4.8
+LARGE LS-960 Transf. 1.7 3.9 2.0 4.1
+LV-60k Transf. 1.6 3.0 1.8 3.3
+lightdatasplitscontainbothcleanandnoisydataleadingtobetteraccuracyontest-othercompared
+totest-clean. IncreasingmodelsizereducesWERonallsetupswiththelargestimprovementson
+test-other(BASEvs. LARGEbothonLS-960)andincreasingtheamountofunlabeledtrainingdata
+alsoleadstolargeimprovements(LARGELS-960vs. LV-60k).
+5.2 High-ResourceLabeledDataEvaluationonLibrispeech
+Inthissectionweevaluatetheperformancewhenlargequantitiesoflabeledspeechareavailable
+toassesstheeffectivenessofourapproachinahighresourcesetup. Specifically,wefine-tunethe
+samemodelsasbeforeonthefull960hoursoflabeledLibrispeech: BASEandLARGEpre-trained
+onLS-960aswellasLARGEpre-trainedonLV-60k.
+Table2showsthatourapproachachievesWER1.8/3.3ontest-clean/otheronthefullLibrispeech
+benchmark. Thisisdespiteaweakerbaselinearchitecture: supervisedtrainingofourarchitecture
+achievesWER2.1/4.6(LARGE-fromscratch)comparedtoWER1.9/4.1forContextNet[17],the
+baselinearchitectureofthestateoftheart[42]. WeuseasimpleTransformerwithCTCwhichdoes
+notperformaswellasseq2seqmodels[51].
+Notethatthevocabularyofouracousticmodel(characters)doesnotmatchthevocabularyofthe
+LM (words) which delays feedback from the LM and is likely to be detrimental. Most recent
+work [51, 58, 17, 42] uses the better performing word pieces [50] for both models. Moreover,
+our result is achieved without any data balancing such as [42]. Finally, self-training is likely
+complimentary to pre-training and their combination may yield even better results. Appendix E
+presentsadetailederroranalysisofourpre-trainedmodelsinvariouslabeleddatasetups.
+5.3 PhonemeRecognitiononTIMIT
+Next,weevaluateaccuracyonTIMITphonemerecognitionbyfine-tuningthepre-trainedmodelson
+thelabeledTIMITtrainingdata. Wefine-tuneasforthe10hoursubsetofLibri-lightbutdonotusea
+languagemodel. Table3showsthatourapproachcanachieveanewstateoftheartonthisdataset,
+reducing PER by a relative 23%/29% over the next best result on the dev/test sets. Appendix D
+showsananalysisofhowthediscretelatentspeechrepresentationsrelatedtophonemes. Otherrecent
+workonpre-trainingwhichevaluatesonTIMITincludes[47]whosolvemultipletaskstolearngood
+representationsofspeech.
+7
+
+Table3: TIMITphonemerecognitionaccuracyintermsofphonemeerrorrate(PER).
+devPER testPER
+CNN+TD-filterbanks[59] 15.6 18.0
+PASE+[47] - 17.2
+Li-GRU+fMLLR[46] – 14.9
+wav2vec[49] 12.9 14.7
+vq-wav2vec[5] 9.6 11.6
+Thiswork(noLM)
+LARGE(LS-960) 7.4 8.3
+Table4: AverageWERandstandarddeviationoncombineddev-clean/otherofLibrispeechforthree
+trainingseeds. Weablatequantizingthecontextnetworkinputandthetargetsinthecontrastiveloss.
+avg. WER std.
+Continuousinputs,quantizedtargets(Baseline) 7.97 0.02
+Quantizedinputs,quantizedtargets 12.18 0.41
+Quantizedinputs,continuoustargets 11.18 0.16
+Continuousinputs,continuoustargets 8.58 0.08
+5.4 Ablations
+A difference to previous work [5, 4] is that we quantize the latent audio representations only for
+thecontrastiveloss,i.e.,whenlatentsareusedastargets,butnotwhenthelatentsareinputtothe
+Transformernetwork. Wemotivatethischoicebyanablatingforwhichweadoptareducedtraining
+setuptoincreaseexperimentalturnaround: wepre-train BASE onLS-960for250kupdateswith
+maskingprobabilityp=0.075,fine-tuneontrain-10hfor60kupdatesonasingleGPUwith640k
+samplesperbatch,or40secofspeechaudio. WereporttheaverageWERandstandarddeviationon
+theconcatenationofdev-cleananddev-other(devPER)forthreeseedsoffine-tuning.
+Table 4 shows that our strategy of continuous inputs with quantized targets (Baseline) performs
+best. Continuous latent speech representations retain more information to enable better context
+representationsandquantizingthetargetrepresentationsleadstomorerobusttraining. Quantizing
+thelatentsbothintheinputandthetargetsperformsleastwell,andexplainsthelowerperformanceof
+priorwork[5,4]. Continuoustargetsreducetheeffectivenessofself-supervisedtrainingsincetargets
+can capture detailed artifacts of the current sequence, e.g. speaker and background information,
+whichmakethetaskeasierandpreventthemodelfromlearninggeneralrepresentationsbeneficial
+tospeechrecognition. Thetrainingaccuracyofidentifyingthecorrectlatentaudiorepresentation
+increasesfrom62%to78.0%whenswitchingfromquantizedtocontinuoustargets. Continuous
+inputsandcontinuoustargetsperformsecondbestbutvariousattemptstoimproveitdidnotleadto
+betterresults(seeAppendixFforthisexperimentandotherablationsonvarioushyperparameters).
+6 Conclusion
+Wepresentedwav2vec2.0,aframeworkforself-supervisedlearningofspeechrepresentationswhich
+maskslatentrepresentationsoftherawwaveformandsolvesacontrastivetaskoverquantizedspeech
+representations.Ourexperimentsshowthelargepotentialofpre-trainingonunlabeleddataforspeech
+processing: whenusingonly10minutesoflabeledtrainingdata,or48recordingsof12.5secondson
+average,weachieveaWERof4.8/8.2ontest-clean/otherofLibrispeech.
+OurmodelachievesresultswhichachieveanewstateoftheartonthefullLibrispeechbenchmarkfor
+noisyspeech. Ontheclean100hourLibrispeechsetup,wav2vec2.0outperformsthepreviousbest
+resultwhileusing100timeslesslabeleddata. Theapproachisalsoeffectivewhenlargeamountsof
+labeleddataareavailable. Weexpectperformancegainsbyswitchingtoaseq2seqarchitectureanda
+wordpiecevocabulary.
+8
+
+BroaderImpact
+Therearearound7,000languagesintheworldandmanymoredialects. However,formostofthem
+nospeechrecognitiontechnologyexistssincecurrentsystemsrequirehundredsorthousandsofhours
+oflabeleddatawhichishardtocollectformostlanguages. Wehaveshownthatspeechrecognition
+modelscanbebuiltwithverysmallamountsofannotateddataatverygoodaccuracy. Wehopeour
+workwillmakespeechrecognitiontechnologymorebroadlyavailabletomanymorelanguagesand
+dialects.
+Acknowledgments
+We thank Tatiana Likhomanenko and Qiantong Xu for helpful discussion and their help with
+wav2letterintegration.
+References
+[1] J.L.Ba,J.R.Kiros,andG.E.Hinton. Layernormalization. arXiv,2016.
+[2] P.Bachman,R.D.Hjelm,andW.Buchwalter. Learningrepresentationsbymaximizingmutual
+informationacrossviews. InProc.ofNeurIPS,2019.
+[3] A.BaevskiandM.Auli. Adaptiveinputrepresentationsforneurallanguagemodeling. InProc.
+ofICLR,2018.
+[4] A.Baevski,M.Auli,andA.Mohamed. Effectivenessofself-supervisedpre-trainingforspeech
+recognition. arXiv,abs/1911.03912,2019.
+[5] A.Baevski,S.Schneider,andM.Auli. vq-wav2vec: Self-supervisedlearningofdiscretespeech
+representations. InProc.ofICLR,2020.
+[6] T.Chen,S.Kornblith,M.Norouzi,andG.Hinton. Asimpleframeworkforcontrastivelearning
+ofvisualrepresentations. arXiv,abs/2002.05709,2020.
+[7] J.Chorowski,R.J.Weiss,S.Bengio,andA.vandenOord. Unsupervisedspeechrepresentation
+learningusingwavenetautoencoders. arXiv,abs/1901.08810,2019.
+[8] Y.Chung,W.Hsu,H.Tang,andJ.R.Glass. Anunsupervisedautoregressivemodelforspeech
+representationlearning. arXiv,abs/1904.03240,2019.
+[9] J.Devlin,M.-W.Chang,K.Lee,andK.Toutanova. Bert: Pre-trainingofdeepbidirectional
+transformersforlanguageunderstanding. arXiv,abs/1810.04805,2018.
+[10] S.Dieleman,A.vandenOord,andK.Simonyan. Thechallengeofrealisticmusicgeneration:
+modellingrawaudioatscale. arXiv,2018.
+[11] R. Eloff, A. Nortje, B. van Niekerk, A. Govender, L. Nortje, A. Pretorius, E. Van Biljon,
+E.vanderWesthuizen,L.vanStaden,andH.Kamper. Unsupervisedacousticunitdiscoveryfor
+speechsynthesisusingdiscretelatent-variableneuralnetworks. arXiv,abs/1904.07556,2019.
+[12] A.Fan,E.Grave,andA.Joulin.Reducingtransformerdepthondemandwithstructureddropout.
+InProc.ofICLR,2020.
+[13] J. S. Garofolo, L. F. Lamel, W. M. Fisher, J. G. Fiscus, D. S. Pallett, and N. L. Dahlgren.
+TheDARPATIMITAcoustic-PhoneticContinuousSpeechCorpusCDROM. LinguisticData
+Consortium,1993.
+[14] A. Graves, S. Fernández, and F. Gomez. Connectionist temporal classification: Labelling
+unsegmentedsequencedatawithrecurrentneuralnetworks. InProc.ofICML,2006.
+[15] A.Gulati,J.Qin,C.-C.Chiu,N.Parmar,Y.Zhang,J.Yu,W.Han,S.Wang,Z.Zhang,Y.Wu,
+andR.Pang. Conformer: Convolution-augmentedtransformerforspeechrecognition. arXiv,
+2020.
+[16] E.J.Gumbel. Statisticaltheoryofextremevaluesandsomepracticalapplications: aseriesof
+lectures,volume33. USGovernmentPrintingOffice,1954.
+[17] W.Han,Z.Zhang,Y.Zhang,J.Yu,C.-C.Chiu,J.Qin,A.Gulati,R.Pang,andY.Wu.Contextnet:
+Improvingconvolutionalneuralnetworksforautomaticspeechrecognitionwithglobalcontext.
+arXiv,2020.
+9
+
+[18] D. Harwath, W.-N. Hsu, and J. Glass. Learning hierarchical discrete linguistic units from
+visually-groundedspeech. InProc.ofICLR,2020.
+[19] K.He,H.Fan,Y.Wu,S.Xie,andR.Girshick. Momentumcontrastforunsupervisedvisual
+representationlearning. arXiv,abs/1911.05722,2019.
+[20] O.J.Hénaff,A.Razavi,C.Doersch,S.M.A.Eslami,andA.vandenOord. Data-efficient
+imagerecognitionwithcontrastivepredictivecoding. arXiv,abs/1905.09272,2019.
+[21] D.HendrycksandK.Gimpel. Gaussianerrorlinearunits(gelus). arXiv,2016.
+[22] G.Huang,Y.Sun,Z.Liu,D.Sedra,andK.Weinberger. Deepnetworkswithstochasticdepth.
+arXiv,2016.
+[23] M.G.A.Hyvärinen.Noise-contrastiveestimation:Anewestimationprincipleforunnormalized
+statisticalmodels. InProc.ofAISTATS,2010.
+[24] E.Jang, S.Gu, and B.Poole. Categoricalreparameterizationwith gumbel-softmax. arXiv,
+abs/1611.01144,2016.
+[25] H.Jegou,M.Douze,andC.Schmid. Productquantizationfornearestneighborsearch. IEEE
+Trans.PatternAnal.Mach.Intell.,33(1):117–128,Jan.2011.
+[26] D.Jiang,X.Lei,W.Li,N.Luo,Y.Hu,W.Zou,andX.Li. Improvingtransformer-basedspeech
+recognitionusingunsupervisedpre-training. arXiv,abs/1910.09932,2019.
+[27] J. Kahn et al. Libri-light: A benchmark for asr with limited or no supervision. In Proc. of
+ICASSP,2020.
+[28] K. Kawakami, L. Wang, C. Dyer, P. Blunsom, and A. van den Oord. Learning robust and
+multilingualspeechrepresentations. arXiv,2020.
+[29] D.P.KingmaandJ.Ba. Adam: AMethodforStochasticOptimization. InProc.ofICLR,2015.
+[30] A.Laptev,R.Korostik,A.Svischev,A.Andrusenko,I.Medennikov,andS.Rybin. Youdonot
+needmoredata: Improvingend-to-endspeechrecognitionbytext-to-speechdataaugmentation.
+arXiv,abs/2005.07157,2020.
+[31] M.P.Lewis,G.F.Simon,andC.D.Fennig. Ethnologue: Languagesoftheworld,nineteenth
+edition. Onlineversion: http://www.ethnologue.com,2016.
+[32] A.H.Liu,T.Tu,H.yiLee,andL.shanLee. Towardsunsupervisedspeechrecognitionand
+synthesiswithquantizedspeechrepresentationlearning. arXiv,2019.
+[33] Y. Liu, M. Ott, N. Goyal, J. Du, M. Joshi, D. Chen, O. Levy, M. Lewis, L. Zettlemoyer,
+and V. Stoyanov. Roberta: A robustly optimized bert pretraining approach. arXiv preprint
+arXiv:1907.11692,2019.
+[34] C.Lüscher,E.Beck,K.Irie,M.Kitza,W.Michel,A.Zeyer,R.Schlüter,andH.Ney. Rwthasr
+systemsforlibrispeech: Hybridvsattention. InInterspeech2019,2019.
+[35] C.J.Maddison,D.Tarlow,andT.Minka. A*sampling. InAdvancesinNeuralInformation
+ProcessingSystems,pages3086–3094,2014.
+[36] I.MisraandL.vanderMaaten. Self-supervisedlearningofpretext-invariantrepresentations.
+arXiv,2019.
+[37] A.Mohamed,D.Okhonko,andL.Zettlemoyer. Transformerswithconvolutionalcontextfor
+ASR. arXiv,abs/1904.11660,2019.
+[38] M.Ott,S.Edunov,D.Grangier,andM.Auli. Scalingneuralmachinetranslation. InProc.of
+WMT,2018.
+[39] M.Ott,S.Edunov,A.Baevski,A.Fan,S.Gross,N.Ng,D.Grangier,andM.Auli. fairseq:
+Afast,extensibletoolkitforsequencemodeling. InProc.ofNAACLSystemDemonstrations,
+2019.
+[40] V.Panayotov,G.Chen,D.Povey,andS.Khudanpur. Librispeech:anasrcorpusbasedonpublic
+domainaudiobooks. InProc.ofICASSP,pages5206–5210.IEEE,2015.
+[41] D.S.Park,W.Chan,Y.Zhang,C.-C.Chiu,B.Zoph,E.D.Cubuk,andQ.V.Le. Specaugment:
+Asimpledataaugmentationmethodforautomaticspeechrecognition. InProc.ofInterspeech,
+2019.
+10
+
+[42] D.S.Park,Y.Zhang,Y.Jia,W.Han,C.-C.Chiu,B.Li,Y.Wu,andQ.V.Le. Improvednoisy
+studenttrainingforautomaticspeechrecognition. arXiv,abs/2005.09629,2020.
+[43] M.E.Peters,M.Neumann,M.Iyyer,M.Gardner,C.Clark,K.Lee,andL.Zettlemoyer. Deep
+contextualizedwordrepresentations. InProc.ofACL,2018.
+[44] V.Pratap,A.Hannun,Q.Xu,J.Cai,J.Kahn,G.Synnaeve,V.Liptchinsky,andR.Collobert.
+Wav2letter++: Afastopen-sourcespeechrecognitionsystem. InProc.ofICASSP,2019.
+[45] A.Radford,K.Narasimhan,T.Salimans,andI.Sutskever. Improvinglanguageunderstanding
+by generative pre-training. https://s3-us-west-2.amazonaws.com/openai-assets/
+research-covers/language-unsupervised/language_understanding_paper.pdf,
+2018.
+[46] M.Ravanelli,P.Brakel,M.Omologo,andY.Bengio. Lightgatedrecurrentunitsforspeech
+recognition.IEEETransactionsonEmergingTopicsinComputationalIntelligence,2(2):92–102,
+2018.
+[47] M. Ravanelli, J. Zhong, S. Pascual, P. Swietojanski, J. Monteiro, J. Trmal, and Y. Bengio.
+Multi-taskself-supervisedlearningforrobustspeechrecognition. arXiv,2020.
+[48] M.Rivière,A.Joulin,P.-E.Mazaré,andE.Dupoux. Unsupervisedpretrainingtransferswell
+acrosslanguages. arXiv,abs/2002.02848,2020.
+[49] S.Schneider,A.Baevski,R.Collobert,andM.Auli. wav2vec: Unsupervisedpre-trainingfor
+speechrecognition. InProc.ofInterspeech,2019.
+[50] M.SchusterandK.Nakajima. Japaneseandkoreanvoicesearch. InProc.ofICASSP,2012.
+[51] G.Synnaeve,Q.Xu,J.Kahn,T.Likhomanenko,E.Grave,V.Pratap,A.Sriram,V.Liptchinsky,
+andR.Collobert. End-to-endASR:fromSupervisedtoSemi-SupervisedLearningwithModern
+Architectures. arXiv,abs/1911.08460,2020.
+[52] A.Tjandra,B.Sisman,M.Zhang,S.Sakti,H.Li,andS.Nakamura. Vqvaeunsupervisedunit
+discoveryandmulti-scalecode2specinverterforzerospeechchallenge2019.arXiv,1905.11449,
+2019.
+[53] A.vandenOord,O.Vinyals,etal. Neuraldiscreterepresentationlearning. InAdvancesin
+NeuralInformationProcessingSystems,pages6306–6315,2017.
+[54] A.vandenOord,Y.Li,andO.Vinyals. Representationlearningwithcontrastivepredictive
+coding. arXiv,abs/1807.03748,2018.
+[55] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N. Gomez, L. Kaiser, and
+I.Polosukhin. Attentionisallyouneed. InProc.ofNIPS,2017.
+[56] W.Wang,Q.Tang,andK.Livescu. Unsupervisedpre-trainingofbidirectionalspeechencoders
+viamaskedreconstruction. arXiv,2020.
+[57] F.Wu,A.Fan,A.Baevski,Y.N.Dauphin,andM.Auli. Paylessattentionwithlightweightand
+dynamicconvolutions. InProc.ofICLR,2019.
+[58] Q. Xu, T. Likhomanenko, J. Kahn, A. Hannun, G. Synnaeve, and R. Collobert. Iterative
+pseudo-labelingforspeechrecognition. arXiv,2020.
+[59] N. Zeghidour, N. Usunier, I. Kokkinos, T. Schaiz, G. Synnaeve, and E. Dupoux. Learning
+filterbanksfromrawspeechforphonerecognition. InProc.ofICASSP,2018.
+[60] Q. Zhang, H. Lu, H. Sak, A. Tripathi, E. McDermott, S. Koo, and S. Kumar. Transformer
+transducer: Astreamablespeechrecognitionmodelwithtransformerencodersandrnn-tloss.
+arXiv,2020.
+11
+
+Appendices
+A Maskingdistribution
+When choosing which time-steps to mask, each latent speech representation in an utterance is
+consideredacandidatestartingtime-stepwithprobabilitypwhereM isthelengthofeachmasked
+spanstartingfromtherespectivetimestep;botharehyper-parameters. Sampledstartingtimesteps
+areexpandedtolengthM andspanscanoverlap.
+Fora15seclongaudiosample,theaveragemasklengthis14.7time-steps,correspondingto299ms
+ofaudio,withamedianof10time-steps,andamaximumofabout100timesteps;about49%of
+alltime-stepsinthesamplewillbemasked. Aplotofthecorrespondingmasklengthdistribution
+isshowninFigure2andanablationofM andpaswellastheeffectofothermaskingstrategies
+isshowninTable5. ReducingM resultsinincreasedpredictionaccuracyfortheself-supervised
+butthetaskbecomestrivialwhenspanswithlengthonearemasked,leadingtopoorperformance
+ondownstreamspeechrecognitiontasks. Wealsoconsiderothermaskingstrategies: w/ooverlap
+uniform(a,b)samplesforeachstartingindexaspanlengthMs fromintervalatobandmasksthe
+subsequentMstime-stepstakingcarenottooverlapwithexistingspans;poisson(λ)andnormal(µ,
+σ)sampleMsfromPoissonandnormaldistributions.
+0.25
+0.20
+0.15
+0.10
+0.05
+0.00
+20 40 60 80 100
+Span length
+snaps
+lla
+fo
+tnecreP
+Figure2: Masklengthdistributionfora15secondsamplewithp=0.065andM =10.
+Table5: Ablationsonsettingsforthemaskingstrategyduringpre-training. Whenmaskingwithout
+overlap,wechoosestartingtimestepswithp=0.037whichresultsinthetotalnumberofmasked
+tokenstomatchthebaseline.
+avgWER std
+Baseline(p=0.075) 7.97 0.02
+MasklengthM =8 8.33 0.05
+MasklengthM =12 8.19 0.08
+MasklengthM =15 8.43 0.19
+Maskprobabilityp=0.065 7.95 0.08
+Maskprobabilityp=0.06 8.14 0.22
+Maskw/ooverlap,uniform(1,31) 8.39 0.02
+Maskw/ooverlap,uniform(10,30) 9.17 0.05
+Maskw/ooverlap,poisson(15) 8.13 0.04
+Maskw/ooverlap,normal(15,10) 8.37 0.03
+Maskw/ooverlap,length10 9.15 0.02
+Maskw/ooverlap,length15 9.43 0.26
+12
+
+B Fine-tuningSetup
+Duringfine-tuningweapplyamaskingstrategytothefeatureencoderoutputssimilartoSpecAug-
+ment[41]: werandomlychooseanumberofstartingtimestepsforwhichaspanoftensubsequent
+time-stepsisreplacedwithamaskembedding;spansmayoverlapandweusethesamemaskedtime
+stepembeddingasduringpre-training. Wealsomaskchannelsbychoosinganumberofchannelsas
+startingindicesandthenexpandeachonetocoverthesubsequent64channels. Spansmayoverlap
+andtheselectedchannelspansaresettozerovalue. WeuseLayerDrop[22,12]atarateof0.05for
+BASEand0.1forLARGEduringfine-tuning.
+Table6summarizesthefine-tuninghyper-parametersettingsusedforthedifferentlabeleddatasetup.
+Table7showsthedecodingparametersusedforfinalevaluationsofthevariouslabeleddatasetups
+forLibrispeechpre-trainedmodelsandTable8showsdecodingparametersforLibriVox.
+Table6: Fine-tuninghyperparameters
+timestepmaskprob. channelmaskprob. updates
+10min 0.075 0.008 12k
+1hour 0.075 0.004 13k
+10hours 0.065 0.004 20k
+100hours 0.05 0.008 50k
+960hours 0.05 0.0016 320k
+TIMIT 0.065 0.012 40k
+Table7: DecodingparametersforLibrispeechsubsetsformodelspre-trainedonLibrispeech
+4gramLMweight 4gramwordinsert. TransLMweight TransLMwordinsert.
+10min 3.23 -0.26 1.20 -1.39
+1hour 2.90 -1.62 1.15 -2.08
+10hours 2.46 -0.59 1.06 -2.32
+100hours 2.15 -0.52 0.87 -1.00
+960hours 1.74 0.52 0.92 -0.86
+Table8: DecodingparametersforLibrispeechsubsetsformodelspre-trainedonLibrivox.
+4gramLMweight 4gramwordinsert. TransLMweight TransLMwordinsert.
+10min 3.86 -1.18 1.47 -2.82
+1hour 3.09 -2.33 1.33 -0.69
+10hours 2.12 -0.90 0.94 -1.05
+100hours 2.15 -0.52 0.87 -1.00
+960hours 1.57 -0.64 0.90 -0.31
+13
+
+C FullresultsforLibri-lightandLibrispeech
+Table9: WERontheLibrispeechdev/testsetswhentrainingontheLibri-lightlow-resourcelabeled
+datasetups(cf.Table1).
+Unlabeled dev test
+Model LM
+data clean other clean other
+10minlabeled
+BASE LS-960 None 46.1 51.5 46.9 50.9
+4-gram 8.9 15.7 9.1 15.6
+Transf. 6.6 13.2 6.9 12.9
+LARGE LS-960 None 43.0 46.3 43.5 45.3
+4-gram 8.6 12.9 8.9 13.1
+Transf. 6.6 10.6 6.8 10.8
+LARGE LV-60k None 38.3 41.0 40.2 38.7
+4-gram 6.3 9.8 6.6 10.3
+Transf. 4.6 7.9 4.8 8.2
+1hlabeled
+BASE LS-960 None 24.1 29.6 24.5 29.7
+4-gram 5.0 10.8 5.5 11.3
+Transf. 3.8 9.0 4.0 9.3
+LARGE LS-960 None 21.6 25.3 22.1 25.3
+4-gram 4.8 8.5 5.1 9.4
+Transf. 3.8 7.1 3.9 7.6
+LARGE LV-60k None 17.3 20.6 17.2 20.3
+4-gram 3.6 6.5 3.8 7.1
+Transf. 2.9 5.4 2.9 5.8
+10hlabeled
+BASE LS-960 None 10.9 17.4 11.1 17.6
+4-gram 3.8 9.1 4.3 9.5
+Transf. 2.9 7.4 3.2 7.8
+LARGE LS-960 None 8.1 12.0 8.0 12.1
+4-gram 3.4 6.9 3.8 7.3
+Transf. 2.9 5.7 3.2 6.1
+LARGE LV-60k None 6.3 9.8 6.3 10.0
+4-gram 2.6 5.5 3.0 5.8
+Transf. 2.4 4.8 2.6 4.9
+100hlabeled
+BASE LS-960 None 6.1 13.5 6.1 13.3
+4-gram 2.7 7.9 3.4 8.0
+Transf. 2.2 6.3 2.6 6.3
+LARGE LS-960 None 4.6 9.3 4.7 9.0
+4-gram 2.3 5.7 2.8 6.0
+Transf. 2.1 4.8 2.3 5.0
+LARGE LV-60k None 3.3 6.5 3.1 6.3
+4-gram 1.8 4.5 2.3 4.6
+Transf. 1.9 4.0 2.0 4.0
+14
+
+Table10: WERonLibrispeechwhenusingall960hoursofLibrispeechaslabeleddata(cf. Table2).
+Unlabeled dev test
+Model LM
+data clean other clean other
+LARGE-fromscratch - None 2.8 7.6 3.0 7.7
+- 4-gram 1.8 5.4 2.6 5.8
+- Transf. 1.7 4.3 2.1 4.6
+BASE LS-960 None 3.2 8.9 3.4 8.5
+4-gram 2.0 5.9 2.6 6.1
+Transf. 1.8 4.7 2.1 4.8
+LARGE LS-960 None 2.6 6.5 2.8 6.3
+4-gram 1.7 4.6 2.3 5.0
+Transf. 1.7 3.9 2.0 4.1
+LARGE LV-60k None 2.1 4.5 2.2 4.5
+4-gram 1.4 3.5 2.0 3.6
+Transf. 1.6 3.0 1.8 3.3
+D AnalysisofDiscreteLatentSpeechRepresentations
+Next,weinvestigatewhetherthediscretelatentspeechrepresentationsq learnedbythequantizer
+t
+relatetophoneticinformation: UsingLARGEpre-trainedonLV-60kandwithoutanyfine-tuning,we
+computethediscretelatentsforthetrainingdataofTIMITandcomputetheco-occurrencebetween
+humanannotatedphonemesandthelatents. Tiesarebrokenbychoosingthephonemewhichismost
+representedinthereceptivefieldofq . Thetrainingdatacontains3696utterancesofaveragelength
+t
+13.6sec,or563kdiscretelatents.
+Figure3plotsP(phonemeq )andshowsthatmanydiscretelatentsappeartospecializeinspecific
+t
+|
+phoneticsounds. Thesilencephoneme(bcl)represents22%ofallhumanannotatedspeechdataand
+isthereforealsomodeledbymanydifferentlatents.
+aa
+ae
+ah
+aw
+ay
+b
+ch
+d
+dh
+dx
+eh
+axr
+ey
+f
+g
+bcl
+hh
+ih
+iy
+jh
+k
+el
+em
+en
+eng
+ow
+oy
+p
+r
+s
+sh
+t
+th
+uh
+uw
+v
+w
+y
+z
+Figure 3: Visualization of the co-occurrence between discrete latent speech representations and
+phonemes. WeplottheconditionalprobabilityP(phonemeq )onTIMITtraindata. They-axis
+t
+|
+showsthecollapsed39classesofphonemesandthex-axisisoverthedifferentdiscretelatents.
+15
+
+E SpeechRecognitionErrorAnalysis
+In this section we study the most common errors our models make when fine-tuned on different
+amounts of labeled data (Table 11). We also show transcriptions of a few relatively challenging
+utterancesfromthedev-cleansubsetofLibrispeech(Table12).
+Weconsidermodelswithnolexiconornolanguagemodeldecoding,markedNoneinTable9: Larger
+capacitydecreaseserrorrates: LARGEonLS-960improvestheworderrorrateondev-cleanfrom
+46.1to43comparedtoBASE. Increasingtheamountofunlabeledtrainingdatafurtherdecreasesthe
+errorrateto33.8forLARGEonLS-960.
+Inthetenminutelabeleddatasetup,themodelisstillabletorecognizebasicunitsofspeech:Table11
+showsthatmosterrorsarearoundspellingofwords,e.g.,omittingsilentcharacterssuchascould
+coud,know now,orignoringrepeatedletterssuchasstill stil,little litle. TheLARGE
+→ → → →
+LV-60kmodelachievesWER38.3ondev-cleanandaddingaTransformerlanguagemodelenables
+tochoosemorelikelypronunciationsduringthesearchandgivesalargeWERimprovementto5.0.
+Thetenminutemodelswithoutlexiconandlanguagemodeltendtospellwordsphoneticallyandomit
+repeatedletters,e.g.,will wil(Table11). Spellingerrorsdecreasewithmorelabeleddata:withone
+→
+houroflabeleddata,slightlylesscommonwordsmoveintothelistofthemostfrequenterrors,e.g.,
+heavenandfoodarespelledphonetically. Attenhours,toperrorsincludearticles,e.g.,a,thewhich
+areacommonsourceoferrorsinspeechrecognitioningeneral. Therearealsoalternativespellings,
+colorvs. colouraswellasrelativelyrarewordsincludingpersonnames,stillspelledphonetically,
+e.g.,phoebe feeby.
+→
+At100hours,personnamesdominatethemostfrequenterrors:phoebe phebe,alongwithincorrect
+→
+spacing anyone any one, awhile a while. Finally at 960 hours the word error rate falls to
+→ →
+2%andtoperrorsaremostlyarticles,incorrectsplits,andsomeveryrarewordsornamessuchas
+deucalionorgryce.
+The“fromscratch”960hourmodelhasasimilarworderrorrateasthe100hourpre-trainedmodel
+anddisplaysasimilarpatternoferrors.
+The pre-trained speech representations can be easily adapted to recognize specific sounds while
+fine-tuninggroundstheserepresentationstotheactualspelling.
+16
+
+Table11: Topworderrorsformodelstrainedon10m,1hand10h,100h,960hoflabeleddataand
+decodedontheLibrispeechdev-cleansubsetwithoutalanguagemodelorlexicon(seeTable9and
+Table10-None). Inbracketsisthetotalnumberofoccurrencesofeacherror.
+10mLARGELV-60k 1hLARGELV-60k 10hLARGELV-60k
+all al(181) too to(26) in and(15)
+→ → →
+are ar(115) until untill(24) a the(11)
+→ → →
+will wil(100) new knew(22) o oh(10)
+→ → →
+you yo(90) door dor(18) and in(9)
+→ → →
+one on(89) says sais(18) mode mod(9)
+→ → →
+two to(81) soul sol(17) ursus ersus(9)
+→ → →
+well wel(80) bread bred(16) tom tome(8)
+→ → →
+been ben(73) poor pore(16) randal randol(7)
+→ → →
+upon apon(73) a the(13) the a(7)
+→ → →
+good god(67) either ither(13) color colour(6)
+→ → →
+see se(66) food fud(13) flour flower(6)
+→ → →
+we whe(60) doubt dout(12) phoebe feeby(6)
+→ → →
+little litle(54) earth erth(12) an and(5)
+→ → →
+great grate(53) led lead(12) cucumbers cucombers(5)
+→ → →
+your yor(53) sea see(12) egg eg(5)
+→ → →
+could coud(51) thee the(12) macklewain macklewaine(5)
+→ → →
+here hear(51) tom tome(12) magpie magpi(5)
+→ → →
+know now(45) add ad(11) milner millner(5)
+→ → →
+there ther(45) good god(11) stacy staci(5)
+→ → →
+three thre(45) heaven heven(11) trevelyan trevellion(5)
+→ → →
+still stil(42) mary marry(11) verloc verlock(5)
+→ → →
+off of(40) randal randel(11) ann an(4)
+→ → →
+don’t dont(37) answered ansered(10) anyone one(4)
+→ → →
+shall shal(36) blood blod(10) apartment appartment(4)
+→ → →
+little litl(35) bozzle bosel(10) basin bason(4)
+→ → →
+100hLARGELV-60k 960hLARGELV-60k 960hLARGEfromscratch
+a the(13) a the(12) and in(20)
+→ → →
+and in(10) and in(9) a the(16)
+→ → →
+in and(10) macklewain mackelwaine(7) in and(13)
+→ → →
+o oh(8) in and(6) the a(10)
+→ → →
+minnetaki minnitaki(7) o oh(6) in an(8)
+→ → →
+randal randall(7) bozzle bosell(5) and an(5)
+→ → →
+christie cristy(6) criss chris(5) clarke clark(4)
+→ → →
+macklewain mackelwane(6) bozzle bosel(4) grethel gretel(4)
+→ → →
+randal randoll(6) clarke clark(4) macklewain mackelwaine(4)
+→ → →
+bozzle bosall(5) colored coloured(4) this the(4)
+→ → →
+kaliko calico(5) grethel gretel(4) an and(3)
+→ → →
+trevelyan trevelian(5) lige lyge(4) anyone one(3)
+→ → →
+an and(4) the a(4) bozzle basell(3)
+→ → →
+and an(4) and an(3) buns bunds(3)
+→ → →
+anyone one(4) ann marianne(3) carrie carry(3)
+→ → →
+bozzle bozall(4) butte bute(3) criss chris(3)
+→ → →
+clarke clark(4) color colour(3) he’s is(3)
+→ → →
+gryce grice(4) deucalion ducalion(3) his is(3)
+→ → →
+i’m am(4) forcemeat meat(3) honor honour(3)
+→ → →
+in ind(4) gryce grice(3) lattimer latimer(3)
+→ → →
+letty lettie(4) honor honour(3) millet mellet(3)
+→ → →
+phoebe phebe(4) kearny kirney(3) pyncheon pension(3)
+→ → →
+the a(4) nuova noiva(3) tad ted(3)
+→ → →
+ann anne(3) thing anything(3) thing anything(3)
+→ → →
+awhile while(3) this the(3) trevelyan trevelian(3)
+→ → →
+17
+
+Table 12: Examples of transcription of selected utterances from the dev-clean subset by various
+modelswithoutalanguagemodelorlexicon. Capitalizedwordsindicateerrors.
+Model Transcription
+Reference i’mmisterchristopherfromlondon
+10mLV-60k IMmisterCRESTIFERFROMELUNDEN
+1hLV-60k IMmisterCRISTIFFHERfromLOUNDEN
+10hLV-60k i’mmisterCHRYSTEPHERfromlondon
+100hLV-60k i’mmisterchristopherfromlondon
+960hLV-60k i’mmisterchristopherfromlondon
+960hscratch IMISSTERchristopherfromlondon
+Reference ilpopoloeunabestia
+10mLV-60k ILPOPULARONABESTIA
+1hLV-60k OPOPOLAONABASTIA
+10hLV-60k UPOPULAONABASTIAR
+100hLV-60k OPOPALOONABASTYA
+960hLV-60k YOU’LLPOPALAWYEONABAISTYE
+960hscratch OLPOPALOYONABESTIA
+Reference hesmeltthenuttyaromaofthespirit
+10mLV-60k heSMELTDtheNUDYaromaofthespirit
+1hLV-60k heSMELTDtheNUDDYARROMAofthespirit
+10hLV-60k hesmelttheNUDDYERROMAofthespirit
+100hLV-60k hesmelttheNUDDYaromaofthespirit
+960hLV-60k hesmelttheNUTTIEaromaofthespirit
+960hscratch hesmeltthenuttyEROMAofthespirit
+Reference phoebemerelyglancedatitandgaveitback
+10mLV-60k FEABYMEARLYglancedatitandgaveitBAK
+1hLV-60k FIEABYmerelyglancedatitandgaveitback
+10hLV-60k FEEBYmerelyglancedatitandgaveitback
+100hLV-60k BEBEmerelyglancedatitandgaveitback
+960hLV-60k phoebemerelyglancedatitandgaveitback
+960hscratch phoebemerelyglancedatitandgaveitback
+Reference sauterneisawhitebordeauxastronglusciouswinethebestknownvarietiesbeing
+10mLV-60k SULTERINisawhiteBORDOEastrongLUCHOUSWINthebestNOWNVERIATYSbeing
+1hLV-60k CLTERENisawhiteBORDOastrongLUCHIOUSwinethebestknownVERIETIESbeing
+10hLV-60k SOTERNisawhiteBOURDOastrongLUCIOUSwinethebestknownVORIETIESbeing
+100hLV-60k SOTERNisawhiteBORDAUXastrongLUCIOUSwinethebestknownvarietiesbeing
+960hLV-60k SOTERNisawhitebordeauxastronglusciouswinethebestknownvarietiesbeing
+960hscratch SOTERANisawhitebordeauxastronglusciouswinethebestknownvarietiesbeing
+Reference ihappentohavemacconnell’sboxfortonightorthere’dbenochanceofourgettingplaces
+10mLV-60k iHAPENDtohaveMECONALESBOXSforTONITORETHIRLDbenochanceofORGETINGplaces
+1hLV-60k ihappentohaveMACCONNEL’SBOCXSfortonightorTE’ELDbenochanceofourgettingplaces
+10hLV-60k iHAPPENEDtohaveMUKONNEL’SboxfortonightorTHEREDbenochanceofourgettingplaces
+100hLV-60k iHAPPENEDtohaveMCCONNEL’SboxforTONIGHTorthere’dbenochanceofourgettingplaces
+960hLV-60k ihappentohaveMCCONALL’SboxforTONIGHTorthere’dbenochanceofourgettingplaces
+960hscratch iHAPPENEtohaveMACONEL’SboxforTONIGHTorthere’dbenochanceofourgettingplaces
+F Ablations
+Table 13 ablates various hyperparameter choices of our architecture. The setup for the baseline
+modelisdescribedin§5.4. First,wetriedtoimprovethecontinuousinputandcontinuoustarget
+model(§5.4)byaddinganMLPontopofthecontinuoustargetrepresentationandwealsotriedto
+useaseparatesetofencoderparametersfortherepresentationsusedasinputandtargets(Separate
+encoders). Bothdidnotleadtomeaningfulimprovements.
+Increasingthereceptivefieldsizefrom25msto30mshadlittleeffect. Settingthediversitypenalty
+weight(α)toolowresultsinlowercodebookusageandlowerperformance. Settingittoohighleads
+toslightinstability. Doublingthenumberofrelativepositionalembeddingsto256alsodidnothelp.
+Stoppinggradientsfromthequantizertotheencodershowsthattheencoderrequirestrainingsignal
+fromthequantizeraswell.
+Next,increasingthenumberofnegativesdidnotresultinbetterperformance(K =200)andsampling
+negativesfromtheentirebatchofutteranceshurtperformance,likelybecausecandidatesfromother
+utterancesareeasytodistinguish. Samplingnegativesfromanytimestepintheutterance,masked
+orunmasked,doesnothelpandismorecomputationallyexpensive. Gumbelnoiseisimportantand
+increasingthenumberofcodebooksdidnotresultinbetterperformance.
+18
+
+Table13:Ablationofvarioushyper-parmeterchoices.WereportaverageWERandstandarddeviation
+oncombineddev-clean/otherofLibrispeechforthreeseedsoftraining.
+avg. WER std.
+Baseline(p=0.075,α=0.1) 7.97 0.02
+Continuousinputs,continuoustargets 8.58 0.08
++MLPontargets 8.51 0.05
++Separateencoders 8.90 0.01
+receptivefield30ms 7.99 0.06
+diversitypenalty
+α=0 8.48 0.08
+α=0.05 8.34 0.08
+α=0.2 8.58 0.45
+Convposemb,kernel256 8.14 0.05
+Nogradienttoencoderfromquantizer 8.41 0.08
+Negatives
+K =200sameutterance 8.12 0.05
+K =50sameutterance+K =50frombatch 8.79 0.06
+Samplenegativesfromanytimestep 8.07 0.02
+NoGumbelnoise 8.73 0.42
+Codebook
+G=4,V=18 9.02 0.38
+G=8,V=8 8.13 0.07
+PredictexactlyU timestepsfromedges
+U =1 9.53 0.91
+U =5 8.19 0.07
+U =10 8.07 0.07
+U =15 7.89 0.10
+U =20 7.90 0.01
+Wealsoinvestigatedpredictingonlytimestepsimmediatelynexttothelastunmaskedtimestepfor
+eachspan. Thisenablestobettercontrolthedifficultyofthepre-trainingtask. Giventheleftmostor
+rightmostunmaskedtimestepnexttoamaskedspan,wecomputethecontrastivelossonlyforthefirst
+U maskedtimestepsnexttotheseunsmaskedspans. Predictingonlyuptoonetimestepperforms
+poorly because there is little training signal from each utterance and predicting more time steps
+performsbetterbutdoesnotsignificantlyoutperformpredictingallmaskedtimesteps. Increasingthe
+numberoftrainingupdateshelpsbutthisincreasestrainingtime.
+19

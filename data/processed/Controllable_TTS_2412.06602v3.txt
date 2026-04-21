@@ -1,0 +1,1948 @@
+Towards Controllable Speech Synthesis in the Era of Large Language
+Models: A Systematic Survey
+TianxinXie1,YanRong1,PengfeiZhang1,WenwuWang2,LiLiu1,
+1TheHongKongUniversityofScienceandTechnology(Guangzhou),2UniversityofSurrey
+Correspondence:avrillliu@hkust-gz.edu.cn
+Abstract etal.,2024). RecentmethodshaveexpandedTTS
+to multi-modal inputs, including images (Rong
+Text-to-speech (TTS) has advanced from
+and Liu, 2025) and videos (Choi et al., 2023).
+generating natural-sounding speech to en-
+Meanwhile, the rise of LLMs (Zhao et al., 2023)
+abling fine-grained control over attributes
+like emotion, timbre, and style. Driven by hasenabledcontrollableTTSguidedbylanguage
+rising industrial demand and breakthroughs prompts (Guo et al., 2023; Huang et al., 2024a),
+in deep learning, e.g., diffusion and large openingnewpossibilitiesforcustomizedvoicesyn-
+language models (LLMs), controllable TTS
+thesis. IntegratingTTSintoLLMshasalsogained
+has become a rapidly growing research area.
+extensiveattention(Pengetal.,2024a). Thisrapid
+Thissurveyprovidesthefirstcomprehensive
+progress underscores the need for a comprehen-
+review of controllable TTS methods, from
+siveandtimelysurveytoclarifycurrenttrendsand traditional control techniques to emerging
+approaches using natural language prompts. guidefuturedirectionsincontrollableTTS.
+We categorize model architectures, control Whileseveralsurveyshaveexaminedparamet-
+strategies, and feature representations, while ric (Zen et al., 2009) and deep learning–based
+also summarizing challenges, datasets, and TTS (Triantafyllopoulos et al., 2023), they over-
+evaluations in controllable TTS. This survey
+lookTTScontrollabilityandrecentadvancessuch
+aimstoguideresearchersandpractitionersby
+as description–based methods (Guo et al., 2023;
+offering a clear taxonomy and highlighting
+Yamamoto et al., 2024). The key differences be-
+future directions in this fast-evolving field.
+One can visit https://github.com/imxtx/ tweenoursurveyandearlierworkare: 1)Differ-
+awesome-controllabe-speech-synthesis entScope: Klatt(1987)providedthefirstreview
+foracomprehensivepaperlistandupdates. offormant-based,concatenative,andarticulatory
+TTS, with a strong focus on text analysis. Later,
+1 Introduction
+TabetandBoughazi(2011);King(2014)explored
+Speech synthesis, also known as text-to-speech statistics-basedtechniques. Withtheadventofneu-
+(TTS), aims to generate human-like speech from ralnetworks, Ningetal.(2019);Tanetal.(2021b);
+text (Dutoit, 1997), and has found broad ap- Zhangetal.(2023a)surveyedneuralmodel–based
+plications in personal assistants (López et al., TTS,focusingonacousticsandvocoders. However,
+2018), entertainment (Wang et al., 2019), and theyrarelydiscussthecontrollability. 2)Closerto
+robotics(Margeetal.,2022). Recently,thesuccess CurrentDemands: TheneedforcontrollableTTS
+oflargelanguagemodelssuchasChatGPT(Ope- is rapidly growing in industries like filmmaking,
+nAI,2022)hasrenewedinterestinTTSfornatural gaming,robotics,andvirtualassistants. Yet,exist-
+andintuitivehuman-computerinteraction. Mean- ingsurveysrarelyexplorethegapsbetweencurrent
+while,fine-grainedcontroloverspeechattributes, controltechniquesandreal-worlddemands.
+suchasemotion,timbre,andstyle,hasbecomea Tofillthisgap,wepresentthefirstcomprehen-
+keyfocusinbothacademiaandindustry,unlocking sive survey of emerging controllable TTS meth-
+moreexpressiveandpersonalizedvoicegeneration. ods. We first define the core tasks (Sec. 2) and,
+Inthepastdecade,deeplearninghasdrivenre- as shown in Fig. 1, trace the evolution of meth-
+markableadvancesinTTS,enablinghigh-quality odsacrossmodelarchitectures(Sec.3.1),control
+synthesis (Tan et al., 2024; Ren et al., 2019; Du strategies (Sec. 3.2), and feature representations
+et al., 2024) and stronger control over speech at- (Sec.3.3). Wefurthersummarizerelevantdatasets
+tributes (Wang et al., 2018; Li et al., 2021; Zhou andevaluationmetrics(Sec.4),anddiscusscurrent
+1
+5202
+guA
+52
+]LC.sc[
+3v20660.2142:viXra
+
+noitatneserpeR
+erutaeF
+suounitnoC
+noitatneserpeR
+erutaeF
+etercsiD
+#Entries listed by DBLP with the keyword “controllable text-to-speech” from 2019 to 2025.03 DuIAN-E☆ ArtSpeech☆
+RNN
+MELLE★
+CNN MsEmoTTS★ TorToise★ Seed-TTS★
+GAN VoiceBox☆
+Transformer GenerSpeech☆ AudioBox☆ DiTTo-TTS☆
+D LLif Mfusion C C Pra L ou O mli Nf pl tEo Tw T☆ S☆ ☆ M Me eg ga aT TT TS S★ 2☆ X StT ylT eS TT★ S-ZS☆
+★Autoregressive VoiceLDM☆ ARDiT ★
+☆Non-autoregressive Style-TTS☆ S Pp roe mec ph tF Tl To Sw +☆ +☆ N Va on ico eV Go ui ic de e☆ r☆
+(incomplete) DiffGAN-TTS☆ PromptTTS2☆ DEX-TTS☆
+Flowtron★ StyleTagging-TTS☆ Grad-StyleSpeech☆ E2-TTS☆
+Prosody-Tacotron★
+V DA urE IA-T Nac ★otron★ F Fa as st tS Pp ite ce hc ☆h2☆ S M DC ee l- t iG a g- hl So tt fw y ulT le TT S TS p Se☆ e ☆ch☆ NaturalSpeech2☆ A F M5S e-T gT a- TL -S TD T☆M S3☆
+☆
+GST-Tacotron★ FastSpeech☆ ParallelTacotron☆ YourTTS☆
+GMVAE-Tacotron★
+2018 2019 2020 2021
+2022
+SpearTTS★
+Statistics of controllable TTS methods from 2018 to 2025.03 (incomplete) VALL-EX★ FishSpeech★ ELLA-V★
+SC UV niA AL UL d- iE o★ ★ P Mar al se kr- GT CT TS★ ☆ VoH icA eL CL ra- fE t★ ★
+VALL-E★ VALL-E R★
+Make-a-v So ai lc lee★ ★ NatuF Irl naa sls S th rp uS e cp e te Tce h Tc S3h☆ ☆ ☆ CoFi-ST pea ek cin h★ ★
+2023 ControlSpeech☆ Fi Ere mR oe -d DT PT OS★
+★
+SimpleSpeech☆ CosyVoice★
+SimpleSpeech2☆ CLaM-TTS★
+2024 VoxInstruct★
+Methods that use flow-matching to convert acoustic tokens into
+mel-spectrograms are marked as discrete methods in this figure.
+Figure1: RecenttrendsincontrollableTTSregardingarchitectures,featurerepresentations,andcontrolabilities.
+challengesandfutureresearchdirections(Sec.5). tosynthesizespeechinmultiplelanguages(Zhang
+ForahistoryofcontrollableTTSandanoverview et al., 2023d), dialects (Di et al., 2024), or code-
+oftheTTSpipeline,seeAppendicesA.1andA.2. switchedcontexts(Chenetal.,2024d). Itfacilitates
+cross-lingualcommunication,multilingualagents,
+2 MainTasksinControllableTTS
+andregionallytailoredspeechapplications.
+Environment Control aims to simulate the
+ProsodyControlisthemostbasictaskincontrol-
+acousticcharacteristicsofaspecificsetting,suchas
+lableTTS,aimingtomanipulatelow-levelacous-
+apark,office,orseaside,byconditioningsynthesis
+tic features such as pitch (Łan´cucki, 2021), dura-
+on background noise and spatial cues (Lee et al.,
+tion(Wangetal.,2025a),andenergy(Chenetal.,
+2024;Kimetal.,2024b). Speechenvironmentcon-
+2025). Prosodycontrolensuresnaturalnessandex-
+trolisusefulinfilmmakingandaudiobooks.
+pressivenessinTTSandisessentialforrendering
+emphasis,rhythm,andnuanceinspeech.
+3 MethodsinControllableTTS
+TimbreControlaimstomanipulatetheacous-
+tic characteristics that define voice quality (e.g., ThissectionreviewscontrollableTTSfromthree
+gender, age, nasality), enabling control over how perspectives: modelarchitectures,featurerepresen-
+a voice sounds beyond content and prosody. It tations,andcontrolstrategies,asshowninFig.1.
+supportspersonalizedTTS(Duetal.,2024),voice
+3.1 ModelArchitectures
+conversion(Zhangetal.,2025b),andspeakeriden-
+tityediting(Huangetal.,2024a). ThearchitecturesofcontrollableTTSareprimar-
+EmotionControlaimstoenablethesynthesis ilydividedintotwotypes,i.e.,non-autoregressive
+ofemotionalspeechbymanipulatingtheaffective (NAR)andautoregressive(AR)(SeeTable1).
+state of the generated voice (Kim et al., 2021).
+3.1.1 Non-AutoregressiveApproaches
+This improves human-computer interaction, sto-
+rytelling(Rongetal.,2025),andsupportsemotion- Non-autoregressiveTTSmodelsgeneratetheentire
+allyadaptivesystemssuchasvirtualassistants. output speech sequence y = (y 1,y 2,...,y T) in
+Style Control aims to control higher-level at- parallelgiventheinputx = (x 1,x 2,...,x T):
+tributesofspeechsuchastone,formality,anddis-
+argmax = P(y|x;θ), (1)
+course mode (e.g., newscast) (Zhou et al., 2024;
+θ
+Yang et al., 2024b). This is critical for adapting
+thespeakingbehaviorofTTSsystemstodifferent whereθdenotesmodelparameters. Inthispart,we
+contexts,audiences,andcommunicationgoals. investigatethetransformer,variationalautoencoder
+LanguageControlaimstoenableTTSsystems (VAE),diffusion,andflow-basedmethods.
+2
+
+Controlability ModelArchitectures
+Method(Non-autoregressive) Zero-shot Feature Release
+Pit. Ene. Spe. Pro. Tim. Emo. Env. Des. AcousticModel Vocoder
+FastSpeech(Renetal.,2019) ✓ ✓ Transformer WaveGlow(Prengeretal.,2019) MelS 2019.05
+FastSpeech2(Renetal.,2021a) ✓ ✓ ✓ ✓ Transformer ParallelWaveGAN(Yamamotoetal.,2020) MelS 2020.06
+FastPitch(Łan´cucki,2021) ✓ ✓ Transformer WaveGlow MelS 2020.06
+ParallelTacotron(Eliasetal.,2021a) ✓ Transformer+VAE+CNN WaveRNN(Kalchbrenneretal.,2018) MelS 2020.10
+StyleTagging-TTS(Kimetal.,2021) ✓ ✓ ✓ Transformer+CNN HiFi-GAN(Kongetal.,2020) MelS 2021.04
+SC-GlowTTS(Casanovaetal.,2021) ✓ ✓ Transformer+Flow HiFi-GAN MelS 2021.06
+Meta-StyleSpeech(Minetal.,2021) ✓ ✓ Transformer MelGAN(Kumaretal.,2019) MelS 2021.06
+DelightfulTTS(Liuetal.,2021) ✓ ✓ ✓ Transformer+CNN HiFiNet(Liuetal.,2021) MelS 2021.11
+YourTTS(Casanovaetal.,2022) ✓ ✓ Transformer+Flow HiFi-GAN LinS 2021.12
+StyleTTS(Lietal.,2025b) ✓ ✓ CNN+RNN HiFi-GAN MelS 2022.05
+GenerSpeech(Huangetal.,2022b) ✓ ✓ Transformer+Flow HiFi-GAN MelS 2022.05
+Cauliflow(Abbasetal.,2022) ✓ ✓ BERT+Flow UPWaveNet(Jiaoetal.,2021) MelS 2022.06
+CLONE(Liuetal.,2022) ✓ ✓ ✓ Transformer+CNN WaveNet(VanDenOordetal.,2016) MelS+LinS 2022.07
+PromptTTS(Guoetal.,2023) ✓ ✓ ✓ ✓ ✓ ✓ ✓ BERT+Transformer HiFi-GAN MelS 2022.11
+Grad-StyleSpeech(Kangetal.,2023) ✓ ✓ Score-basedDiffusion HiFi-GAN MelS 2022.11
+NaturalSpeech2(Shenetal.,2024) ✓ ✓ Diffusion RVQ-based(Shenetal.,2024) LatentFeature 2023.04
+PromptStyle(Liuetal.,2023a) ✓ ✓ ✓ ✓ ✓ ✓ VITS+Flow HiFi-GAN MelS 2023.05
+StyleTTS2(Lietal.,2023) ✓ ✓ ✓ ✓ Flow-basedDiffusion+GAN HifiGAN/iSTFTNet(Kanekoetal.,2022) MelS 2023.06
+VoiceBox(Leetal.,2024) ✓ ✓ Transformer+Flow HiFi-GAN MelS 2023.06
+MegaTTS2(Jiangetal.,2024) ✓ ✓ ✓ ✓ Decoder-onlyTransformer+GAN HiFi-GAN MelS 2023.07
+PromptTTS2(Lengetal.,2023) ✓ ✓ ✓ ✓ ✓ ✓ Diffusion RVQ-based(Lengetal.,2023) LatentFeature 2023.09
+VoiceLDM(Leeetal.,2024) ✓ ✓ ✓ ✓ ✓ ✓ Diffusion HiFi-GAN MelS 2023.09
+DurIAN-E(Guetal.,2023) ✓ ✓ ✓ CNN+RNN HiFi-GAN MelS 2023.09
+PromptTTS++(Shimizuetal.,2024) ✓ ✓ ✓ ✓ ✓ ✓ Transformer+Diffusion BigVGAN(gilLeeetal.,2023) MelS 2023.09
+SpeechFlow(Liuetal.,2024a) ✓ ✓ Transformer+Flow HiFi-GAN MelS 2023.10
+P-Flow(Kimetal.,2024c) ✓ ✓ Transformer+Flow HiFi-GAN MelS 2023.10
+E3TTS(Gaoetal.,2023) ✓ ✓ Diffusion Notrequired Waveform 2023.11
+HierSpeech++(Leeetal.,2023b) ✓ ✓ Transformer+VAE+Flow BigVGAN MelS 2023.11
+Audiobox(Vyasetal.,2023) ✓ ✓ ✓ ✓ ✓ ✓ ✓ Transformer+Flow HiFi-GAN MelS 2023.12
+FlashSpeech(Yeetal.,2024) ✓ ✓ LatentConsistencyModel EnCodec Token 2024.04
+NaturalSpeech3(Juetal.,2024) ✓ ✓ ✓ ✓ Transformer+Diffusion FACodec(Juetal.,2024) Token 2024.04
+InstructTTS(Yangetal.,2024b) ✓ ✓ ✓ ✓ ✓ ✓ Transformer+Diffusion HiFi-GAN Token 2024.05
+ControlSpeech(Jietal.,2024c) ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ Transformer+Diffusion FACodec Token 2024.06
+AST-LDM(Kimetal.,2024b) ✓ ✓ ✓ Diffusion+VAE HiFi-GAN MelS 2024.06
+SimpleSpeech(Yangetal.,2024c) ✓ ✓ Transformer+Diffusion SQCodec(Yangetal.,2024c) Token 2024.06
+DiTTo-TTS(Leeetal.,2025) ✓ ✓ ✓ DiT+VAE BigVGAN MelS 2024.06
+E2TTS(Eskimezetal.,2024) ✓ ✓ Transformer+Flow BigVGAN MelS 2024.06
+MobileSpeech(Jietal.,2024a) ✓ ✓ Transformer Vocos(Siuzdak,2024) Token 2024.06
+DEX-TTS(Parketal.,2024a) ✓ ✓ Diffusion HiFi-GAN MelS 2024.06
+ArtSpeech(Wangetal.,2024) ✓ ✓ RNN+CNN HiFI-GAN MelS+Energy+F0 2024.07
+CCSP(Xiaoetal.,2024) ✓ ✓ Diffusion RVQ-based(Xiaoetal.,2024) Token 2024.07
+SimpleSpeech2(Yangetal.,2024a) ✓ ✓ ✓ Flow-basedDiT SQCodec Token 2024.08
+E1TTS(Liuetal.,2025b) ✓ ✓ DiT+Flow BigVGAN Token+MelS 2024.09
+StyleTTS-ZS(Lietal.,2024) ✓ ✓ Flow-basedDiffusion+GAN Mel-basedDecoder(Lietal.,2024) MelS 2024.09
+NansyTTS(Yamamotoetal.,2024) ✓ ✓ ✓ ✓ ✓ ✓ Transformer NANSY++(Yamamotoetal.,2024) MelS 2024.09
+NanoVoice(Parketal.,2024b) ✓ ✓ Diffusion BigVGAN MelS 2024.09
+MS2KU-VTTS(Heetal.,2024) ✓ ✓ Transformer BigVGAN MelS 2024.10
+MaskGCT(Wangetal.,2025b) ✓ ✓ ✓ Transformer+Flow Vocos Token 2024.10
+EmoSphere++(Choetal.,2024) ✓ ✓ ✓ ✓ Transformer+Flow BigVGAN MelS 2024.11
+EmoDubber(Congetal.,2024) ✓ ✓ ✓ ✓ Transformer+Flow Flow-based(Congetal.,2024) MelS 2024.12
+HED(Inoueetal.,2024) ✓ ✓ Flow-basedDiffusion Vocos MelS 2024.12
+DiffStyleTTS(Liuetal.,2025a) ✓ ✓ ✓ ✓ ✓ Transformer+Diffusion HiFi-GAN MelS 2025.01
+DrawSpeech(Chenetal.,2025) ✓ ✓ Diffusion HiFi-GAN MelS 2025.01
+ProEmo(Zhangetal.,2025a) ✓ ✓ ✓ ✓ Transformer HiFi-GAN MelS 2025.01
+Controlability ModelArchitectures
+Method(Autoregressive) Zero-shot Feature Release
+Pit. Ene. Spe. Pro. Tim. Emo. Env. Des. AcousticModel Vocoder
+Prosody-Tacotron(Skerry-Ryanetal.,2018) ✓ ✓ RNN WaveNet MelS 2018.03
+GST-Tacotron(Stantonetal.,2018) ✓ ✓ CNN+RNN Griffin-Lim LinS 2018.03
+GMVAE-Tacotron(Hsuetal.,2018) ✓ ✓ ✓ ✓ VAE WaveRNN MelS 2018.12
+VAE-Tacotron(Zhangetal.,2019) ✓ ✓ ✓ VAE+CNN+RNN WaveNet MelS 2019.02
+DurIAN(Yuetal.,2020) ✓ ✓ ✓ CNN+RNN Multi-bandWaveRNN(Yuetal.,2020) MelS 2019.09
+Flowtron(Valleetal.,2020) ✓ ✓ ✓ CNN+RNN WaveGlow MelS 2020.07
+MsEmoTTS(Leietal.,2022) ✓ ✓ ✓ CNN+RNN WaveRNN MelS 2022.01
+VALL-E(Wangetal.,2023a) ✓ ✓ Decoder-onlyTransformer EnCodec Token 2023.01
+SpearTTS(Kharitonovetal.,2023) ✓ ✓ Decoder-onlyTransformer SoundStream(Zeghidouretal.,2021) Token 2023.02
+VALL-EX(Zhangetal.,2023d) ✓ ✓ Decoder-onlyTransformer EnCodec Token 2023.03
+Make-A-Voice(Huangetal.,2023b) ✓ ✓ Encoder-decoderTransformer Unit-based(Huangetal.,2023b) Token 2023.05
+TorToise(Betker,2023) ✓ Decoder-onlyTransformer+Diffusion UnivNet(Jangetal.,2021) MelS 2023.05
+MegaTTS(Jiangetal.,2023) ✓ ✓ Decoder-onlyTransformer+GAN HiFi-GAN MelS 2023.06
+SCVALL-E(Kimetal.,2023) ✓ ✓ ✓ ✓ ✓ ✓ Decoder-onlyTransformer EnCodec Token 2023.07
+Salle(Jietal.,2024b) ✓ ✓ ✓ ✓ ✓ ✓ ✓ Decoder-onlyTransformer EnCodec Token 2023.08
+UniAudio(Yangetal.,2023b) ✓ ✓ ✓ ✓ ✓ ✓ Decoder-onlyTransformer EnCodec Token 2023.10
+ELLA-V(Songetal.,2024) ✓ ✓ Decoder-onlyTransformer EnCodec Token 2024.01
+BaseTTS(Łajszczaketal.,2024) ✓ ✓ Decoder-onlyTransformer HiFi-GAN+BigVGAN Token 2024.02
+CLaM-TTS(Kimetal.,2024a) ✓ ✓ Encoder-decoderTransformer BigVGAN Token+MelS 2024.04
+RALL-E(Xinetal.,2024) ✓ ✓ Decoder-onlyTransformer SoundStream Token 2024.05
+ARDiT(Liuetal.,2024b) ✓ ✓ ✓ Decoder-onlyDiT BigVGAN MelS 2024.06
+VALL-ER(Hanetal.,2024) ✓ ✓ Decoder-onlyTransformer Vocos Token 2024.06
+VALL-E2(Chenetal.,2024a) ✓ ✓ Decoder-onlyTransformer Vocos Token 2024.06
+Seed-TTS(Anastassiouetal.,2024) ✓ ✓ ✓ Decoder-onlyTransformer+DiT Unknown LatentFeature 2024.06
+VoiceCraft(Pengetal.,2024b) ✓ ✓ Decoder-onlyTransformer HiFi-GAN Token 2024.06
+XTTS(Casanovaetal.,2024) ✓ ✓ Decoder-onlyTransformer HiFi-GAN-based(Casanovaetal.,2024) Token+MelS 2024.06
+CosyVoice(Duetal.,2024) ✓ ✓ ✓ ✓ ✓ ✓ ✓ Decoder-onlyTransformer+Flow HiFi-GAN Token 2024.07
+MELLE(Mengetal.,2024) ✓ ✓ Decoder-onlyTransformer HiFi-GAN MelS 2024.07
+VoxInstruct(Zhouetal.,2024) ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ Decoder-onlyTransformer Vocos Token 2024.08
+Emo-DPO(Gaoetal.,2024) ✓ Decoder-onlyTransformer HiFi-GAN Token+MelS 2024.09
+FireRedTTS(Guoetal.,2024a) ✓ ✓ ✓ Decoder-onlyTransformer+Flow BigVGAN Token+MelS 2024.09
+CoFi-Speech(Guoetal.,2024b) ✓ ✓ Decoder-onlyTransformer BigVGAN Token+MelS 2024.09
+Takin(Chenetal.,2024b) ✓ ✓ ✓ ✓ ✓ ✓ ✓ Decoder-onlyTransformer+Flow HiFi-GAN Token+MelS 2024.09
+HALL-E(Nishimuraetal.,2024) ✓ ✓ Decoder-onlyTransformer EnCodec Token 2024.10
+FishSpeech(Liaoetal.,2024) ✓ ✓ Decoder-onlyTransformer Firefly-GAN(Liaoetal.,2024) Token 2024.11
+SLAM-Omni(Chenetal.,2024c) ✓ ✓ ✓ Decoder-onlyTransformer HiFi-GAN Token+MelS 2024.12
+IST-LM(Yangetal.,2024e) ✓ ✓ ✓ Decoder-onlyTransformer HiFi-GAN Token+MelS 2024.12
+KALL-E(Zhuetal.,2024) ✓ ✓ ✓ ✓ Decoder-onlyTransformer WaveVAE(Zhuetal.,2024) LatentFeature 2024.12
+IDEA-TTS(Luetal.,2025) ✓ ✓ ✓ Transformer Flow-based(Luetal.,2025) LinS+MelS 2024.12
+FleSpeech(Lietal.,2025a) ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ Flow-basedDiT WaveGAN(Donahueetal.,2018) LatentFeature 2025.01
+Step-Audio(Huangetal.,2025) ✓ ✓ ✓ ✓ ✓ Decoder-onlyTransformer Flow-based(Huangetal.,2025) Token 2025.02
+Vevo(Zhangetal.,2025b) ✓ ✓ ✓ ✓ Decoder-onlyTransformer BigVGAN Token+MelS 2025.02
+Spark-TTS(Wangetal.,2025a) ✓ ✓ ✓ ✓ ✓ Decoder-onlyTransformer BiCodec(Wangetal.,2025a) Token 2025.03
+EmoVoice(Yangetal.,2025) ✓ ✓ Decoder-onlyTransformer HiFi-GAN Token 2025.04
+Abbreviations:Pit(ch),Ene(rgy),Spe(ed),Pro(sody),Tim(bre),Emo(tion),Env(ironment),Des(cription).MelS:MelSpectrogram.LinS:LinearSpectrogram.
+Table1: Asummaryofexistingcontrollableneural-basedmethods.
+Transformer-basedMethods. Transformersen- trol. Hsuetal.(2018)proposedahierarchicalVAE
+able efficient context modeling and parallel TTS. to control noise and speaking rate. Zhang et al.
+FastSpeech (Ren et al., 2019) introduced a non- (2019) introduced disentangled VAE representa-
+autoregressivetransformerthatimprovesinference tions for effective prosody and emotion transfer.
+speed and stability via duration prediction. Fast- ParallelTacotron(Eliasetal.,2021b)usesaVAE-
+Speech 2 (Ren et al., 2021a) adds pitch and en- basedresidualencoderwithiterativespectrogram
+ergycontrol,removingtheneedfordistillationand losstoimprovespeechnaturalness. CLONE(Liu
+boostingvoicequality. FastPitch(Łan´cucki,2021) etal.,2022)furtherimprovesprosodyandenergy
+furtherincorporatesdirectpitchpredictionintoits modeling using conditional VAEs with normaliz-
+architecture,enablingpitchmanipulation. ing flows (Kobyzev et al., 2020) and adversarial
+training,achievingstate-of-the-artqualityandcon-
+VAE-basedMethods. VAEsenablestructured,
+trol. TheseadvancesunderscoreVAEs’versatility
+continuouslatentrepresentationsbyoptimizinga
+inexpressiveandcontrollablespeechsynthesis.
+variational lower bound. VAEs have been lever-
+agedtoenhanceprosody,emotion,andstylecon- Diffusion-based Methods. Diffusion mod-
+3
+
+els (Ho et al., 2020) generate speech by revers- Speech Decoder Text tokens
+ing a noise injection process: noise is gradually Waveform Audio tokens
+added during the forward phase and removed in
+
+and
+
+tokens of text
+
+and
+
+tokens of audio
+the reverse phase to synthesize high-quality au- Decoder-only Transformer
+dio. NaturalSpeech 2 (Shen et al., 2024) uses
+
+a latent diffusion-based codec with quantized la-
+tent vectors, while NaturalSpeech 3 (Ju et al., Text Encoder A m "a Tn h ah na kp p yi oly u !s "ays: Speech Encoder
+2024) decomposes speech into independent at- Text / Instruction Reference Speech
+tributesubspaceswithfactorizeddiffusion-based Figure2: ThetypicalarchitectureofLLM-basedTTS.
+codecs. DEX-TTS (Park et al., 2024a) improves
+diffusion transformer (DiT)-based networks via
+overlappingpatchesandfrequency-awareembed- fromslowerinference,makingthemmoresuitable
+dings. E3 TTS (Gao et al., 2023) eliminates in- forapplicationswhereflexibilityisprioritizedover
+termediate features by directly modeling wave- speed. Thispartinvestigatesrecurrentneuralnet-
+forms through diffusion. Text-to-audio models works(RNN)andLLM-basedmethods.
+suchasAudioLDM(Liuetal.,2023b)andMake- RNN-based Methods. RNNs enable natural-
+An-Audio(Huangetal.,2023a)canalsogenerate soundingspeechsynthesiswithadjustableprosody,
+speechusinglatentdiffusionmodels. pitch, and emotion. Prosody-Tacotron (Skerry-
+Flow-basedMethods. Flowmodelsuseinvert- Ryan et al., 2018) extends Tacotron (Wang et al.,
+ibleflows(RezendeandMohamed,2015;Lipman 2017) by introducing explicit prosodic controls.
+etal.,2023)tomapspeechfeaturestosimpledistri- Wang et al. (2018) proposed Global Style To-
+butions,typicallyGaussians(Prengeretal.,2019), kens (GST), enabling unsupervised style trans-
+enablingdirect,high-fidelitygenerationviainver- fer. Emotion-controllablemodelssuchasLietal.
+sion. Recentmodelsadoptflow-matching(Lipman (2021)introducedemotionembeddingsandstyle
+etal.,2023)forefficient,non-autoregressivesyn- alignmenttomodulateemotionalintensity. MsE-
+thesis: Audiobox(Vyasetal.,2023),P-Flow(Kim moTTS(Leietal.,2022)refinedthiswithahierar-
+et al., 2024c), and VoiceBox (Le et al., 2024) chicalstructurecapturingemotionatglobal,utter-
+considerTTSasspeechinfillingtasks,predicting ance,andlocallevels,enablingmorenuancedsyn-
+maskedmel-spectrograms. FlashSpeech(Yeetal., thesis. Thesedevelopmentsbringsyntheticspeech
+2024)trainsalatentconsistencymodelusingadver- significantlyclosertohumanexpressiveness.
+sarialtraining,achievingone-ortwo-stepsynthesis. LLM-based Methods. LLM-based TTS is in-
+Inspiredbyaudioinfilling,E2TTS(Eskimezetal., spired by the success of in-context learning in
+2024)usesfiller-augmentedtextsequencestogen- LLMs. As illustrated in Fig. 2, these approaches
+eratemel-spectrogramswithhuman-levelquality. typically input target text or instructions with an
+F5-TTS (Chen et al., 2024d) builds on this with optional reference speech, using autoregressive
+ConvNeXtv2(Wooetal.,2023)toenhancetext- decoder-only transformers to generate speech to-
+speechalignmentbydirectlylearningflowscondi- kens or features, which are then decoded into
+tionedontextandreferencespeech. E1TTS(Liu waveforms. VALL-E (Wang et al., 2023a) pio-
+etal.,2025b)distillsrectifiedflow-baseddiffusion neeredLLM-basedzero-shotTTSbyframingitas
+models(Liuetal.,2023c)intoone-stepgenerators aconditionallanguagemodelingtask. ItusesEn-
+viadistributionmatching,reducingsamplingcost. Codec(Défossezetal.,2023a)todiscretizewave-
+formsintotokensandadoptsatwo-stagepipeline:
+3.1.2 AutoregressiveApproaches
+an autoregressive model generates coarse audio
+AutoregressiveTTSmodelspredictthespeechse-
+tokens, followed by a non-autoregressive model
+quencey = (y ,...,y )giveninputxas:
+1 T for iterative refinement. This hierarchical model-
+T ing of semantic and acoustic tokens has laid the
+(cid:89)
+argmax = P(y t|y tripletswithtaskembeddingsandhierarchical reconstructionlossestodiscourageleakageofother
+adapters,allowingcontentandacousticattributes information. These methods are often combined.
+control. Itsupportsflexible,free-formspeechedit- RegularizationviaKLdivergence(Luetal.,2023)
+ingandtaskadaptationbymulti-stepreasoning. orquantization(Zhangetal.,2025b)alsoplaysa
+keyroleinenforcingdisentanglement.
+3.2.6 ResearchTrend ContinuousRepresentations. Continuousrep-
+TheevolutionofTTScontrolhasmovedfrombasic resentationsmodelspeechinacontinuousfeature
+attributemanipulationtosophisticated,instruction- space, preserving acoustic details. The key ad-
+guided synthesis, reflecting AI’s trend toward in- vantages are: 1) Fine-grained detail retention for
+tuitive, fine-grained control. Early methods like natural and expressive synthesis; 2) Inherent en-
+styletaggingcontrolledpredefinedattributes(e.g., codingofprosody,pitch,andemotion,aidingcon-
+pitch, emotion) but offered limited expressive di- trollable and emotional TTS; 3) Enable smooth
+versity. Referencespeechpromptsenabledzero- audioreconstructionwithoutquantizationartifacts.
+shot TTS and voice cloning, separating timbre GAN-based (Kong et al., 2020; Yamamoto et al.,
+fromstyleforgreaterpersonalization. Toimprove 2020),VAE-based(Leeetal.,2023b,2025),flow-
+user-friendliness,naturallanguagedescriptions based (Kim et al., 2024d; Casanova et al., 2022),
+(e.g.,PromptTTS)alloweduserstospecifyvocal and diffusion-based methods (Kong et al., 2021;
+characteristics through text. The latest advance, Huang et al., 2022a) often utilize continuous fea-
+instruction-guided control, leverages LLMs to turerepresentations. However,theyarecomputa-
+interpretfree-forminstructionscombiningcontent tionally intensive and demand large models and
+andstyle. SystemslikeVoxInstructandCosyVoice datasetsforhigh-fidelityaudiogeneration.
+generate nuanced speech, including paralinguis- Discrete Tokens. Discrete token-based TTS
+tic sounds, enabling highly precise, user-centric uses quantized units or phoneme-like tokens as
+synthesis. Overall, the progression from tags to acoustic features, which are often derived from
+natural instructions shows a clear trajectory to- quantization (Zeghidour et al., 2021) or learned
+ward more expressive, personalized, and intu- embeddings(Hsuetal.,2021). Theadvantagesof
+itiveTTS,drivenbyLLMintegration. Table2in discretetokensare: 1)Discretetokenscanencode
+theAppendixprovidesasummaryofthestrengths phonemes or sub-word units, making them con-
+andweaknessesofeachcontrolstrategy. ciseandcomputationallyefficient. 2)Discreteto-
+kensoftenallowTTSsystemstorequirefewersam-
+3.3 FeatureRepresentations
+ples to learn and generalize, compared with con-
+Thelearningandchoiceoffeaturerepresentations tinuousfeatures. 3)Usingdiscretetokenssimpli-
+criticallyaffectflexibility,naturalness,andcontrol- fiescross-modalTTSapplicationslikedescription-
+lability. Thissubsectiondiscussesspeechattribute basedTTS,astheyaresuitableforLLMtraining.
+disentanglementandcomparescontinuousanddis- LLM-basedmethods(Zhouetal.,2024;Yangetal.,
+creterepresentations,highlightingtheirtrade-offs. 2024b;Duetal.,2024)oftenadoptdiscretetokens
+SpeechAttributeDisentanglement. Attribute as acoustic features. However, discrete feature
+disentanglementaimstoisolatedistinctspeechfac- learning may cause information loss or lack the
+tors, such as speaker identity, emotion, prosody, nuanceddetailsincontinuousfeatures.
+and content, into separate latent representations. Table1summarizesthefeaturesusedinexisting
+Thetwomainapproachesare: 1)Adversarialtrain- methods. We also compare speech quantization
+ing(Goodfellowetal.,2020)usesauxiliaryclassi- andtokenizationinAppendixA.3andsummarize
+fierstopenalizethepresenceofunwantedattributes open-sourcemethodsinTable5intheAppendix.
+7
+
+4 DatasetsandEvaluationMethods and real speech in the embedding space of a pre-
+trained speech recognition model, such as Deep-
+4.1 Datasets
+Speech (Hannun et al., 2014). It compares the
+Fully controllable TTS systems require large, di- meanandcovarianceofextractedfeatures;thus,a
+verse, and finely annotated datasets to generate lower FDSD indicates higher perceptual similar-
+expressive,attribute-controllablespeech. Thereare ity. Word Error Rate (WER) (Wikipedia, 2024)
+mainlythreetypesofdatasetsforcontrollableTTS: quantifiesspeechintelligibilitybycomparingrec-
+Tag-basedDatasets. Tag-baseddatasetscontain ognized and reference transcripts. Cosine Simi-
+speech recordings annotated with predefined dis- larity assesses speaker similarity by comparing
+creteattributelabelsthatdescribevariousaspects speakerembeddings(extractedusingmodelslike
+ofthespeechaudio(Zhouetal.,2022;Bussoetal., ECAPA-TDNN (Desplanques et al., 2020) or x-
+2008; Ringeval et al., 2013; Bagher Zadeh et al., vectors (Snyder et al., 2018)) of synthesized and
+2018). Common attributes include pitch, energy, reference speech. Higher values indicate better
+speakingrate,age,gender,emotion,emphasis,ac- voice cloning. Perceptual Evaluation of Speech
+cent,andtopic. Byleveragingattributelabels,mod- Quality(PESQ)(Rixetal.,2001)evaluatesthein-
+elscandynamicallyadjustspecificspeechcharac- telligibilityanddistortionofsynthesizedspeechby
+teristics,enablingmoreexpressivesynthesis. modelinghumanauditoryperception.
+Description-basedDatasets. Description-based SubjectiveMetrics. Subjectivemetricsassess
+datasetspairspeechsampleswithrich,free-form theperceptualqualityofsynthesizedspeechbased
+textualdescriptionsthatcapturenuancedattributes on human judgments, capturing aspects like ex-
+such as intonation, prosody, speaking style, and pressiveness and style similarity. Mean Opinion
+emotionaltone(Guoetal.,2023;Jietal.,2024b; Score(MOS)ratessynthesizedspeech(e.g.,natu-
+Jinetal.,2024;LythandKing,2024). Unliketag- ralness) on a 1–5 scale. Though effective in cap-
+baseddatasetswithpredefinedcategoricallabels, turinghumanperception,MOSiscostlyforlarge-
+thesedatasetsallowmodelstointerpretandgener- scale use. Comparison MOS (CMOS) (Loizou,
+atespeechfromnaturallanguageprompts,enabling 2011) assesses relative quality by asking partici-
+context-awareandhighlyexpressivesynthesis. pantscomparepairedsamples. Bothareaveraged
+Dialogue Datasets. Dialogue datasets (Byrne across listeners. AB/ABX Tests present listeners
+et al., 2019; Lee et al., 2023a; Yang et al., 2022) with two samples (AB) by different methods or
+containmulti-turnconversationalspeechinvolving twoplusareference(ABX)tojudgepreferenceor
+two or more speakers, emphasizing natural inter- closenesstothereference. Theyareverycommon
+actionfeaturessuchasturn-taking,contextualde- in evaluating fine-grained or zero-shot TTS. Ap-
+pendencies, speaker intent, pauses, and prosodic pendixA.4detailsthemetriccomputations,while
+variation. Thesedatasetsareessentialforgenerat- Table4summarizesthemostcommonlyusedones.
+ingdynamicandcontextuallyappropriatespeech
+forinteractivesystems. 4.2.2 Model-basedEvaluation
+Byleveragingthesedatasets,researcherscande- Model-basedevaluationisalsoanemergingtech-
+velopmoreexpressive,context-aware,andhighly nique,e.g.,automaticMOSevaluation(Lianetal.,
+controllableTTSmodels. Table3intheAppendix 2025) and GPT-based evaluation (Rong et al.,
+summarizespubliclyavailabledatasets. 2025). To evaluate the controllability of existing
+TTSmodels,wedesignedapipelineusingGoogle
+4.2 EvaluationMethods
+Gemini to assess synthesized speech along three
+4.2.1 ObjectiveandSubjectiveMetrics
+dimensions,i.e.,instructionfollowing,naturalness,
+ObjectiveMetrics. Objectivemetricsenableauto- andexpressiveness,whicharenotwellcapturedby
+matedandreproducibleevaluation. MelCepstral traditional metrics. Details of this evaluation are
+Distortion (MCD) (Kominek et al., 2008) quan- providedinAppendixA.5.
+tifies spectral distance between synthesized and
+reference speech. MCD below 4 suggests good 5 ChallengesandFutureDirections
+synthesis, while values above 6 imply distortion.
+5.1 Challenges
+FréchetDeepSpeechDistance(FDSD)(Bin´kowski
+et al., 2020) evaluates speech quality by measur- Fine-Grained Attribute Control. Emotion and
+ingthedistributionaldistancebetweensynthesized other vocal traits are often intertwined and span
+8
+
+multiplegranularities,makingfine-grainedcontrol instruction-guidedmodifications. Thus,developing
+especiallydifficult. Thisrequireshigh-resolution disentangled representations that support precise
+annotationsandadvancedmodelscapableofcap- controlthroughuserinstructionsispromising.
+turingsubtleattributevariations. Whiledescription- Expressive Multimodal Speech Synthesis.
+basedmethodslikeVoxInstruct(Zhouetal.,2024) Synthesizingspeechfrommultimodalinputssuch
+allow control via attribute descriptions, precisely astexts,images,andvideoshasbroadindustrialap-
+targeting a specific granularity or enabling multi- plicationsinstorytelling,film,andgaming. While
+scale,fine-grainedcontrolremainsabigchallenge. priorwork(Gotoetal.,2020;Luetal.,2022;Rong
+Feature Disentanglement. Fully controllable andLiu,2025)exploresthisdirection,currentmeth-
+TTSrequireseffectivefeaturedisentanglement,yet odsstruggletoeffectivelyextractandutilizerich
+extractingmeaningfulandindependentspeechat- multimodal information. Generating expressive,
+tributesischallengingduetotheirinterdependence engaging speech for complex visual content re-
+and context sensitivity. For instance, modifying mainsapromisingareaforfutureresearch.
+pitchcanalsoaffectemotionandnaturalness. To Zero-shot Long Speech and Conversational
+address this, prior work (An et al., 2022; Wang SynthesiswithEmotionConsistency. Zero-shot
+etal.,2023b)leveragespre-trainedmodelsontasks TTSenablesvoicecloningandstyletransferwith-
+likeemotionclassificationandadversarialtraining out fine-tuning (Wang et al., 2025b; Chen et al.,
+to guide feature separation. However, designing 2024d;Duetal.,2024),yetstruggleswithgener-
+disentanglementmethodsformoresubtleprosodic atinglong,content-emotionconsistentspeechdue
+attributes,suchassarcasm,remainsanopenchal- tolimitedreferenceinput. Overcomingthischal-
+lengeandmeritsfurtherresearch. lenge is key to advancing long speech synthesis.
+ScarcityofDatasets. Effectivecontrolrequires Besides, conversationalTTS,oftencascadedand
+training data that spans a wide range of styles, context-unaware, produces robotic and unexpres-
+emotions, accents, and prosodic patterns. Large- sivespeech. RecentadvancesleverageLLMsand
+scaledatasetslikeGigaSpeech(Chenetal.,2021) discrete speech tokens (Fang et al., 2025; Zhang
+andTextrolSpeech(Jietal.,2024b)exist,butlack etal.,2023b),butcontext-aware,emotionallyrich
+thecontentandscenariodiversity,e.g.,comedies, conversationalTTSremainsunderexplored.
+thrillers, and cartoons. Fine-grained, attribute- Large-ScaleDatasetGeneration. Datasetcon-
+specificannotationsareanotherbottleneck. Man- structioniscriticalforbothfine-grainedcontroland
+ual labeling is expensive, laborious, requires ex- editingtasks. Researcherscanleveragepre-trained
+pertise, and is often inconsistent, especially for speechanalysismodelstoannotateattributeslike
+subjectivetraitslikeemotion. Mostdatasetsoffer pitch,energy,emotion,gender,andage. Fromthese
+only coarse labels (e.g., gender, age, emotions). annotations, tools like ChatGPT can generate di-
+While datasets like SpeechCraft (Jin et al., 2024) versenaturallanguagedescriptionsofspeechchar-
+andParler-TTS(LythandKing,2024)includetex- acteristics. For speech editing, pre-trained mod-
+tualdescriptions,noneprovideannotationsacross elscanassistwithtaskssuchaswordsubstitution,
+varyingconditionswithinthesamespeaker. pitch adjustment, and emotion conversion, while
+ChatGPTcanprovidevariedandsemanticallyrich
+5.2 FutureDirections
+editinginstructionsfortrainingandevaluation. In
+Instruction-GuidedFine-GrainedSpeechSyn-
+addition,multi-agentsystemscanalsobeutilized
+thesisandEditing. Naturallanguage-drivencon-
+togeneratelong-formanddiversespeechcontent.
+trol of fine-grained speech attributes remains un-
+derexplored. Mostexistingmethodssupportonly 6 Conclusion
+a limited set of controllable attributes. While
+models like VoxInstruct (Zhou et al., 2024) and This survey provides a comprehensive review of
+CosyVoice(Duetal.,2024)showpromiseincon- controllableTTSmethods,coveringmodelarchi-
+trollingemotion,timbre,andstyle,theyoftenpro- tectures,controlstrategies,andfeaturerepresenta-
+ducespeechthatdeviatesfromuserintent,requir- tions. Wealsosummarizecommonlyuseddatasets
+ingmultiplesynthesisattempts. Similarly,speech andevaluationmetrics,discussmajorchallenges,
+editingmethods(Taeetal.,2022;Tanetal.,2021a) andhighlightpromisingfuturedirections. Tothe
+typicallyrelyonconditionalmodelswithfixedin- bestofourknowledge,thisisthefirstcomprehen-
+puts, offering limited flexibility for fine-grained, sivesurveydedicatedtocontrollableTTS.
+9
+
+7 Limitations JonathanAllen,MSharonHunnicutt,DennisHKlatt,
+Robert C Armstrong, and David B Pisoni. 1987.
+We acknowledge several limitations that may af- FromTexttoSpeech:TheMITalkSystem. Cambridge
+fect the completeness of our survey. First, this UniversityPress.
+survey does not explore the interactions between
+FelipeAlmeidaandGeraldoXexéo.2019. Wordembed-
+controllableattributes. Mostexistingstudiesfocus
+dings: Asurvey. arXivpreprintarXiv:1901.09069.
+onmodelingeachfactor,suchasemotion,speaker
+identity, or prosody, as an independent variable. Keyu An, Qian Chen, Chong Deng, Zhihao Du,
+Changfeng Gao, Zhifu Gao, Yue Gu, Ting He,
+However, understanding how these attributes in-
+Hangrui Hu, Kai Hu, and 1 others. 2024. FunAu-
+fluence one another during synthesis could lead
+dioLLM:Voiceunderstandingandgenerationfoun-
+to more effective and flexible control strategies. dationmodelsfornaturalinteractionbetweenhumans
+Second, we do not address the efficiency of cur- andLLMs. arXivpreprintarXiv:2407.04051.
+rent controllable TTS systems. It is important
+XiaochunAn,FrankKSoong,andLeiXie.2022. Dis-
+tonotethatapproachesguidedbydescriptionsor
+entanglingstyleandspeakerattributesforTTSstyle
+instructions often involve considerable computa- transfer. IEEE/ACMTransactionsonAudio,Speech,
+tional cost, largely due to their reliance on large andLanguageProcessing,30:646–658.
+languagemodel-basedcodecsandcomplexcross-
+PhilipAnastassiou,JiaweiChen,JitongChen,Yuanzhe
+modalarchitectures. Third,wehavenotdiscussed
+Chen,ZhuoChen,ZiyiChen,JianCong,LelaiDeng,
+the broader societal implications of controllable ChuangDing,LuGao,and1others.2024. Seed-TTS:
+TTS, such as the risks associated with deepfake Afamilyofhigh-qualityversatilespeechgeneration
+models. arXivpreprintarXiv:2406.02430.
+generation or adversarial attacks. Finally, this
+survey does not cover related research areas, in- RosanaArdila,MeganBranson,KellyDavis,Michael
+cluding speech enhancement, speech separation, Kohler, Josh Meyer, Michael Henretty, Reuben
+speech pretraining, and speech-to-speech transla- Morais,LindsaySaunders,FrancisTyers,andGre-
+gor Weber. 2020. Common Voice: A massively-
+tion,whichmayoffervaluableinsightsorcomple-
+multilingual speech corpus. In Proceedings of the
+mentarytechniques. Overcomingtheselimitations
+TwelfthLanguageResourcesandEvaluationConfer-
+presentsimportantopportunitiesforfutureresearch ence,pages4218–4222.
+to deepen our understanding and improve the de-
+Alexei Baevski, Wei-Ning Hsu, Qiantong Xu, Arun
+signofcontrollableTTSsystems.
+Babu,JiataoGu,andMichaelAuli.2022. Data2vec:
+A general framework for self-supervised learning
+8 EthicsStatements
+in speech, vision and language. In International
+ConferenceonMachineLearning,pages1298–1312.
+Theliteraturesearchandreviewwereconductedus-
+ingsourcessuchasGoogleScholar,arXiv,DBLP, AlexeiBaevski, SteffenSchneider, andMichaelAuli.
+Scopus, and ChatGPT. All referenced papers in- 2020a. vq-wav2vec: Self-supervisedlearningofdis-
+cluded in this survey were thoroughly read, ana- cretespeechrepresentations. InInternationalCon-
+ferenceonLearningRepresentations.
+lyzed,andcategorizedbytheauthors. Portionsof
+theoriginalcontentinthissurveywereparaphrased AlexeiBaevski,YuhaoZhou,AbdelrahmanMohamed,
+andrefinedwiththeassistanceofChatGPT. andMichaelAuli.2020b. wav2vec2.0:Aframework
+forself-supervisedlearningofspeechrepresentations.
+9 Acknowledgement AdvancesinNeuralInformationProcessingSystems,
+33:12449–12460.
+This work was supported by the National Natu-
+AmirAliBagherZadeh,PaulPuLiang,SoujanyaPoria,
+ralScienceFoundationofChina(No. 62471420),
+Erik Cambria, and Louis-Philippe Morency. 2018.
+GuangDong Basic and Applied Basic Re-
+Multimodal language analysis in the wild: CMU-
+searchFoundation(2025A1515012296),andCCF- MOSEI dataset and interpretable dynamic fusion
+TencentRhino-BirdOpenResearchFund. graph. InProceedingsofthe56thAnnualMeetingof
+theAssociationforComputationalLinguistics(Vol-
+ume1: LongPapers),pages2236–2246.
+References
+Loïc Barrault, Yu-An Chung, Mariano Coria Megli-
+AmmarAbbas,ThomasMerritt,AlexisMoinet,SriKar- oli, David Dale, Ning Dong, Mark Duppenthaler,
+lapati,EwaMuszynska,SimonSlangen,EliaGatti, Paul-AmbroiseDuquenne,BrianEllis,HadyElsahar,
+andThomasDrugman.2022. Expressive,variable, JustinHaaheim,and1others.2023. Seamless: Mul-
+andcontrollabledurationmodellinginTTS. arXiv tilingualexpressiveandstreamingspeechtranslation.
+preprintarXiv:2206.14165. arXivpreprintarXiv:2312.05187.
+10
+
+JamesBetker.2023. Better speechsynthesisthrough Khudanpur,ShinjiWatanabe,ShuaijiangZhao,Wei
+scaling. arXivpreprintarXiv:2305.07243. Zou, Xiangang Li, Xuchen Yao, Yongqing Wang,
+Zhao You, and Zhiyong Yan. 2021. GigaSpeech:
+Mikołaj Bin´kowski, Jeff Donahue, Sander Dieleman, Anevolving,multi-domainASRcorpuswith10,000
+Aidan Clark, Erich Elsen, Norman Casagrande, hours of transcribed audio. In Annual Conference
+Luis C. Cobo, and Karen Simonyan. 2020. High oftheInternationalSpeechCommunicationAssocia-
+fidelityspeechsynthesiswithadversarialnetworks. tion,pages3670–3674.
+InInternationalConferenceonLearningRepresenta-
+tions. Sanyuan Chen, Shujie Liu, Long Zhou, Yanqing Liu,
+XuTan,JinyuLi,ShengZhao,YaoQian,andFuru
+Tom Brown, Benjamin Mann, Nick Ryder, Melanie Wei.2024a. VALL-E2: Neuralcodeclanguagemod-
+Subbiah,JaredDKaplan,PrafullaDhariwal,Arvind elsarehumanparityzero-shottexttospeechsynthe-
+Neelakantan,PranavShyam,GirishSastry,Amanda sizers. arXivpreprintarXiv:2406.05370.
+Askell, Sandhini Agarwal, Ariel Herbert-Voss,
+Gretchen Krueger, Tom Henighan, Rewon Child, Sijing Chen, Yuan Feng, Laipeng He, Tianwei He,
+AdityaRamesh,DanielZiegler,JeffreyWu,Clemens WendiHe, YanniHu, BinLin, YitingLin, YuPan,
+Winter,and12others.2020. Languagemodelsare PengfeiTan,and1others.2024b. Takin: Acohortof
+few-shotlearners. InAdvancesinNeuralInformation superiorqualityzero-shotspeechgenerationmodels.
+ProcessingSystems,volume33,pages1877–1901. arXivpreprintarXiv:2409.12139.
+Murtaza Bulut, Shrikanth S Narayanan, and Ann K WeidongChen,ShanYang,GuangzhiLi,andXixinWu.
+Syrdal. 2002. Expressive speech synthesis using 2025. DrawSpeech: Expressive speech synthesis
+a concatenative synthesizer. In Proceedings of the using prosodic sketches as control conditions. In
+AnnualConferenceoftheInternationalSpeechCom- IEEEInternationalConferenceonAcoustics,Speech
+municationAssociation,pages1265–1268. andSignalProcessing,pages1–5.
+Carlos Busso, Murtaza Bulut, Chi-Chun Lee, Abe WenxiChen,ZiyangMa,RuiqiYan,YuzheLiang,Xi-
+Kazemzadeh, Emily Mower, Samuel Kim, Jean- quan Li, Ruiyang Xu, Zhikang Niu, Yanqiao Zhu,
+nette N Chang, Sungbok Lee, and Shrikanth S Yifan Yang, Zhanxun Liu, and 1 others. 2024c.
+Narayanan.2008. IEMOCAP:Interactiveemotional SLAM-Omni: Timbre-controllablevoiceinteraction
+dyadic motion capture database. Language Re- system with single-stage training. arXiv preprint
+sourcesandEvaluation,42:335–359. arXiv:2412.15649.
+Bill Byrne, Karthik Krishnamoorthi, Chinnadhurai Xinxiong Chen, Lei Xu, Zhiyuan Liu, Maosong Sun,
+Sankar, Arvind Neelakantan, Daniel Duckworth, andHuan-BoLuan.2015. Jointlearningofcharac-
+Semih Yavuz, Ben Goodrich, Amit Dubey, Andy ter and word embeddings. In Twenty-fourth Inter-
+Cedilnik,andKyu-YoungKim.2019. Taskmaster-1: nationalJointConferenceonArtificialIntelligence,
+Towardarealisticanddiversedialogdataset. arXiv pages1236–1242.
+preprintarXiv:1909.05358.
+Yushen Chen, Zhikang Niu, Ziyang Ma, Keqi Deng,
+EdressonCasanova,KellyDavis,ErenGölge,Görkem Chunhui Wang, Jian Zhao, Kai Yu, and Xie Chen.
+Göknar, Iulian Gulea, Logan Hart, Aya Aljafari, 2024d. F5-TTS: A fairytaler that fakes fluent and
+JoshuaMeyer,ReubenMorais,SamuelOlayemi,and faithfulspeechwithflowmatching. arXivpreprint
+JulianWeber.2024. XTTS:amassivelymultilingual arXiv:2410.06885.
+zero-shottext-to-speechmodel. InConferenceofthe
+International Speech Communication Association, Deok-Hyeon Cho, Hyung-Seok Oh, Seung-Bin Kim,
+pages4978–4982. and Seong-Whan Lee. 2024. EmoSphere++:
+Emotion-controllable zero-shot text-to-speech via
+Edresson Casanova, Christopher Shulby, Eren emotion-adaptive spherical vector. arXiv preprint
+Gölge, Nicolas Michael Müller, Frederico Santos arXiv:2411.02625.
+De Oliveira, Arnaldo Candido Junior, Ander-
+son da Silva Soares, Sandra Maria Aluisio, and JeongsooChoi,JoannaHong,andYongManRo.2023.
+Moacir Antonelli Ponti. 2021. SC-GlowTTS: An DiffV2S:Diffusion-basedvideo-to-speechsynthesis
+efficient zero-shot multi-speaker text-to-speech withvision-guidedspeakerembedding. InProceed-
+model. arXivpreprintarXiv:2104.05557. ingsoftheIEEE/CVFInternationalConferenceon
+ComputerVision,pages7812–7821.
+Edresson Casanova, Julian Weber, Christopher D
+Shulby, Arnaldo Candido Junior, Eren Gölge, and AakankshaChowdhery,SharanNarang,JacobDevlin,
+MoacirAPonti.2022. YourTTS:Towardszero-shot MaartenBosma,GauravMishra,AdamRoberts,Paul
+multi-speaker TTS and zero-shot voice conversion Barham,HyungWonChung,CharlesSutton,Sebas-
+for everyone. In International Conference on Ma- tianGehrmann,and1others.2023. PaLM:Scaling
+chineLearning,pages2709–2720. languagemodelingwithpathways. JournalofMa-
+chineLearningResearch,24(240):1–113.
+Guoguo Chen, Shuzhou Chai, Guan-Bo Wang, Jiayu
+Du,Wei-QiangZhang,ChaoWeng,DanSu,Daniel Gaoxiang Cong, Jiadong Pan, Liang Li, Yuankai Qi,
+Povey,JanTrmal,JunboZhang,MingjieJin,Sanjeev YuxinPeng,AntonvandenHengel,JianYang,and
+11
+
+Qingming Huang. 2024. EmoDubber: Towards Isaac Elias, Heiga Zen, Jonathan Shen, Yu Zhang,
+highqualityandemotioncontrollablemoviedubbing. YeJia,RonJWeiss,andYonghuiWu.2021b. Par-
+arXivpreprintarXiv:2412.08988. allelTacotron: Non-autoregressiveandcontrollable
+TTS. InIEEEInternationalConferenceonAcoustics,
+Erica Cooper, Cheng-I Lai, Yusuke Yasuda, Fuming SpeechandSignalProcessing,pages5709–5713.
+Fang,XinWang,NanxinChen,andJunichiYamag-
+ishi. 2020. Zero-shot multi-speaker text-to-speech SefikEmreEskimez,XiaofeiWang,ManthanThakker,
+withstate-of-the-artneuralspeakerembeddings. In Canrun Li, Chung-Hsien Tsai, Zhen Xiao, Hemin
+IEEEInternationalConferenceonAcoustics,Speech Yang, Zirun Zhu, Min Tang, Xu Tan, and 1 oth-
+andSignalProcessing,pages6184–6188. ers.2024. E2TTS:Embarrassinglyeasyfullynon-
+autoregressivezero-shotTTS. InIEEESpokenLan-
+Alexandre Défossez, Jade Copet, Gabriel Synnaeve,
+guageTechnologyWorkshop,pages682–689.
+and Yossi Adi. 2023a. High fidelity neural audio
+compression. Transactions on Machine Learning Yuchen Fan, Yao Qian, Frank K Soong, and Lei He.
+Research,pages1–19. 2015. Multi-speakermodelingandspeakeradapta-
+tionforDNN-basedTTSsynthesis. InIEEEInterna-
+Alexandre Défossez, Jade Copet, Gabriel Synnaeve,
+tionalConferenceonAcoustics,SpeechandSignal
+and Yossi Adi. 2023b. High fidelity neural audio
+Processing,pages4475–4479.
+compression. Transactions on Machine Learning
+Research. YuchenFan, YaoQian, Feng-LongXie, andFrankK
+Soong. 2014. TTS synthesis with bidirectional
+Alexandre Défossez, Laurent Mazaré, Manu Orsini,
+LSTM based recurrent neural networks. In Pro-
+AmélieRoyer,PatrickPérez,HervéJégou,Edouard
+ceedings of the Annual Conference of the Interna-
+Grave,andNeilZeghidour.2024. Moshi: aspeech-
+tional Speech Communication Association, pages
+textfoundationmodelforreal-timedialogue. arXiv
+1964–1968.
+preprintarXiv:2410.00037.
+QingkaiFang,ShoutaoGuo,YanZhou,ZhengruiMa,
+BrechtDesplanques,JentheThienpondt,andKrisDe-
+ShaoleiZhang,andYangFeng.2025. LLaMA-Omni:
+muynck.2020. ECAPA-TDNN:emphasizedchan-
+Seamlessspeechinteractionwithlargelanguagemod-
+nelattention,propagationandaggregationinTDNN
+els. InInternationalConferenceonLearningRepre-
+basedspeakerverification. In21stAnnualConfer-
+sentations,pages1–18.
+enceoftheInternationalSpeechCommunicationAs-
+sociation,pages3830–3834.
+TFukada,KTokuda,TKobayashi,andSImai.1992.
+An adaptive algorithm for mel-cepstral analysis of
+Jacob Devlin, Ming-Wei Chang, Kenton Lee, and
+speech. InIEEEInternationalConferenceonAcous-
+Kristina Toutanova. 2019. BERT: Pre-training of
+tics,Speech,andSignalProcessing,volume1,pages
+deepbidirectionaltransformersforlanguageunder-
+137–140.
+standing. InProceedingsoftheConferenceoftheAs-
+sociationforComputationalLinguistics,pages4171–
+Xiaoxue Gao, Chen Zhang, Yiming Chen, Huayun
+4186.
+Zhang, and Nancy F Chen. 2024. Emo-DPO:
+Controllable emotional speech synthesis through
+XinhanDi,ZihaoChen,YunmingLiang,JunjieZheng,
+direct preference optimization. arXiv preprint
+YihuaWang,andChaofanDing.2024. Bailing-TTS:
+arXiv:2409.10157.
+Chinesedialectalspeechsynthesistowardshuman-
+like spontaneous representation. arXiv preprint
+YuanGao,NobuyukiMorioka,YuZhang,andNanxin
+arXiv:2408.00284.
+Chen. 2023. E3 TTS: Easy end-to-end diffusion-
+ChrisDonahue,JulianMcAuley,andMillerPuckette. based text to speech. In IEEE Automatic Speech
+2018. Adversarialaudiosynthesis. InInternational RecognitionandUnderstandingWorkshop,pages1–
+ConferenceonLearningRepresentations. 8.
+ZhihaoDu,QianChen,ShiliangZhang,KaiHu,Heng SanggilLee,WeiPing,BorisGinsburg,BryanCatan-
+Lu,YexinYang,HangruiHu,SiqiZheng, YueGu, zaro, andSungrohYoon.2023. BigVGAN:Auni-
+ZiyangMa,and1others.2024. CosyVoice: Ascal- versal neural vocoder with large-scale training. In
+ablemultilingualzero-shottext-to-speechsynthesizer TheEleventhInternationalConferenceonLearning
+basedonsupervisedsemantictokens. arXivpreprint Representations.
+arXiv:2407.05407.
+Ian Goodfellow, Jean Pouget-Abadie, Mehdi Mirza,
+ThierryDutoit.1997. AnIntroductiontoText-to-Speech BingXu,DavidWarde-Farley,SherjilOzair,Aaron
+Synthesis,volume3. SpringerScience&Business Courville, and Yoshua Bengio. 2020. Generative
+Media. adversarialnetworks. CommunicationsoftheACM,
+63(11):139–144.
+Isaac Elias, Heiga Zen, Jonathan Shen, Yu Zhang,
+YeJia,RonJWeiss,andYonghuiWu.2021a. Par- Shunsuke Goto, Kotaro Onishi, Yuki Saito, Kentaro
+allelTacotron: Non-autoregressiveandcontrollable Tachibana,andKoichiroMori.2020. Face2Speech:
+TTS. InIEEEInternationalConferenceonAcoustics, Towardsmulti-speakertext-to-speechsynthesisusing
+SpeechandSignalProcessing,pages5709–5713. anembeddingvectorpredictedfromafaceimage. In
+12
+
+ProceedingsoftheAnnualConferenceoftheInter- speech synthesis via data augmentation and adver-
+nationalSpeechCommunicationAssociation,pages sarial factorization. In ICASSP 2019 - 2019 IEEE
+1321–1325. InternationalConferenceonAcoustics,Speechand
+SignalProcessing(ICASSP),pages5901–5905.
+YuGu,YianraoBian,GuangzhiLei,ChaoWeng,and
+DanSu.2023. DurIAN-E:Durationinformedatten- Wei-Ning Hsu, Yu Zhang, Ron J Weiss, Heiga Zen,
+tionnetworkforexpressivetext-to-speechsynthesis. Yonghui Wu, Yuxuan Wang, Yuan Cao, Ye Jia,
+arXivpreprintarXiv:2309.12792. Zhifeng Chen, Jonathan Shen, and 1 others. 2018.
+Hierarchical generative modeling for controllable
+Hao-Han Guo, Kun Liu, Fei-Yu Shen, Yi-Chen Wu, speech synthesis. In International Conference on
+Feng-LongXie, KunXie, andKai-TuoXu.2024a. LearningRepresentations.
+FireRedTTS: A foundation text-to-speech frame-
+work for industry-level generative speech applica- Ailin Huang, Boyong Wu, Bruce Wang, Chao Yan,
+tions. arXivpreprintarXiv:2409.03283. Chen Hu, Chengli Feng, Fei Tian, Feiyu Shen,
+Jingbei Li, Mingrui Chen, and 1 others. 2025.
+HaohanGuo,FenglongXie,DongchaoYang,XixinWu,
+Step-Audio: Unifiedunderstandingandgeneration
+andHelenMeng.2024b. Speakingfromcoarseto
+in intelligent speech interaction. arXiv preprint
+fine: Improving neural codec language model via
+arXiv:2502.11946.
+multi-scale speech coding and generation. arXiv
+preprintarXiv:2409.11630. RongjieHuang,RuofanHu,YongqiWang,ZehanWang,
+Xize Cheng, Ziyue Jiang, Zhenhui Ye, Dongchao
+ZhifangGuo,YichongLeng,YihanWu,ShengZhao,
+Yang,LupingLiu,PengGao,andZhouZhao.2024a.
+andXuTan.2023. PromptTTS:Controllabletext-to-
+InstructSpeech: Following speech editing instruc-
+speechwithtextdescriptions. InIEEEInternational
+tionsvialargelanguagemodels. InForty-firstInter-
+ConferenceonAcoustics,SpeechandSignalProcess-
+nationalConferenceonMachineLearning.
+ing,pages1–5.
+RongjieHuang,JiaweiHuang,DongchaoYang,YiRen,
+Bing Han, Long Zhou, Shujie Liu, Sanyuan Chen,
+LupingLiu,MingzeLi,ZhenhuiYe,JinglinLiu,Xi-
+LingweiMeng,YanmingQian,YanqingLiu,Sheng
+angYin,andZhouZhao.2023a. Make-An-Audio:
+Zhao, Jinyu Li, and Furu Wei. 2024. VALL-E R:
+Text-to-audiogenerationwithprompt-enhanceddif-
+Robust and efficient zero-shot text-to-speech syn-
+fusionmodels. InInternationalConferenceonMa-
+thesis via monotonic alignment. arXiv preprint
+chineLearning,pages13916–13932.
+arXiv:2406.07855.
+Rongjie Huang, Max W. Y. Lam, Jun Wang, Dan Su,
+AwniHannun,CarlCase,JaredCasper,BryanCatan-
+DongYu,YiRen,andZhouZhao.2022a. FastDiff:
+zaro,GregDiamos,ErichElsen,RyanPrenger,San-
+Afastconditionaldiffusionmodelforhigh-quality
+jeevSatheesh,ShubhoSengupta,AdamCoates,and
+speechsynthesis. InProceedingsoftheThirty-First
+1others.2014. DeepSpeech: Scalingupend-to-end
+International Joint Conference on Artificial Intelli-
+speechrecognition. arXivpreprintarXiv:1412.5567.
+gence,pages4157–4163.
+Shuwei He, Rui Liu, and Haizhou Li. 2024. Multi-
+Rongjie Huang, Mingze Li, Dongchao Yang, Jia-
+source spatial knowledge understanding for im-
+tongShi,XuankaiChang,ZhenhuiYe,YuningWu,
+mersive visual text-to-speech. arXiv preprint
+ZhiqingHong,JiaweiHuang,JinglinLiu,and1oth-
+arXiv:2410.14101.
+ers. 2024b. AudioGPT: Understanding and gener-
+MartinHeusel,HubertRamsauer,ThomasUnterthiner, ating speech, music, sound, and talking head. In
+BernhardNessler,andSeppHochreiter.2017. GANs Proceedings of the AAAI Conference on Artificial
+trainedbyatwotime-scaleupdateruleconvergeto Intelligence,volume38,pages23802–23804.
+alocalNashequilibrium. AdvancesinNeuralInfor-
+Rongjie Huang, Yi Ren, Jinglin Liu, Chenye Cui,
+mationProcessingSystems,30.
+and Zhou Zhao. 2022b. GenerSpeech: Towards
+JonathanHo,AjayJain,andPieterAbbeel.2020. De- styletransferforgeneralizableout-of-domaintext-to-
+noising diffusion probabilistic models. Advances speech. InAdvancesinNeuralInformationProcess-
+inNeuralInformationProcessingSystems,33:6840– ingSystems,pages1–14.
+6851.
+Rongjie Huang, Chunlei Zhang, Yongqi Wang,
+Wei-NingHsu,BenjaminBolte,Yao-HungHubertTsai, Dongchao Yang, Luping Liu, Zhenhui Ye, Ziyue
+KushalLakhotia,RuslanSalakhutdinov,andAbdel- Jiang,ChaoWeng,ZhouZhao,andDongYu.2023b.
+rahmanMohamed.2021. HuBERT:Self-supervised Make-A-Voice: Unifiedvoicesynthesiswithdiscrete
+speechrepresentationlearningbymaskedprediction representation. arXivpreprintarXiv:2305.19269.
+ofhiddenunits. IEEE/ACMTransactionsonAudio,
+Speech,andLanguageProcessing,29:3451–3460. AndrewJ.HuntandAlanW.Black.1996. Unitselec-
+tioninaconcatenativespeechsynthesissystemusing
+Wei-Ning Hsu, Yu Zhang, Ron J. Weiss, Yu-An alargespeechdatabase. InIEEEInternationalCon-
+Chung,YuxuanWang,YonghuiWu,andJamesGlass. ferenceonAcoustics,Speech,andSignalProcessing,
+2019. Disentanglingcorrelatedspeakerandnoisefor volume1,pages373–376.
+13
+
+Sho Inoue, Kun Zhou, Shuai Wang, and Haizhou Li. Yunlong Jiao, Adam Gabrys´, Georgi Tinchev, Bar-
+2024. Hierarchicalcontrolofemotionrenderingin tosz Putrycz, Daniel Korzekwa, and Viacheslav
+speechsynthesis. arXivpreprintarXiv:2412.12498. Klimkov.2021. Universalneuralvocodingwithpar-
+allel WaveNet. In IEEE International Conference
+Fumitada Itakura. 1975. Line spectrum representa-
+onAcoustics,SpeechandSignalProcessing,pages
+tionoflinearpredictorcoefficientsofspeechsignals.
+6044–6048.
+The Journal of the Acoustical Society of America,
+57(S1):S35–S35. Zeyu Jin, Jia Jia, Qixin Wang, Kehan Li, Shuoyi
+Zhou,SongtaoZhou,XiaoyuQin,andZhiyongWu.
+WonJang,DanLim,JaesamYoon,BongwanKim,and
+2024. SpeechCraft:Afine-grainedexpressivespeech
+JuntaeKim.2021. UnivNet: Aneuralvocoderwith
+dataset with natural language description. In Pro-
+multi-resolutionspectrogramdiscriminatorsforhigh-
+ceedingsofthe32ndACMInternationalConference
+fidelitywaveformgeneration. InAnnualConference
+onMultimedia,pages1255–1264.
+oftheInternationalSpeechCommunicationAssocia-
+tion,pages2207–2211. Zeqian Ju, Yuancheng Wang, Kai Shen, Xu Tan, De-
+tai Xin, Dongchao Yang, Eric Liu, Yichong Leng,
+Myeonghun Jeong, Hyeongju Kim, Sung Jun Cheon,
+KaitaoSong,SiliangTang,ZhizhengWu,TaoQin,
+Byoung Jin Choi, and Nam Soo Kim. 2021. Diff-
+XiangyangLi,WeiYe,ShikunZhang,JiangBian,Lei
+TTS:Adenoisingdiffusionmodelfortext-to-speech.
+He,JinyuLi,andshengzhao.2024. NaturalSpeech
+InProceedingsoftheAnnualConferenceoftheInter-
+3: Zero-shotspeechsynthesiswithfactorizedcodec
+nationalSpeechCommunicationAssociation,pages
+anddiffusionmodels. InInternationalConference
+3605–3609.
+onMachineLearning,pages1–19.
+ShengpengJi,ZiyueJiang,HantingWang,JialongZuo,
+NalKalchbrenner,ErichElsen,KarenSimonyan,Seb
+andZhouZhao.2024a. MobileSpeech: Afastand
+Noury,NormanCasagrande,EdwardLockhart,Flo-
+high-fidelityframeworkformobilezero-shottext-to-
+rianStimberg, AaronOord, SanderDieleman, and
+speech. InThe62ndAnnualMeetingoftheAssoci-
+Koray Kavukcuoglu. 2018. Efficient neural audio
+ationforComputationalLinguistics,pages13588–
+synthesis. InInternationalConferenceonMachine
+13600.
+Learning,pages2410–2419.
+Shengpeng Ji, Ziyue Jiang, Wen Wang, Yifu Chen,
+TakuhiroKaneko,KouTanaka,HirokazuKameoka,and
+MinghuiFang,JialongZuo,QianYang,XizeCheng,
+Shogo Seki. 2022. istftnet: Fast and lightweight
+ZehanWang,RuiqiLi,ZiangZhang,XiaodaYang,
+mel-spectrogramvocoderincorporatinginverseshort-
+RongjieHuang,YidiJiang,QianChen,SiqiZheng,
+timeFouriertransform. InIEEEInternationalCon-
+andZhouZhao.2025. WavTokenizer: anefficient
+ferenceonAcoustics,SpeechandSignalProcessing,
+acousticdiscretecodectokenizerforaudiolanguage
+pages6207–6211.
+modeling. InTheThirteenthInternationalConfer-
+enceonLearningRepresentations. Minki Kang, Dongchan Min, and Sung Ju Hwang.
+2023. Grad-StyleSpeech: Any-speakeradaptivetext-
+ShengpengJi,JialongZuo,MinghuiFang,ZiyueJiang,
+to-speechsynthesiswithdiffusionmodels. InIEEE
+FeiyangChen,XinyuDuan,BaoxingHuai,andZhou
+InternationalConferenceonAcoustics,Speechand
+Zhao. 2024b. TextrolSpeech: A text style control
+SignalProcessing,pages1–5.
+speech corpus with codec language text-to-speech
+models. InIEEEInternationalConferenceonAcous- Hideki Kawahara, Ikuyo Masuda-Katsuse, and Alain
+tics, Speech and Signal Processing, pages 10301– De Cheveigne. 1999. Restructuring speech rep-
+10305. resentationsusingapitch-adaptivetime–frequency
+smoothingandaninstantaneous-frequency-basedF0
+ShengpengJi,JialongZuo,WenWang,MinghuiFang,
+extraction: Possibleroleofarepetitivestructurein
+Siqi Zheng, Qian Chen, Ziyue Jiang, Hai Huang,
+sounds. SpeechCommunication,27(3-4):187–207.
+ZehanWang,XizeCheng,and1others.2024c. Con-
+trolSpeech: Towardssimultaneouszero-shotspeaker Eugene Kharitonov, Damien Vincent, Zalán Borsos,
+cloning and zero-shot language style control with Raphaël Marinier, Sertan Girgin, Olivier Pietquin,
+decoupledcodec. arXivpreprintarXiv:2406.01205. Matt Sharifi, Marco Tagliasacchi, and Neil Zeghi-
+dour.2023. Speak,readandprompt: High-fidelity
+ZiyueJiang,JinglinLiu,YiRen,JinzhengHe,Zhenhui
+text-to-speech with minimal supervision. Transac-
+Ye,ShengpengJi,QianYang,ChenZhang,Pengfei
+tionsoftheAssociationforComputationalLinguis-
+Wei, Chunfeng Wang, and 1 others. 2024. Mega-
+tics,11:1703–1718.
+TTS 2: Boosting prompting mechanisms for zero-
+shotspeechsynthesis. InTheTwelfthInternational Daegyeom Kim, Seongho Hong, and Yong-Hoon
+ConferenceonLearningRepresentations. Choi. 2023. SC VALL-E: Style-controllable zero-
+shot text to speech synthesizer. arXiv preprint
+Ziyue Jiang, Yi Ren, Zhenhui Ye, Jinglin Liu,
+arXiv:2307.10550.
+Chen Zhang, Qian Yang, Shengpeng Ji, Rongjie
+Huang, Chunfeng Wang, Xiang Yin, and 1 oth- Jaehyeon Kim, Keon Lee, Seungjun Chung, and Jae-
+ers. 2023. Mega-TTS: Zero-shot text-to-speech at woongCho.2024a. CLaM-TTS:Improvingneural
+scale with intrinsic inductive bias. arXiv preprint codeclanguagemodelforzero-shottext-to-speech.
+arXiv:2306.03509. arXivpreprintarXiv:2404.02781.
+14
+
+Minchan Kim, Sung Jun Cheon, Byoung Jin Choi, RitheshKumar,PremSeetharaman,AlejandroLuebs,
+JongJinKim,andNamSooKim.2021. Expressive Ishaan Kumar, and Kundan Kumar. 2024. High-
+text-to-speech using style tag. Annual Conference fidelityaudiocompressionwithimprovedRVQGAN.
+oftheInternationalSpeechCommunicationAssocia- AdvancesinNeuralInformationProcessingSystems,
+tion,pages4663–4667. 36.
+MiseulKim,Soo-WhanChung,YounaJi,Hong-Goo Mateusz Łajszczak, Guillermo Cámbara, Yang Li,
+Kang, and Min-Seok Choi. 2024b. Speak in the Fatih Beyhan, Arent van Korlaar, Fan Yang, Ar-
+Scene: Diffusion-based acoustic scene transfer to- naudJoly,ÁlvaroMartín-Cortinas,AmmarAbbas,
+wardimmersivespeechgeneration. InAnnualCon- Adam Michalski, and 1 others. 2024. BASE TTS:
+ferenceoftheInternationalSpeechCommunication Lessons from building a billion-parameter text-to-
+Association,pages4883–4887. speechmodelon100khoursofdata. arXivpreprint
+arXiv:2402.08093.
+SungwonKim,KevinShih,JoaoFelipeSantos,Evelina
+Bakhturina, Mikyas Desta, Rafael Valle, Sungroh Adrian Łan´cucki. 2021. FastPitch: Parallel text-to-
+Yoon, Bryan Catanzaro, and 1 others. 2024c. P- speechwithpitchprediction. InIEEEInternational
+Flow: afastanddata-efficientzero-shotTTSthrough ConferenceonAcoustics,SpeechandSignalProcess-
+speechprompting. AdvancesinNeuralInformation ing,pages6588–6592.
+ProcessingSystems,36.
+MatthewLe,ApoorvVyas,BowenShi,BrianKarrer,
+SungwonKim,KevinShih,JoaoFelipeSantos,Evelina
+LedaSari,RashelMoritz,MaryWilliamson,Vimal
+Bakhturina, Mikyas Desta, Rafael Valle, Sungroh
+Manohar,YossiAdi,JayMahadeokar,and1others.
+Yoon, Bryan Catanzaro, and 1 others. 2024d. P-
+2024. Voicebox: Text-guided multilingual univer-
+Flow: afastanddata-efficientzero-shotTTSthrough
+salspeechgenerationatscale. AdvancesinNeural
+speechprompting. AdvancesinNeuralInformation
+InformationProcessingSystems,36.
+ProcessingSystems,36:74213–74228.
+KeonLee,DongWonKim,JaehyeonKim,Seungjun
+SimonKing.2014. Measuringadecadeofprogressin
+Chung,andJaewoongCho.2025. DiTTo-TTS:Dif-
+text-to-speech. Loquens,1(1):e006–e006.
+fusiontransformersforscalabletext-to-speechwith-
+outdomain-specificfactors. InTheThirteenthInter-
+Dennis H Klatt. 1987. Review of text-to-speech con-
+nationalConferenceonLearningRepresentations.
+version for english. The Journal of the Acoustical
+SocietyofAmerica,82(3):737–793.
+Keon Lee, Kyumin Park, and Daeyoung Kim. 2023a.
+DailyTalk: Spoken dialogue dataset for conversa-
+Ivan Kobyzev, Simon JD Prince, and Marcus A
+tionaltext-to-speech. InIEEEInternationalConfer-
+Brubaker. 2020. Normalizing flows: An introduc-
+ence on Acoustics, Speech and Signal Processing,
+tionandreviewofcurrentmethods. IEEETransac-
+pages1–5.
+tionsonPatternAnalysisandMachineIntelligence,
+43(11):3964–3979.
+Sang-HoonLee,Ha-YeongChoi,Seung-BinKim,and
+JohnKominek,TanjaSchultz,andAlanWBlack.2008. Seong-Whan Lee. 2023b. HierSpeech++: Bridg-
+Synthesizervoicequalityofnewlanguagescalibrated ing the gap between semantic and acoustic repre-
+with mean mel cepstral distortion. In Spoken Lan- sentationofspeechbyhierarchicalvariationalinfer-
+guageTechnologiesforUnder-ResourcedLanguages, enceforzero-shotspeechsynthesis. arXivpreprint
+pages63–68.
+arXiv:2311.12454.
+JungilKong,JaehyeonKim,andJaekyoungBae.2020. Sang-HoonLee,Hyun-WookYoon,Hyeong-RaeNoh,
+HiFi-GAN:Generativeadversarialnetworksforeffi- Ji-Hoon Kim, and Seong-Whan Lee. 2021. Multi-
+cientandhighfidelityspeechsynthesis. Advancesin spectrogan: High-diversityandhigh-fidelityspectro-
+NeuralInformationProcessingSystems,33:17022– gramgenerationwithadversarialstylecombination
+17033. for speech synthesis. In Proceedings of the AAAI
+Conference on Artificial Intelligence, volume 35,
+ZhifengKong,WeiPing,JiajiHuang,KexinZhao,and pages13198–13206.
+BryanCatanzaro.2021. DiffWave: Aversatiledif-
+fusionmodelfor audiosynthesis. In International YeonghyeonLee,InmoYeon,JuhanNam,andJoonSon
+ConferenceonLearningRepresentations,pages1– Chung.2024. VoiceLDM:Text-to-speechwithenvi-
+17. ronmentalcontext. InIEEEInternationalConference
+onAcoustics,SpeechandSignalProcessing,pages
+KundanKumar,RitheshKumar,ThibaultDeBoissiere, 12566–12571.
+LucasGestin,WeiZhenTeoh,JoseSotelo,Alexan-
+dre De Brebisson, Yoshua Bengio, and Aaron C YiLei,ShanYang,XinshengWang,andLeiXie.2022.
+Courville.2019. MelGAN:Generativeadversarial MsEmoTTS: Multi-scale emotion transfer, predic-
+networks for conditional waveform synthesis. Ad- tion, and control for emotional speech synthesis.
+vances in Neural Information Processing Systems, IEEE/ACMTransactionsonAudio,Speech,andLan-
+32:14920–14921. guageProcessing,30:853–864.
+15
+
+YichongLeng,ZhifangGuo,KaiShen,XuTan,Zeqian AlexanderHLiu,MatthewLe,ApoorvVyas,Bowen
+Ju,YanqingLiu,YufeiLiu,DongchaoYang,Leying Shi,AndrosTjandra,andWei-NingHsu.2024a. Gen-
+Zhang,KaitaoSong,and1others.2023. PromptTTS erative pre-training for speech with flow matching.
+2:Describingandgeneratingvoiceswithtextprompt. InTheTwelfthInternationalConferenceonLearning
+InTheTwelfthInternationalConferenceonLearning Representations.
+Representations.
+GuanghouLiu,YongmaoZhang,YiLei,YunlinChen,
+HanzhaoLi,YukeLi,XinshengWang,JingbinHu,Qi- RuiWang, ZhifeiLi, andLeiXie.2023a. Prompt-
+congXie,ShanYang,andLeiXie.2025a. FleSpeech: Style: Controllablestyletransferfortext-to-speech
+Flexiblycontrollablespeechgenerationwithvarious with natural language descriptions. arXiv preprint
+prompts. arXivpreprintarXiv:2501.04644. arXiv:2305.19522.
+Tao Li, Xinsheng Wang, Qicong Xie, Zhichao Wang, HaoheLiu,ZehuaChen,YiYuan,XinhaoMei,Xubo
+andLeiXie.2022. Cross-speakeremotiondisentan- Liu, Danilo Mandic, Wenwu Wang, and Mark D
+gling and transfer for end-to-end speech synthesis. Plumbley.2023b. AudioLDM:text-to-audiogenera-
+IEEE/ACMTransactionsonAudio,Speech,andLan- tionwithlatentdiffusionmodels. InProceedingsof
+guageProcessing,30:1448–1460. the40thInternationalConferenceonMachineLearn-
+ing,pages21450–21474.
+TaoLi,ShanYang,LiumengXue,andLeiXie.2021.
+Jiaxuan Liu, Zhaoci Liu, Yajun Hu, Yingying Gao,
+Controllableemotiontransferforend-to-endspeech
+Shilei Zhang, and Zhenhua Ling. 2025a. Diff-
+synthesis. In12thInternationalSymposiumonChi-
+StyleTTS:Diffusion-basedhierarchicalprosodymod-
+neseSpokenLanguageProcessing,pages1–5.
+elingfortext-to-speechwithdiverseandcontrollable
+styles. InProceedingsofthe31stInternationalCon-
+Yinghao Aaron Li, Cong Han, and Nima Mesgarani.
+ferenceonComputationalLinguistics,pages5265–
+2025b. StyleTTS:Astyle-basedgenerativemodelfor
+5272.
+naturalanddiversetext-to-speechsynthesis. IEEE
+Journal of Selected Topics in Signal Processing,
+XingchaoLiu,ChengyueGong,andqiangliu.2023c.
+19(1):283–296.
+Flowstraightandfast:Learningtogenerateandtrans-
+ferdatawithrectifiedflow. InTheEleventhInterna-
+YinghaoAaronLi,CongHan,VinaySRaghavan,Gavin
+tionalConferenceonLearningRepresentations.
+Mischler,andNimaMesgarani.2023. StyleTTS2:
+Towards human-level text-to-speech through style
+Yanqing Liu, Zhihang Xu, Gang Wang, Kuan Chen,
+diffusionandadversarialtrainingwithlargespeech
+Bohan Li, Xu Tan, Jinzhu Li, Lei He, and Sheng
+language models. In 37th Conference on Neural
+Zhao.2021. DelightfulTTS:TheMicrosoftspeech
+InformationProcessingSystems,pages1–28.
+synthesissystemforblizzardchallenge2021. arXiv
+preprintarXiv:2110.12612.
+YinghaoAaronLi,XilinJiang,CongHan,andNima
+Mesgarani. 2024. StyleTTS-ZS: Efficient high-
+Zhengxi Liu, Qiao Tian, Chenxu Hu, Xudong Liu,
+qualityzero-shottext-to-speechsynthesiswithdis-
+Menglin Wu, Yuping Wang, Hang Zhao, and Yux-
+tilled time-varying style diffusion. arXiv preprint
+uan Wang. 2022. Controllable and lossless non-
+arXiv:2409.10058.
+autoregressive end-to-end text-to-speech. arXiv
+preprintarXiv:2207.06088.
+Zhicheng Lian, Lizhi Wang, and Hua Huang. 2025.
+APG-MOS:Auditoryperceptionguided-MOSpre-
+ZhijunLiu, ShuaiWang, ShoInoue, QibingBai, and
+dictor for synthetic speech. arXiv preprint
+HaizhouLi.2024b. Autoregressivediffusiontrans-
+arXiv:2504.20447.
+formerfortext-to-speechsynthesis. arXivpreprint
+arXiv:2406.05551.
+Shijia Liao, Yuxuan Wang, Tianyu Li, Yifan Cheng,
+RuoyiZhang,RongzhiZhou,andYijinXing.2024. ZhijunLiu,ShuaiWang,PengchengZhu,MengxiaoBi,
+Fish-Speech: Leveraging large language models and Haizhou Li. 2025b. E1 TTS: Simple and fast
+for advanced multilingual text-to-speech synthesis. non-autoregressiveTTS. InIEEEInternationalCon-
+arXivpreprintarXiv:2411.01156. ferenceonAcoustics,SpeechandSignalProcessing,
+pages1–5.
+Zhen-HuaLing,KorinRichmond,JunichiYamagishi,
+andRen-HuaWang.2009. Integratingarticulatory StevenRLivingstoneandFrankARusso.2018. The
+featuresintoHMM-basedparametricspeechsynthe- ryersonaudio-visualdatabaseofemotionalspeech
+sis. IEEETransactionsonAudio,Speech,andLan- andsong(RAVDESS):Adynamic,multimodalset
+guageProcessing,17(6):1171–1185. offacialandvocalexpressionsinNorth American
+English. PloSOne,13(5):e0196391.
+YaronLipman,RickyT.Q.Chen,HeliBen-Hamu,Max-
+imilianNickel,andMatthewLe.2023. Flowmatch- Philipos C Loizou. 2011. Speech quality assessment.
+ingforgenerativemodeling. InTheEleventhInter- InMultimediaAnalysis,ProcessingandCommunica-
+nationalConferenceonLearningRepresentations. tions,pages623–654.Springer.
+16
+
+GustavoLópez, LuisQuesada, andLuisA.Guerrero. Takashi Nose, Junichi Yamagishi, Takashi Masuko,
+2018. Alexavs.Sirivs.Cortanavs.Googleassistant: and Takao Kobayashi. 2007. A style control tech-
+Acomparisonofspeech-basednaturaluserinterfaces. niqueforHMM-basedexpressivespeechsynthesis.
+InAdvancesinHumanFactorsandSystemsInterac- IEICE Transactions on Information and Systems,
+tion,pages241–250. 90(9):1406–1413.
+Hui Lu, Xixin Wu, Zhiyong Wu, and Helen Meng. OpenAI. 2022. Introducing ChatGPT. https://
+2023. SpeechTripleNet: End-to-end disentangled openai.com/index/chatgpt/. Accessed: 2024-10-
+speech representation learning for content, timbre 22.
+and prosody. In Proceedings of the 31st ACM In-
+ternationalConferenceonMultimedia,pages2829– Hyun Joon Park, Jin Sob Kim, Wooseok Shin, and
+2837. SungWonHan.2024a. DEX-TTS:Diffusion-based
+expressivetext-to-speechwithstylemodelingontime
+JunchenLu,BerrakSisman,RuiLiu,MingyangZhang, variability. arXivpreprintarXiv:2406.19135.
+andHaizhouLi.2022. VisualTTS:TTSwithaccu-
+Nohil Park, Heeseung Kim, Che Hyun Lee, Jooy-
+ratelip-speechsynchronizationforautomaticvoice
+oung Choi, Jiheum Yeom, and Sungroh Yoon.
+over. InIEEEInternationalConferenceonAcoustics,
+2024b. NanoVoice: Efficientspeaker-adaptivetext-
+SpeechandSignalProcessing,pages8032–8036.
+to-speech for multiple speakers. arXiv preprint
+Ye-Xin Lu, Hui-Peng Du, Zheng-Yan Sheng, Yang arXiv:2409.15760.
+Ai, and Zhen-Hua Ling. 2025. Incremental disen-
+JingPeng,YuchengWang,YuXi,XuLi,XizhuoZhang,
+tanglementforenvironment-awarezero-shottext-to-
+and Kai Yu. 2024a. A survey on speech large lan-
+speechsynthesis. InIEEEInternationalConference
+guagemodels. arXivpreprintarXiv:2410.18908.
+onAcoustics,SpeechandSignalProcessing,pages
+1–5.
+PuyuanPeng,Po-YaoHuang,Shang-WenLi,Abdelrah-
+manMohamed,andDavidHarwath.2024b. Voice-
+DanLythandSimonKing.2024. Naturallanguageguid-
+Craft: Zero-shotspeecheditingandtext-to-speechin
+ance of high-fidelity text-to-speech with synthetic
+thewild. InProceedingsofthe62ndAnnualMeet-
+annotations. arXivpreprintarXiv:2402.01912.
+ingoftheAssociationforComputationalLinguistics
+(Volume1: LongPapers),pages12442–12462.
+Matthew Marge, Carol Espy-Wilson, Nigel G Ward,
+AbeerAlwan,YoavArtzi,MohitBansal,GilBlanken-
+RyanPrenger,RafaelValle,andBryanCatanzaro.2019.
+ship, JoyceChai, HalDauméIII,DebadeeptaDey,
+WaveGlow: A flow-based generative network for
+and 1 others. 2022. Spoken language interaction
+speechsynthesis. InIEEEInternationalConference
+withrobots: Recommendationsforfutureresearch.
+onAcoustics,SpeechandSignalProcessing,pages
+ComputerSpeech&Language,71:101255.
+3617–3621.
+LingweiMeng,LongZhou,ShujieLiu,SanyuanChen,
+DavidWPurcellandKevinGMunhall.2006. Adaptive
+BingHan,ShujieHu,YanqingLiu,JinyuLi,Sheng
+controlofvowelformantfrequency: Evidencefrom
+Zhao,XixinWu,and1others.2024. Autoregressive
+real-timeformantmanipulation. TheJournalofthe
+speechsynthesiswithoutvectorquantization. arXiv
+AcousticalSocietyofAmerica,120(2):966–977.
+preprintarXiv:2407.08551.
+Lawrence R Rabiner. 1968. Digital-formant synthe-
+Dongchan Min, Dong Bok Lee, Eunho Yang, and sizerforspeech-synthesisstudies. TheJournalofthe
+Sung Ju Hwang. 2021. Meta-StyleSpeech: Multi- AcousticalSocietyofAmerica,43(4):822–828.
+speaker adaptive text-to-speech generation. In In-
+ternationalConferenceonMachineLearning,pages AlecRadford,JongWookKim,TaoXu,GregBrock-
+7748–7759.PMLR. man,ChristineMcLeavey,andIlyaSutskever.2023.
+Robustspeechrecognitionvialarge-scaleweaksu-
+Gabriel Mittag, Babak Naderi, Assmaa Chehadi, and pervision. InInternationalConferenceonMachine
+Sebastian Möller. 2021. Nisqa: A deep cnn-self- Learning,pages28492–28518.
+attention model for multidimensional speech qual-
+itypredictionwithcrowdsourceddatasets. InInter- RafaelRafailov,ArchitSharma,EricMitchell,Christo-
+speech2021,pages2127–2131. pherDManning,StefanoErmon,andChelseaFinn.
+2023. Direct preference optimization: Your lan-
+Yishuang Ning, Sheng He, Zhiyong Wu, Chunxiao guagemodelissecretlyarewardmodel. Advancesin
+Xing,andLiang-JieZhang.2019. Areviewofdeep NeuralInformationProcessingSystems,36:53728–
+learningbasedspeechsynthesis. AppliedSciences, 53741.
+9(19):4050.
+ColinRaffel,NoamShazeer,AdamRoberts,Katherine
+YutoNishimura,TakumiHirose,MasanariOhi,Hideki Lee,SharanNarang,MichaelMatena,YanqiZhou,
+Nakayama, and Nakamasa Inoue. 2024. HALL-E: Wei Li, and Peter J Liu. 2020. Exploring the lim-
+Hierarchicalneuralcodeclanguagemodelforminute- its of transfer learning with a unified text-to-text
+long zero-shot text-to-speech synthesis. arXiv transformer. JournalofMachineLearningResearch,
+preprintarXiv:2410.04380. 21(140):1–67.
+17
+
+Yi Ren, Chenxu Hu, Xu Tan, Tao Qin, Sheng Zhao, YaoShi,HuiBu,XinXu,ShaojiZhang,andMingLi.
+ZhouZhao,andTie-YanLiu.2021a. FastSpeech2: 2021. AISHELL-3: Amulti-speakermandarinTTS
+Fastandhigh-qualityend-to-endtexttospeech. In corpus. InConferenceoftheInternationalSpeech
+International Conference on Learning Representa- CommunicationAssociation,pages2756–2760.
+tions.
+ReoShimizu,RyuichiYamamoto,MasayaKawamura,
+Yi Ren, Chenxu Hu, Xu Tan, Tao Qin, Sheng Zhao, YumaShirahata,HironoriDoi,TatsuyaKomatsu,and
+ZhouZhao,andTie-YanLiu.2021b. FastSpeech2: KentaroTachibana.2024. PromptTTS++: Control-
+Fastandhigh-qualityend-to-endtexttospeech. InIn- lingspeakeridentityinprompt-basedtext-to-speech
+ternationalConferenceonLearningRepresentations, usingnaturallanguagedescriptions. InIEEEInter-
+pages1–15. nationalConferenceonAcoustics,SpeechandSignal
+Processing,pages12672–12676.
+YiRen,YangjunRuan,XuTan,TaoQin,ShengZhao,
+ZhouZhao,andTie-YanLiu.2019. FastSpeech:Fast,
+HubertSiuzdak.2024. Vocos: Closingthegapbetween
+robustandcontrollabletexttospeech. Advancesin
+time-domainandFourier-basedneuralvocodersfor
+NeuralInformationProcessingSystems,32:1–10.
+high-qualityaudiosynthesis. InTheTwelfthInterna-
+tionalConferenceonLearningRepresentations.
+Danilo Rezende and Shakir Mohamed. 2015. Varia-
+tional inference with normalizing flows. In Inter-
+RJSkerry-Ryan,EricBattenberg,YingXiao,Yuxuan
+national Conference on Machine Learning, pages
+Wang, Daisy Stanton, Joel Shor, Ron Weiss, Rob
+1530–1538.
+Clark,andRifASaurous.2018. Towardsend-to-end
+FabienRingeval,AndreasSonderegger,JuergenSauer, prosodytransferforexpressivespeechsynthesiswith
+andDenisLalanne.2013. IntroducingtheRECOLA tacotron. In International Conference on Machine
+multimodalcorpusofremotecollaborativeandaffec- Learning,pages4693–4702.
+tiveinteractions. In10thIEEEInternationalConfer-
+enceandWorkshopsonAutomaticFaceandGesture David Snyder, Daniel Garcia-Romero, Gregory Sell,
+Recognition,pages1–8. Daniel Povey, and Sanjeev Khudanpur. 2018. X-
+Vectors:Robustdnnembeddingsforspeakerrecogni-
+A.W.Rix,J.G.Beerends,M.P.Hollier,andA.P.Hekstra. tion. InIEEEInternationalConferenceonAcoustics,
+2001. Perceptualevaluationofspeechquality-anew SpeechandSignalProcessing,pages5329–5333.
+methodforspeechqualityassessmentoftelephone
+networks and codecs. In 2001 IEEE International Yakun Song, Zhuo Chen, Xiaofei Wang, Ziyang Ma,
+Conference on Acoustics, Speech, and Signal Pro- andXieChen.2024. ELLA-V:Stableneuralcodec
+cessing.Proceedings,pages749–752. languagemodelingwithalignment-guidedsequence
+reordering. arXivpreprintarXiv:2401.07333.
+YanRongandLiLiu.2025. Seeingyourspeechstyle:A
+novelzero-shotidentity-disentanglementface-based Daisy Stanton, Yuxuan Wang, and RJ Skerry-Ryan.
+voiceconversion. InProceedingsoftheAAAICon- 2018. Predictingexpressivespeakingstylefromtext
+ferenceonArtificialIntelligence,volume39,pages inend-to-endspeechsynthesis. InIEEESpokenLan-
+25092–25100. guageTechnologyWorkshop,pages595–602.IEEE.
+YanRong,ShanYang,GuangzhiLei,andLiLiu.2025.
+YoucefTabetandMohamedBoughazi.2011. Speech
+Dopamineaudiobook: Atraining-freeMLLMagent
+synthesistechniques.asurvey. InInternationalWork-
+foremotionalandhuman-likeaudiobookgeneration.
+shoponSystems,SignalProcessingandtheirAppli-
+arXivpreprintarXiv:2504.11002.
+cations,pages67–70.
+Takaaki Saeki, Detai Xin, Wataru Nakata, Tomoki
+Jaesung Tae, Hyeongju Kim, and Taesu Kim. 2022.
+Koriyama, Shinnosuke Takamichi, and Hiroshi
+EdiTTS:Score-basededitingforcontrollabletext-to-
+Saruwatari. 2022. Utmos: Utokyo-sarulab system
+speech. InAnnualConferenceoftheInternational
+forvoicemoschallenge2022. InInterspeech2022,
+SpeechCommunicationAssociation,pages421–425.
+pages4521–4525.
+Jonathan Shen, Ruoming Pang, Ron J Weiss, Mike Daxin Tan, Liqun Deng, Yu Ting Yeung, Xin Jiang,
+Schuster,NavdeepJaitly,ZonghengYang,Zhifeng Xiao Chen, and Tan Lee. 2021a. EditSpeech: A
+Chen,YuZhang,YuxuanWang,RjSkerrv-Ryan,and textbasedspeecheditingsystemusingpartialinfer-
+1others.2018. NaturalTTSsynthesisbycondition- ence and bidirectional fusion. In IEEE Automatic
+ing WaveNet on mel spectrogram predictions. In Speech Recognition and Understanding Workshop,
+IEEEInternationalConferenceonAcoustics,Speech pages626–633.
+andSignalProcessing,pages4779–4783.
+Xu Tan, Jiawei Chen, Haohe Liu, Jian Cong, Chen
+KaiShen,ZeqianJu,XuTan,EricLiu,YichongLeng, Zhang,YanqingLiu,XiWang,YichongLeng,Yuan-
+LeiHe,TaoQin,shengzhao,andJiangBian.2024. haoYi,LeiHe,ShengZhao,TaoQin,FrankSoong,
+NaturalSpeech2: Latentdiffusionmodelsarenatural andTie-YanLiu.2024. NaturalSpeech: End-to-end
+andzero-shotspeechandsingingsynthesizers. InIn- text-to-speech synthesis with human-level quality.
+ternationalConferenceonLearningRepresentations, IEEETransactionsonPatternAnalysisandMachine
+pages1–25. Intelligence,46(6):4234–4245.
+18
+
+XuTan,TaoQin,FrankSoong,andTie-YanLiu.2021b. YuanchengWang,HaoyueZhan,LiweiLiu,Ruihong
+Asurveyonneuralspeechsynthesis. arXivpreprint Zeng, Haotian Guo, Jiachen Zheng, Qiang Zhang,
+arXiv:2106.15561. Xueyao Zhang, Shunsi Zhang, and Zhizheng Wu.
+2025b. MaskGCT: Zero-shot text-to-speech with
+K. Tokuda, T. Yoshimura, T. Masuko, T. Kobayashi, masked generative codec transformer. In Inter-
+andT.Kitamura.2000. Speechparametergeneration national Conference on Learning Representations,
+algorithms for HMM-based speech synthesis. In
+pages1–24.
+IEEEInternationalConferenceonAcoustics,Speech,
+andSignalProcessing,volume3,pages1315–1318. YujiaWang,WenguanWang,WeiLiang,andLap-Fai
+Yu. 2019. Comic-guided speech synthesis. ACM
+Toloka.2024. Crowdlabeledemotionsandspeechchar-
+TransactionsonGraphics,38(6):1–14.
+acteristics. https://huggingface.co/datasets/
+toloka/CLESC. Accessed: 2024-03-23. Yuxuan Wang, R. J. Skerry-Ryan, Daisy Stanton,
+YonghuiWu,RonJ.Weiss,NavdeepJaitly,Zongheng
+AndreasTriantafyllopoulos,BjörnWSchuller,Gökçe
+Yang, Ying Xiao, Zhifeng Chen, Samy Bengio,
+˙Iymen,MetinSezgin,XianghengHe,ZijiangYang,
+QuocV.Le,YannisAgiomyrgiannakis,RobClark,
+PanagiotisTzirakis, ShuoLiu, SilvanMertes, Elis-
+andRifA.Saurous.2017. Tacotron: Towardsend-to-
+abeth André, and 1 others. 2023. An overview of
+endspeechsynthesis. InAnnualConferenceofthe
+affectivespeechsynthesisandconversioninthedeep
+International Speech Communication Association,
+learningera. ProceedingsoftheIEEE,111(10):1355–
+pages4006–4010.
+1381.
+Yuxuan Wang, Daisy Stanton, Yu Zhang, RJ-Skerry
+Se-Yun Um, Sangshin Oh, Kyungguen Byun, Inseon
+Ryan,EricBattenberg,JoelShor,YingXiao,YeJia,
+Jang,ChungHyunAhn,andHong-GooKang.2020.
+Fei Ren, and Rif A Saurous. 2018. Style Tokens:
+Emotionalspeechsynthesiswithrichandgranular-
+Unsupervisedstylemodeling,controlandtransferin
+izedcontrol. InIEEEInternationalConferenceon
+end-to-endspeechsynthesis. InInternationalCon-
+Acoustics,SpeechandSignalProcessing,pages7254–
+ferenceonMachineLearning,pages5167–5176.
+7258.
+Zhongxu Wang, Yujia Wang, Mingzhu Li, and Hua
+Rafael Valle, Kevin Shih, Ryan Prenger, and Bryan
+Huang.2024. ArtSpeech: Adaptivetext-to-speech
+Catanzaro.2020. Flowtron: anautoregressiveflow-
+synthesiswitharticulatoryrepresentations. InPro-
+basedgenerativenetworkfortext-to-speechsynthesis.
+ceedingsofthe32ndACMInternationalConference
+arXivpreprintarXiv:2005.05957.
+onMultimedia,pages535–544.
+Aaron Van Den Oord, Sander Dieleman, Heiga Zen,
+Karen Simonyan, Oriol Vinyals, Alex Graves, Nal Wikipedia. 2024. Word error rate. https://
+Kalchbrenner,AndrewSenior,KorayKavukcuoglu, en.wikipedia.org/wiki/Word_error_rate. Ac-
+and1others.2016. WaveNet:Agenerativemodelfor cessed: 2024-12-07.
+rawaudio. In9thISCASpeechSynthesisWorkshop,
+Wikipedia. 2025. Mean opinion score. https://en.
+volume12,page125.
+wikipedia.org/wiki/Mean_opinion_score. Ac-
+ApoorvVyas,BowenShi,MatthewLe,AndrosTjan- cessed: 2024-12-07.
+dra, Yi-Chiao Wu, Baishan Guo, Jiemin Zhang,
+SanghyunWoo,ShoubhikDebnath,RonghangHu,Xin-
+XinyueZhang, RobertAdkins, WilliamNgan, and
+lei Chen, Zhuang Liu, In So Kweon, and Saining
+1 others. 2023. Audiobox: Unified audio genera-
+Xie.2023. ConvNeXtV2: Co-designingandscaling
+tionwithnaturallanguageprompts. arXivpreprint
+convnetswithmaskedautoencoders. InProceedings
+arXiv:2312.15821.
+of the IEEE/CVF Conference on Computer Vision
+Chengyi Wang, Sanyuan Chen, Yu Wu, Ziqiang andPatternRecognition,pages16133–16142.
+Zhang, Long Zhou, Shujie Liu, Zhuo Chen, Yan-
+qing Liu, Huaming Wang, Jinyu Li, and 1 others. JohanWoutersandMichaelWMacon.2001. Controlof
+2023a. Neural codec language models are zero- spectraldynamicsinconcatenativespeechsynthesis.
+shot text to speech synthesizers. arXiv preprint IEEETransactionsonSpeechandAudioProcessing,
+arXiv:2301.02111. 9(1):30–38.
+WenbinWang,YangSong,andSanjayJha.2023b. Gen- YujiaXiao,XiWang,XuTan,LeiHe,XinfaZhu,Sheng
+eralizablezero-shotspeakeradaptivespeechsynthe- Zhao,andTanLee.2024. Contrastivecontext-speech
+siswithdisentangledrepresentations. InAnnualCon- pretraining for expressive text-to-speech synthesis.
+ferenceoftheInternationalSpeechCommunication InProceedingsofthe32ndACMInternationalCon-
+Association2023,pages4454–4458. ferenceonMultimedia,pages2099–2107.
+XinshengWang,MingqiJiang,ZiyangMa,ZiyuZhang, Detai Xin, Xu Tan, Kai Shen, Zeqian Ju, Dongchao
+SongxiangLiu,LinqinLi,ZhengLiang,QixiZheng, Yang,YuanchengWang,ShinnosukeTakamichi,Hi-
+RuiWang,XiaoqinFeng,and1others.2025a. Spark- roshiSaruwatari,ShujieLiu,JinyuLi,and1others.
+TTS: An efficient llm-based text-to-speech model 2024. RALL-E: Robust codec language modeling
+withsingle-streamdecoupledspeechtokens. arXiv withchain-of-thoughtpromptingfortext-to-speech
+preprintarXiv:2503.01710. synthesis. arXivpreprintarXiv:2404.03204.
+19
+
+JunichiYamagishi,TakashiNose,HeigaZen,Zhen-Hua JinhyeokYang, Jae-SungBae, TaejunBak, Young-Ik
+Ling, Tomoki Toda, Keiichi Tokuda, Simon King, Kim, and Hoon-Young Cho. 2021. GANSpeech:
+and Steve Renals. 2009. Robust speaker-adaptive Adversarialtrainingforhigh-fidelitymulti-speaker
+HMM-basedtext-to-speechsynthesis. IEEETrans- speechsynthesis. In22ndAnnualConferenceofthe
+actionsonAudio,Speech,andLanguageProcessing, International Speech Communication Association,
+17(6):1208–1230. pages2202–2206.
+JunichiYamagishi,KojiOnishi,TakashiMasuko,and QianYang,JialongZuo,ZheSu,ZiyueJiang,Mingze
+TakaoKobayashi.2003. Modelingofvariousspeak- Li,ZhouZhao,FeiyangChen,ZhefengWang,and
+ingstylesandemotionsforHMM-basedspeechsyn- Baoxing Huai. 2024d. MSceneSpeech: A multi-
+thesis. InProceedingsoftheAnnualConferenceof scenespeechdatasetforexpressivespeechsynthesis.
+the International Speech Communication Associa- In Annual Conference of the International Speech
+tion,pages2461–2464. CommunicationAssociation2024,pages1845–1849.
+Ryuichi Yamamoto, Yuma Shirahata, Masaya Kawa-
+Yifan Yang, Ziyang Ma, Shujie Liu, Jinyu Li, Hui
+mura, and Kentaro Tachibana. 2024. Description-
+Wang, Lingwei Meng, Haiyang Sun, Yuzhe Liang,
+basedcontrollabletext-to-speechwithcross-lingual
+Ruiyang Xu, Yuxuan Hu, and 1 others. 2024e. In-
+voicecontrol. arXivpreprintarXiv:2409.17452.
+terleaved speech-text language models are simple
+RyuichiYamamoto,EunwooSong,andJae-MinKim. streamingtexttospeechsynthesizers. arXivpreprint
+2020. ParallelWaveGAN:Afastwaveformgenera- arXiv:2412.16102.
+tionmodelbasedongenerativeadversarialnetworks
+ZehuiYang,YifanChen,LeiLuo,RunyanYang,Lingx-
+withmulti-resolutionspectrogram. InIEEEInterna-
+uanYe,GaofengCheng,JiXu,YaohuiJin,Qingqing
+tionalConferenceonAcoustics,SpeechandSignal
+Zhang,PengyuanZhang,and1others.2022. Open
+Processing,pages6199–6203.
+Source MagicData-RAMC: A rich annotated man-
+DongchaoYang,RongjieHuang,YuanyuanWang,Hao- darinconversational(RAMC)speechdataset. arXiv
+hanGuo,DadingChong,SongxiangLiu,XixinWu, preprintarXiv:2203.16844.
+andHelenMeng.2024a. SimpleSpeech2: Towards
+simpleandefficienttext-to-speechwithflow-based ZhenYe,ZeqianJu,HaoheLiu,XuTan,JianyiChen,
+scalar latent transformer diffusion models. arXiv YiwenLu,PeiwenSun,JiahaoPan,WeizhenBian,
+preprintarXiv:2408.13893. Shulin He, and 1 others. 2024. FlashSpeech: Effi-
+cientzero-shotspeechsynthesis. InProceedingsof
+Dongchao Yang, Songxiang Liu, Rongjie Huang, the32ndACMInternationalConferenceonMultime-
+Jinchuan Tian, Chao Weng, and Yuexian Zou. dia,pages6998–7007.
+2023a. HiFi-Codec: Group-residual vector quan-
+tizationforhighfidelityaudiocodec. arXivpreprint TakayoshiYoshimura,KeiichiTokuda,TakashiMasuko,
+arXiv:2305.02765. TakaoKobayashi,andTadashiKitamura.1999. Si-
+multaneousmodelingofspectrum,pitchandduration
+DongchaoYang,SongxiangLiu,RongjieHuang,Chao
+inHMM-basedspeechsynthesis. In6thEuropean
+Weng,andHelenMeng.2024b. InstructTTS:Mod-
+ConferenceonSpeechCommunicationandTechnol-
+elling expressive TTS in discrete latent space with
+ogy,pages2347–2350.
+naturallanguagestyleprompt. IEEE/ACMTransac-
+tionsonAudio, Speech, andLanguageProcessing,
+ChengzhuYu,HengLu,NaHu,MengYu,ChaoWeng,
+32:2913–2925.
+KunXu,PengLiu,DeyiTuo,ShiyinKang,Guangzhi
+Lei,and1others.2020. DurIAN:Durationinformed
+Dongchao Yang, Jinchuan Tian, Xu Tan, Rongjie
+attentionnetworkforspeechsynthesis. InProceed-
+Huang,SongxiangLiu,XuankaiChang,JiatongShi,
+ingsoftheAnnualConferenceoftheInternational
+Sheng Zhao, Jiang Bian, Xixin Wu, and 1 others.
+Speech Communication Association, pages 2027–
+2023b. UniAudio: An audio foundation model to-
+2031.
+ward universal audio generation. arXiv preprint
+arXiv:2310.00704.
+Neil Zeghidour, Alejandro Luebs, Ahmed Omran,
+Dongchao Yang, Dingdong Wang, Haohan Guo, Jan Skoglund, and Marco Tagliasacchi. 2021.
+XueyuanChen,XixinWu,andHelenMeng.2024c. SoundStream: An end-to-end neural audio codec.
+SimpleSpeech: Towardssimpleandefficienttext-to- IEEE/ACMTransactionsonAudio,Speech,andLan-
+speechwithscalarlatenttransformerdiffusionmod- guageProcessing,30:495–507.
+els. InProceedingsoftheAnnualConferenceofthe
+International Speech Communication Association, HeigaZen,AndrewSenior,andMikeSchuster.2013.
+pages4398–4402. Statistical parametric speech synthesis using deep
+neuralnetworks. InIEEEInternationalConference
+Guanrou Yang, Chen Yang, Qian Chen, Ziyang Ma, onAcoustics,SpeechandSignalProcessing,pages
+Wenxi Chen, Wen Wang, Tianrui Wang, Yifan 7962–7966.
+Yang,ZhikangNiu,WenruiLiu,and1others.2025.
+EmoVoice: LLM-based emotional text-to-speech HeigaZen,KeiichiTokuda,andAlanWBlack.2009.
+modelwithfreestyletextprompting. arXivpreprint Statisticalparametricspeechsynthesis. SpeechCom-
+arXiv:2504.12867. munication,51(11):1039–1064.
+20
+
+BinbinZhang,HangLv,PengchengGuo,QijieShao, Kun Zhou, Berrak Sisman, Rui Liu, and Haizhou
+ChaoYang,LeiXie,XinXu,HuiBu,XiaoyuChen, Li. 2022. Emotional voice conversion: Theory,
+ChenchenZeng,and1others.2022. WenetSpeech: databasesandESD. SpeechCommunication,137:1–
+A10000+hoursmulti-domainmandarincorpusfor 18.
+speechrecognition. InIEEEInternationalConfer-
+ence on Acoustics, Speech and Signal Processing, YixuanZhou,XiaoyuQin,ZeyuJin,ShuoyiZhou,Shun
+pages6182–6186. Lei,SongtaoZhou,ZhiyongWu,andJiaJia.2024.
+VoxInstruct: Expressivehumaninstruction-to-speech
+Chenshuang Zhang, Chaoning Zhang, Sheng Zheng, generationwithunifiedmultilingualcodeclanguage
+Mengchun Zhang, Maryam Qamar, Sung-Ho Bae, modelling. InProceedingsofthe32ndACMInterna-
+and In So Kweon. 2023a. A survey on audio tionalConferenceonMultimedia,pages554–563.
+diffusion models: Text to speech synthesis and
+enhancement in generative AI. arXiv preprint XinfaZhu,WenjieTian,andLeiXie.2024. Autoregres-
+arXiv:2303.13336. sivespeechsynthesiswithnext-distributionpredic-
+tion. arXivpreprintarXiv:2412.16846.
+Dong Zhang, Shimin Li, Xin Zhang, Jun Zhan,
+PengyuWang,YaqianZhou,andXipengQiu.2023b.
+SpeechGPT: Empowering large language models
+A Appendix
+with intrinsic cross-modal conversational abilities.
+In Findings of the Association for Computational
+A.1 TheHistoryofControllableTTS
+Linguistics: EMNLP,pages15757–15773.
+ControllableTTSaimstosteervariousaspectsof
+ShaozuoZhang,AmbujMehrish,YingtingLi,andSou-
+synthesizedspeech,includingpitch,energy,speed,
+janyaPoria.2025a. PROEMO:Prompt-driventext-
+prosody, timbre, emotion, gender, and speaking
+to-speechsynthesisbasedonemotionandintensity
+control. arXivpreprintarXiv:2501.06276. style. Thissubsectionbrieflyreviewsitsdevelop-
+ment,fromearlymethodstorecentadvancements.
+XinZhang,DongZhang,ShiminLi,YaqianZhou,and
+EarlyMethods. EarlycontrollableTTSsystems
+XipengQiu.2024. SpeechTokenizer: Unifiedspeech
+tokenizerforspeechlanguagemodels. InTheTwelfth were primarily based on rule-based, concatena-
+International Conference on Learning Representa- tive, and statistical approaches. Rule-based sys-
+tions. tems, such as formant synthesis (Rabiner, 1968;
+Allen et al., 1987; Purcell and Munhall, 2006),
+XueyaoZhang,XiaohuiZhang,KainanPeng,Zhenyu
+Tang,VimalManohar,YingruLiu,JeffHwang,Dan- usedhandcraftedrulestoadjustacousticparame-
+gna Li, Yuhao Wang, Julian Chan, Yuan Huang, terslikepitchandduration,enablingbasicprosody
+Zhizheng Wu, and Mingbo Ma. 2025b. Vevo:
+control. Concatenativesystems(HuntandBlack,
+Controllable zero-shot voice imitation with self-
+1996;WoutersandMacon,2001;Bulutetal.,2002)
+superviseddisentanglement. InTheThirteenthInter-
+nationalConferenceonLearningRepresentations. generatedspeechbystitchingpre-recordedspeech
+units together, allowing prosody modifications
+Ya-JieZhang,ShifengPan,LeiHe,andZhen-HuaLing.
+throughpitchandtimingadjustments. Later,Hid-
+2019. Learninglatentrepresentationsforstylecon-
+denMarkovmodel(HMM)-basedstatisticalmeth-
+trolandtransferinend-to-endspeechsynthesis. In
+IEEEInternationalConferenceonAcoustics,Speech ods (Nose et al., 2007; Ling et al., 2009; Tokuda
+andSignalProcessing,pages6945–6949. et al., 2000) modeled the relationship between
+linguistic features and acoustic outputs, offering
+YongmaoZhang,GuanghouLiu,YiLei,YunlinChen,
+greaterflexibilityincontrollingprosodyandspeak-
+Hao Yin, Lei Xie, and Zhifei Li. 2023c. Prompts-
+peaker: Speaker generation based on text descrip- ing rate. These systems also introduced speaker
+tions. InIEEEAutomaticSpeechRecognitionand adaptation (Yamagishi et al., 2009) and limited
+UnderstandingWorkshop,pages1–7.IEEE.
+emotionalcontrol(Yamagishietal.,2003),andre-
+quirelessstorageandprovidesmoothertransitions
+ZiqiangZhang,LongZhou,ChengyiWang,Sanyuan
+Chen, Yu Wu, Shujie Liu, Zhuo Chen, Yanqing thanconcatenativemethods.
+Liu,HuamingWang,JinyuLi,and1others.2023d. NeuralSynthesis. Theemergenceofdeeplearning
+Speakforeignlanguageswithyourownvoice: Cross-
+revolutionizedTTS,leadingtothedevelopmentof
+lingual neural codec language modeling. arXiv
+neuralmodel-basedsystemscapableofproducing
+preprintarXiv:2303.03926.
+morenatural,expressive,andcontrollablespeech.
+Wayne Xin Zhao, Kun Zhou, Junyi Li, Tianyi Tang, EarlymodelslikeWaveNet(VanDenOordetal.,
+XiaoleiWang,YupengHou,YingqianMin,Beichen
+2016) and Tacotron (Wang et al., 2017) demon-
+Zhang,JunjieZhang,ZicanDong,and1others.2023.
+strated the potential for prosody control through
+Asurveyoflargelanguagemodels. arXivpreprint
+arXiv:2303.18223,1(2). explicitconditioning(Shenetal.,2018;Renetal.,
+21
+
+ControlStrategy CoreIdea KeyFeatures Pros&Cons
+StyleTagging Controlspecificattributes Direct control over at- Pros:Simpletoimplement.Cons:Limitedexpres-
+usingpredefinedtags. tributeslikeemotionand sivediversity,cannotachievefine-grainedorcom-
+pitch. binedcontrol.
+Reference Speech Useashortaudioclipasa Enables zero-shot TTS Pros:Highdegreeofpersonalization,moreflexible
+Prompts referenceforstyle. and voice cloning; sepa- control.Cons:Reliesonhigh-qualityreferenceau-
+ratestimbreandstyle. dio,lessintuitivecontroldimensions.
+Natural Language Describe desired voice User-friendly control via Pros:Highinterpretability,user-friendly.Cons:Lim-
+Descriptions characteristicsintext. natural language (e.g., itedfreedomandaccuracyofdescription,potential
+"speakcalmly"). formodelmisunderstanding.
+Instruction-Guided Use LLMs to interpret Combines content and Pros:Extremelyhighcontrolprecisionandfreedom,
+Control free-forminstructions. style instructions; can understandscomplexinstructions.Cons:Strongde-
+generate paralinguistic pendencyonLLMs,highsystemcomplexity.
+sounds.
+Table2: Summaryoftheprosandconsofeachcontrolstrategy.
+Hours #Speakers Labels Release
+Dataset Lang
+(atleast) (atleast) Pit. Ene. Spe. Age Gen. Emo. Emp. Acc. Top. Des. Dia. Time
+IEMOCAP(Bussoetal.,2008) 12 10 ✓ ✓ ✓ ✓ ✓ en 2008
+RECOLA(Ringevaletal.,2013) 3.8 46 ✓ fr 2013
+RAVDESS(LivingstoneandRusso,2018) / 24 ✓ ✓ en 2018
+CMU-MOSEI(BagherZadehetal.,2018) 65 1,000 ✓ en 2018
+Taskmaster-1(Byrneetal.,2019) / / ✓ en 2019
+AISHELL-3(Shietal.,2021) 85 218 ✓ ✓ ✓ zh 2020
+CommonVoice(Ardilaetal.,2020) 2,500 50,000 ✓ ✓ ✓ multi 2020
+ESD(Zhouetal.,2022) 29 10 ✓ en,zh 2021
+GigaSpeech(Chenetal.,2021) 10,000 / ✓ en 2021
+WenetSpeech(Zhangetal.,2022) 10,000 / ✓ zh 2021
+PromptSpeech(Guoetal.,2023) / / ✓ ✓ ✓ ✓ ✓ en 2022
+MagicData-RAMC(Yangetal.,2022) 180 663 ✓ ✓ zh 2022
+DailyTalk(Leeetal.,2023a) 20 2 ✓ ✓ ✓ en 2023
+TextrolSpeech(Jietal.,2024b) 330 1,324 ✓ ✓ ✓ ✓ ✓ ✓ en 2023
+CLESC(Toloka,2024) <1 / ✓ ✓ ✓ ✓ en 2024
+VccmDataset(Jietal.,2024c) 330 1,324 ✓ ✓ ✓ ✓ ✓ ✓ en 2024
+MSceneSpeech(Yangetal.,2024d) 13 13 ✓ zh 2024
+Parler-TTS(LythandKing,2024) 50,000 / ✓ ✓ ✓ ✓ ✓ ✓ en 2024
+SpeechCraft(Jinetal.,2024) 2,391 3,200 ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ ✓ en,zh 2024
+Abbreviations:Pit(ch),Ene(rgy)=volume,Spe(ed),Gen(der),Emo(tion),Emp(hasis),Acc(ent),Top(ic),Des(cription),Dia(logue).
+Table3: AsummaryofpubliclyavailablespeechdatasetsforcontrollableTTS.
+Metric Type EvalTarget GTRequired 2025b;Huangetal.,2022b),fosteringtheresearch
+MCD(Komineketal.,2008)↓ Objective Acousticsimilarity ✓ inzero-shotTTSandvoicecloning(Cooperetal.,
+FDSD(Bin´kowskietal.,2020)↓ Objective Acousticsimilarity ✓
+WER(Wikipedia,2024)↓ Objective Intelligibility ✓ 2020). Inaddition,methodsforfine-grainedcon-
+Cosine(Desplanquesetal.,2020)↓Objective Speakersimilarity ✓
+tentcontrol(Pengetal.,2024b;Tanetal.,2021a)
+PESQ(Rixetal.,2001)↑ Objective Perceptualquality ✓
+MOS(Wikipedia,2025)↑ Subjective Preference havemadeitpossibletoemphasizeoreditspecific
+CMOS(Loizou,2011)↑ Subjective Preference wordsinsynthesizedspeech.
+ABTest Subjective Preference
+ABXTest SubjectivePerceptualsimilarity ✓
+LLM-based Synthesis. More recently, LLM-
+GT:Groundtruth,↓:Lowerisbetter,↑:Higherisbetter.
+based approaches have further advanced control-
+Table4: Widelyusedevaluationmetrics.
+lableTTS.LeveragingmodelslikeBERT(Devlin
+etal.,2019),GPT(Brownetal.,2020),T5(Raffel
+etal.,2020),andPaLM(Chowdheryetal.,2023),
+2021b). NeuralTTSfurtherenhancedspeakercon- LLMs bring superior context modeling and intu-
+trol through speaker embeddings and adaptation itivecontroltospeechsynthesis(Guoetal.,2023;
+techniques(Fanetal.,2015;Casanovaetal.,2022), Zhouetal.,2024). Byinterpretingnaturallanguage
+whileadvancesinemotionalmodeling(Leietal., prompts, such as describing a speaker’s emotion,
+2022; Um et al., 2020) enabled the synthesis of age, or style, LLMs can infer nuanced attributes
+speechwithspecificaffectivetones. Recentmodels andsteerthegenerationprocessaccordingly. This
+havealsoachievedmanipulationoftimbre(Wang enablesdynamic,fine-grainedcontroloverprosody,
+etal.,2025b;Shenetal.,2024)andstyle(Lietal., emotion, style, and speaker identity (Yang et al.,
+22
+
+2024b;Gaoetal.,2024),markingabigsteptoward and neural vocoders to compress audio signals
+moreflexibleandintuitiveTTSsystems. withoutsignificantlossofperceptualquality. To-
+kenization, on the other hand, is a discretization
+A.2 OverviewoftheTTSPipeline
+processthatsegmentscontinuousdataintomean-
+Inthissection,weprovideanoverviewofthegen- ingful units. In speech tasks, tokenization ex-
+eralpipelinethatsupportscontrollableTTStech- tracts semantically relevant representations such
+nologies. Fig. 5 depicts the general pipeline of as phonemes, characters, or learned speech units
+controllableTTS,containingvariousmodelarchi- (e.g., HuBERT (Hsu et al., 2021) and Wav2Vec
+tecturesandfeaturerepresentations. 2.0(Baevskietal.,2020b)). Thismakestokeniza-
+A TTS pipeline generally contains three key tionparticularlysuitableforspeech-to-text(ASR),
+components, i.e., linguistic analyzer, acoustic TTS, and multimodal NLP tasks, where aligning
+model,andspeechvocoder,whereaconditionalin- speech with textual information is crucial. Tok-
+put,e.g.,prompts,canbeprocessedforcontrollable enizationalsofacilitatestraininglanguagemodels
+speech synthesis. Linguistic analyzer aims to ex- on speech data by enabling linguistic or learned
+tractlinguisticfeatures,e.g.,phonemedurationand unit-basedprocessingratherthanrawaudiowave-
+position,syllablestress,andutterancelevel,from form modeling. Table 5 in Appendix A.3 sum-
+theinputtext,whichisanecessarystepinHMM- marizespopularopen-sourcespeechquantization
+based methods (Yoshimura et al., 1999; Tokuda andtokenizationmethods. Table1summarizesthe
+et al., 2000) and a few neural model-based meth- acousticfeaturesofrepresentativemethods.
+ods(Zenetal.,2013;Fanetal.,2014),butistime-
+A.4 EvaluationMetricComputations
+consuming and error-prone. Acoustic model is a
+parametricorneuralmodelthatpredictstheacous- TheperformanceofcontrollableTTSoftenrequires
+tic features from the input texts. Modern neural objectiveandsubjectiveevaluation. Weintroduce
+acousticmodelslikeTacotron(Wangetal.,2017) commonevaluationmetricsinthissubsection.
+and later works (Ren et al., 2019, 2021b; Jeong ObjectiveEvaluationMetrics. Objectivemet-
+et al., 2021) directly take character (Chen et al., ricsofferautomatedandreproducibleevaluations.
+2015) or word embeddings (Almeida and Xexéo, Mel Cepstral Distortion (MCD) (Kominek et al.,
+2019)asinput,whichismuchmoreefficientthan 2008) measures the spectral distance between
+previousmethods. Speechvocoderisthelastcom- synthesized and reference speech, reflecting how
+ponentthatconvertstheintermediateacousticfea- closely the generated audio matches the target in
+turesintoawaveformthatcanbeplayedback. This termsofacousticfeatures. AlowerMCDvaluein-
+stepbridgesthegapbetweentheacousticfeatures dicatesahighersimilaritybetweensynthesizedand
+and the actual sounds produced, helping to gen- referencespeech,meaningbetterspeechsynthesis
+erate high-quality, natural-sounding speech (Van quality. Typically,anMCDvaluebelow4suggests
+DenOordetal.,2016;Kongetal.,2020). Besides, good quality, while values above 6 may indicate
+some end-to-end methods use a single model to significant distortion. The MCD is computed as
+encodetheinputanddecodethespeechwaveforms follows:
+withoutgeneratingintermediatefeatureslikemel-
+(cid:118)
+spectrograms. Onecanreferto Tanetal.(2021b) (cid:117) D
+foramorecomprehensiveanddetailedreviewof MCD = ln10
+10
+·(cid:117) (cid:116)2(cid:88) (c( dsyn) −c d(ref) )2, (3)
+acousticmodelsandvocoders. d=1
+A.3 SpeechQuantizationvs. Tokenization. wherec(syn) representsthed-thMelCepstralCo-
+d
+(ref)
+It is worth noting that quantization and tokeniza- efficient(MCC)ofthesynthesizedspeech,c
+d
+tionservedistinctpurposesinspeechprocessing. representsthed-thMCCofthereferencespeech,
+Quantization is primarily used for high-fidelity D is the number of MCC, and 10 ≈ 4.342 is
+ln10
+compression, reducing the precision of numeri- a constant factor that converts the logarithm to a
+calrepresentations(e.g.,from32-bitfloatingpoint decibelscale.
+to 8-bit integers) while preserving model perfor- Fréchet DeepSpeech Distance
+mance. Inspeechsynthesis,quantizationisoften (FDSD) (Bin´kowski et al., 2020) is another
+used in waveform generation (e.g., codec-based metric designed to evaluate the quality and
+approacheslikeEnCodec(Défossezetal.,2023b)) naturalness of synthesized speech. It is inspired
+23
+
+rezylana
+citsiugniL
+Acoustic models Vocoders
+Acoustic features
+RNN RNN
+CNN Continuous CNN
+Text Waveform
+Transformer Discrete GAN
+LLM Control input, e.g., natural Diffusion
+language prompts, reference
+speech, attribute tags.
+... ...
+End-to-end model
+Figure5: GeneralpipelineofcontrollableTTSfromtheperspectiveofnetworkstructure. Linguisticanalysisis
+necessaryforparametricandafewneuralmethodsbutisnolongerneededformostmodernneuralmethods. Inthis
+paper,weonlyreviewneuralmodel-basedcontrollableTTSmethodsanddonotinvestigateacousticfeatures(e.g.,
+MFCC(Fukadaetal.,1992),LSP(Itakura,1975),F0(Kawaharaetal.,1999))usedinearlyTTSmethods.
+Method Modeling Code Year
+VQ-Wav2Vec(Baevskietal.,2020a) SSCP https://github.com/facebookresearch/fairseq/tree/main/examples/wav2vec#vq-wav2vec 2019
+Wav2Vec2.0(Baevskietal.,2020b) SSCP https://github.com/facebookresearch/fairseq/tree/main/examples/wav2vec 2019
+HuBERT(Hsuetal.,2021) SSCP https://github.com/facebookresearch/fairseq/tree/main/examples/hubert 2021
+WhisperEncoder(Radfordetal.,2023) SSCP https://github.com/openai/whisper 2022
+Data2vec(Baevskietal.,2022) SSCP https://github.com/facebookresearch/fairseq/tree/main/examples/data2vec 2022
+W2v-BERT2.0(Barraultetal.,2023) SSCP https://huggingface.co/facebook/w2v-bert-2.0 2023
+SoundStream(Zeghidouretal.,2021) RVQ-GAN https://github.com/wesbz/SoundStream 2021
+Encodec(Défossezetal.,2023b) RVQ-GAN https://github.com/facebookresearch/encodec 2022
+HiFi-Codec(Yangetal.,2023a) RVQ-GAN https://github.com/yangdongchao/AcademiCodec 2023
+SpeechTokenizer(Zhangetal.,2024) RVQ-GAN https://github.com/ZhangXInFD/SpeechTokenizer 2023
+DescriptAudioCodec(Kumaretal.,2024) RVQ-GAN https://github.com/descriptinc/descript-audio-codec 2023
+MimiCodec(Défossezetal.,2024) RVQ-GAN https://github.com/kyutai-labs/moshi 2024
+WavTokenizer(Jietal.,2025) VQ-GAN https://github.com/jishengpeng/WavTokenizer 2024
+SSCP:Self-supervisedcontext(token)prediction,RVQ:Residualvectorquantization(Zeghidouretal.,2021).
+Table5: Popularopen-sourcespeechquantizationandtokenizationmethods.
+by the Fréchet Inception Distance (FID) (Heusel (Σ Σ )1/2 isthegeometricmeanofthecovariance
+s r
+etal.,2017)usedinimagegenerationbutadapted matrices.
+tospeechbyleveragingadeepspeechrecognition For intelligibility, the Word Error Rate
+model. FDSD measures the statistical distance (WER)(Wikipedia,2024)isused. Itmeasuresthe
+between the distributions of real (reference) and difference between the recognized transcript and
+synthesized speech in the feature space of a thereferencetranscriptbycomputingthenumber
+pretrainedspeechrecognitionmodel,suchasDeep oferrorsmadeinthetranscriptionprocess. WER
+Speech (Hannun et al., 2014). By comparing iscomputedas:
+the mean and covariance of the extracted feature
+S +D+I
+representations, FDSD provides a perceptually WER = , (5)
+N
+relevantassessmentofspeechsynthesisquality. A
+lowerFDSDmeansthesynthesizedspeechismore whereSisthenumberofsubstitutions(wrongword
+similartorealspeech. FDSDcanbecomputedas: in place of the correct word), D is the number
+of deletions (missed words), I is the number of
+FDSD = ||µ −µ ||2+Tr(Σ +Σ −2(Σ Σ )1/2), insertions(extrawordsadded),andN isthetotal
+s r s r s r
+(4) numberofwordsinthereferencetranscript.
+where µ and Σ are the mean and covariance of Cosinesimilarity(onspeakerembeddings)mea-
+s s
+the embeddings from the synthesized speech, µ suressimilaritybetweenthespeakerembeddings
+r
+andΣ arethemeanandcovarianceoftheembed- ofsynthesizedandreferencespeech. Itcanbeused
+r
+dingsfromthereal(reference)speech,||µ −µ ||2 toevaluatezero-shotTTS(voicecloning)methods,
+s r
+representsthesquaredEuclideandistancebetween where higher values indicate better speaker simi-
+themeans,Tr(·)denotesthetraceofamatrix,and larity. Giventwospeakerembeddings,e ande ,
+1 2
+24
+
+theircosinesimilarityisdefinedas: captures human perception effectively, but is ex-
+pensiveforlarge-scaleevaluations.
+e ·e
+1 2
+CosSim(e ,e ) = , (6) Comparison Mean Opinion Score
+1 2
+∥e ∥∥e ∥
+1 2 (CMOS) (Loizou, 2011) further evaluates
+relativequalitydifferencesbetweentwoTTSaudio
+wherespeakerembeddingscanbeextractedfrom
+samples. Participants listen to paired samples
+a pre-trained speaker embedding model (e.g.,
+and rate their preference on a scale (e.g., -3 to
+ECAPA-TDNN(Desplanquesetal.,2020)andx-
++3, where negative values favor the first sample).
+vectors(Snyderetal.,2018)).
+CMOS is used to measure subtle improvements
+Perceptual Evaluation of Speech Quality
+in TTS systems, complementing absolute MOS
+(PESQ)(Rixetal.,2001)isanotherobjectivemet-
+ratings. MOSandCMOSscoresarecomputedas
+ric designed to evaluate speech quality by com-
+theaveragescoresacrossalllisteners:
+paring degraded audio with a clean reference. It
+iswidelyusedintelecommunicationsandspeech
+N
+synthesis. PESQ models human auditory percep- 1 (cid:88)
+MOS/CMOS = s , (9)
+i
+tion, producing a score in the range [−0.5,−4.5] N
+i=1
+thatreflectsintelligibilityanddistortionundervar-
+wheres isthescoregivenbythei-thlistener,and
+ious conditions, including noise or compression. i
+N isthenumberoflisteners.
+PESQinvolvescomplexperceptualmodeling,its
+ABandABXtestsarealsopopularinevaluating
+corecomponentscanbesummarizedas:
+TTSmethods. AnABtestinvolvespresentingtwo
+PESQ = a +a ·D +a ·D , (7) versions of a synthesized speech (from different
+0 1 frame 2 time
+TTSmodels)tohumanlistenersandaskingthem
+where D is the frame-by-frame perceptual to choose which they prefer. The goal is to as-
+frame
+distortion,D isthetime-domaindistortion,and sesswhichmodelproducesbetter-soundingspeech
+time
+a ,a ,a areregressioncoefficients. Onecanrefer basedoncertaincriteria,suchasnaturalness,intel-
+0 1 2
+to(Rixetal.,2001)fordetails. ligibility,orclarity. InanABXtest,listenerscom-
+Signal-to-NoiseRatio(SNR)measurestheratio paretwosynthesizedspeechsamplestoareference
+of signal power to noise power. A higher SNR speechsampleanddeterminewhichoneiscloser
+indicatesacleanersignalwithlessnoise,whilea in terms of timbre, prosody, emotion, and other
+lower SNR suggests that noise is dominating the relevant features. ABX tests are widely used in
+signal. However, in TTS, noise can come from evaluatingzero-shotTTSmethods. TheAB/ABX
+differentsources,suchasartifactsfromvocoders, testscoreforamodelmis:
+neuralnetworkdistortions,orbackgroundnoisein
+N
+m
+datasetrecordings. AdirectcomputationofSNRin Score /Score = , (10)
+AB ABX
+N
+TTSrequiresareferencecleanspeechsignal(x[n]),
+asynthesized(ornoisy)speechsignal(y[n]),and whereN representsthenumberoflistenerswho
+m
+extracting the noise component (e[n] = y[n] − preferthespeechsynthesizedbymodelm,andN
+x[n]) from the synthesized signal. The SNR for denotesthetotalnumberoflisteners.
+TTSsystemscanbecomputedas: Table 4 summarizes widely used metrics for
+TTS.
+(cid:18) (cid:19)
+P
+signal
+SNR = 10log , (8)
+10 P A.5 AGoogleGemini-BasedExperimental
+noise
+EvaluationofTTSControllability
+where P signal = N1 (cid:80)N n=1x[n]2 and P noise = WedesignedanevaluationpipelineusingGemini
+1 (cid:80)N e[n]2. to assess synthesized speech in terms of instruc-
+N n=1
+Subjective Evaluation Metrics. The Mean tionfollowing,naturalness,andexpressiveness,
+Opinion Score (MOS) (Wikipedia, 2025) is the becausethesedimensionsarenotwellcapturedby
+most commonly used subjective metric. In MOS traditionalmetrics. ConventionalscoreslikeMCD,
+evaluations,listenersratevariousaspects,suchas WER,PESQ,speakersimilarity,andMOS/CMOS
+naturalness,expressiveness,quality,intelligibility, are excluded, as our goal is to explore the feasi-
+etal.,ofsynthesizedspeechonascalefrom1to5, bilityofusingmultimodallargelanguagemodels
+wherehigherscoresindicatebetterquality. MOS (MLLMs)assubjectiveevaluators.
+25
+
+A.5.1 Implementationdetails of a speech sample, its transcript, and an instruc-
+tion describing the intended speech characteris-
+Models. Due to time constraints, we only evalu-
+tics, please rate the audio based on the following
+ate a total of 10 models: 8 open-source systems
+three aspects, using the defined criteria. Output
+(F5-TTS, CosyVoice, CosyVoice2, Vevo, Spark-
+ONLY a JSON dictionary with the keys instruc-
+TTS,MaskGCT,PromptTTS,andVoxInstruct)and
+tion_following, naturalness, and expressiveness,
+2commercialTTSsystems(ElevenLabsandMini-
+each assigned an integer value from 1 to 5. The
+MaxTTS).
+evaluationrubricsareasfollows:
+Tasks. Zero-shot TTS and description-based
+synthesis. Foreachmodel,wesynthesize20speech 1. InstructionFollowing(1–5):
+samples(10inEnglishand10inChinese)foreach
+• 1 point: The audio completely ignores
+task.
+theinstruction;itdoesnotfollowthein-
+Dataset. Forzero-shotTTS,wesampled10En-
+tendedtiming,emphasis,orpacing.
+glishutterancesfromtheMSP-Podcastdatasetand
+• 2 points: It loosely follows the instruc-
+10ChineseutterancesfromEmo-Emiliatoserveas
+tionsbutmisseskeyelementsortiming
+reference speech prompts. For description-based
+inparts.
+synthesis, we used ChatGPT to generate diverse
+• 3 points: Generally follows the instruc-
+textualdescriptionsasshowninFig.6.
+tion with minor lapses in emphasis or
+MetricsClarification:
+pacing.
+• InstructionFollowing • 4points: Clearlyfollowstheinstruction
+withonlyslightdeviations.
+– Purpose: To assess how accurately the
+• 5points: Perfectlyfollowseveryaspect
+synthesized audio follows the given in-
+of the instruction with clear emphasis
+structionregardingspeechcharacteristics
+andprecisepacing.
+suchastiming,emphasis,andpacing.
+2. Naturalness(1–5):
+– Focus: Measuresthecontrollabilityand
+fidelity of the model in executing user- • 1point: Theaudiosoundsfullysynthetic
+specifieddirectives. orrobotic;extremelyunnatural.
+• 2points: Noticeablysynthetic;someun-
+• Naturalness
+naturalartifactsremain.
+– Purpose: Toevaluatehownaturaltheau- • 3points: Moderatelynaturalwithocca-
+diosounds—whetheritresembleshuman sionalsyntheticartifacts.
+speechorexhibitssynthetic,roboticqual- • 4points: Largelynaturalsoundingwith
+ities. minorimperfections.
+– Focus: Measures the perceptual audio • 5 points: Completely natural; indistin-
+quality and realism of the synthesized guishablefromahumanrecording.
+speech.
+3. Expressiveness(1–5):
+• Expressiveness • 1point: Theaudioisflatandmonotone;
+noemotionalvariation.
+– Purpose: Tojudgetheemotionalrichness
+• 2points: Minimalexpressiveness;emo-
+andprosodicvariationintheaudio,such
+tionsareweakorinconsistent.
+astone,intensity,andnuance.
+• 3 points: Reasonably expressive with
+– Focus: Measures the model’s ability to
+somehighlights,butcouldbestronger.
+convey expressive and emotionally en-
+• 4 points: Clearly expressive with only
+gagingspeech.
+slightunder-orover-emphasis.
+• 5points: Exceptionallyexpressive;full
+GeminiPrompts.
+emotionalrichnessandnuance.
+Thepromptweusefortheevaluationisasfol-
+lows: USER_PROMPT:Thesynthesizedspeechis{au-
+SYSTEM_PROMPT:Youareastrictqualityeval- dio}. Thetranscriptoftheaudiois: “{transcript}".
+uatorforsynthesizedspeech. Givenanaudiofile Theinstructionfortheaudiois: “{instruction}".
+26
+
+English synthesis prompts: Chinese synthesis prompts:
+1. Read the sentence with a cheerful and energetic tone, like you’re announcing good news to a 1. 请⽤开⼼活泼的语⽓朗读这句话，就像在和朋友分享喜讯。(Please read this sentence in a
+friend. happy and lively tone, as if sharing good news with a friend.)
+2. Speak softly and sadly, as if recalling a painful memory. 2. 以低沉悲伤的语调说出这句话，仿佛在回忆⼀段伤感往事。(Speak this sentence in a low
+and sad tone, as if recalling a sentimental past.)
+3. Say the sentence with anger and frustration, as if you’re arguing in a heated moment.
+3. ⽤愤怒且激动的语⽓说这句话，好像正在和⼈争吵。(Say this sentence in an angry and
+4. Use a calm and professional tone, like a news anchor reading the evening report. excited tone, as if arguing with someone.)
+5. Read this like you’re telling a bedtime story to a child, with warmth and gentleness 4. 以正式、冷静的播报⻛格朗读，像新闻主播那样。(Read it in a formal and calm
+broadcasting style, like a news anchor.)
+6. Speak quickly and excitedly, as if you’re sharing a thrilling discovery.
+5. 模仿⽗⺟给孩⼦讲睡前故事的⽅式，温柔缓慢地朗读。(Imitate the way parents read
+7. Use a robotic and monotone voice, as if you’re an AI assistant reading a command bedtime stories to children, gently and slowly.)
+8. Deliver the line as a shy teenager, nervous but trying to sound confident. 6. ⽤快速⽽兴奋的语⽓说这句话，好像你发现了⼀个惊喜。(Say this sentence quickly and
+excitedly, as if you’ve found a surprise.)
+9. Speak as if you’re giving instructions in an emergency, firm and urgent.
+7. ⽤没有情感的语⾳助⼿语⽓朗读这句话，保持平稳。(Read this sentence in the emotionless
+10.Read the sentence with a sarcastic tone, like you’re not taking the situation seriously.
+tone of a voice assistant, maintaining a steady pace.)
+8. 以害羞但努⼒镇定的语⽓说这句话，像⻘少年表⽩时那样。(Speak this sentence in a shy but
+determined tone, like a teenager confessing their feelings.)
+9. 像紧急情况下的指挥员⼀样，冷静⽽坚定地给出指令。(Give the instruction calmly and firmly,
+like a commander in an emergency.)
+10.以带点嘲讽和不屑的语⽓说这句话，表现出讽刺的情绪。(Say this sentence with a hint of
+mockery and disdain, expressing ironic emotion.)
+Figure6: TextualdescriptionsgeneratedbyChatGPT
+InstructionFollowing Naturalness Expressiveness
+Task Method
+(Gemeni2.5Flash/Human) (Gemeni2.5Flash/Human) (Gemeni2.5Flash/Human)
+F5-TTS - 4.27±0.87 4.21±0.78
+CosyVoice - 4.20±0.82 4.17±0.83
+CosyVoice2 - 4.25±0.58 4.20±0.63
+Zero-shot
+Vevo - 4.43±0.55 4.32±0.75
+SparkTTS - 3.68±0.80 3.83±0.79
+MaskGCT - 3.91±0.88 4.08±0.81
+CosyVoice 4.81±0.28 4.92±0.24 4.78±0.29
+CosyVoice2 4.61±0.49 4.85±0.31 4.63±0.52
+EmoVoice 4.67±0.44 4.80±0.36 4.67±0.44
+Instruction-based
+VoxInstruct 4.45±0.50 4.83±0.32 4.50±0.52
+ElevenLabs 4.52±0.67 4.85±0.31 4.63±0.57
+MiniMaxTTS 4.67±0.36 4.87±0.27 4.63±0.44
+Table6: Theevaluationofthecontrollabilityofopen-sourceandcommercialTTSsystems.
+InstructionFollowing Naturalness Expressiveness followingat4.81±0.28,naturalnessat4.92±0.24,
+NISQA(Mittagetal.,2021) - 0.01 -0.03 andexpressivenessat4.78±0.29. Otherstrongper-
+UTMOS(Saekietal.,2022) - -0.10 -0.17
+Ours 0.12 0.17 0.14 formersincludeMiniMaxTTSandEmoVoice,both
+exceeding4.6inmostdimensions. Eventhelowest-
+Table7:Thealignmentbetweenmodel-basedevaluation
+scoringinstruction-basedmethod(VoxInstruct)out-
+andhumanpreference.
+performsthebestzero-shotmodelineveryaspect.
+A.5.2 Results: Model-levelPerformance A.5.3 Results: TheReliabilityofMultimodal
+Comparison LLM-basedEvaluation
+As shown in Table 6, in the zero-shot setting, We also compare the proposed metrics with
+among the six models, Vevo performs best in existing automated evaluation methods, namely
+both naturalness (4.43±0.55) and expressiveness NISQA(Mittagetal.,2021)andUTMOS(Saeki
+(4.32±0.75),indicatingstronggeneralqualitywith- et al., 2022). Specifically, we use 96 synthesized
+out explicit guidance. CosyVoice, CosyVoice 2, samplestocomputethePearsoncorrelationcoef-
+and F5-TTS follow closely with similar scores ficients between the predicted scores from each
+(4.2),whileSparkTTSandMaskGCTlagbehind, methodandhumanratings,aimingtoassesshow
+especiallyinnaturalness. welleachmethodalignswithhumanperception.
+Intheinstruction-basedsetting,allmodelsshow AsshowninTable7,althoughtheabsolutePear-
+aclearimprovementacrossallmetrics. CosyVoice soncorrelationcoefficientsofourmethodarerel-
+achievesthehighestoverallscores,withinstruction ativelymodest,ourapproachconsistentlyoutper-
+27
+
+forms both NISQA and UTMOS across all three
+evaluationdimensions: instructionfollowing,natu-
+ralness,andexpressiveness.
+These results suggest that existing automated
+metrics like NISQA and UTMOS, which are pri-
+marilydesignedforgeneralspeechqualityassess-
+ment,maynotcapturenuancedattributessuchas
+speakerintentorexpressivedeliveryincontrollable
+TTStasks.
+Incontrast,ourmetric,tailoredforinstruction-
+based synthesis evaluation, better reflects human
+judgments,particularlyinaspectsbeyondrawau-
+dioquality. Thissupportstheneedfortask-specific
+evaluationframeworkswhenbenchmarkingmod-
+erncontrollableTTSsystems.
+A.5.4 Conclusion
+Tosomeextent,theproposedMLLM-basedeval-
+uation pipeline is able to predict human-aligned
+scores for instruction following, naturalness, and
+expressiveness. Wealsofindthatitofferspromis-
+ingpotentialforautomatedevaluationofcontrol-
+lableTTS.
+Infuturework,weplantoenhanceoursurveyby
+designingamorerobustandreliableMLLM-based
+evaluation framework and conducting a compre-
+hensive benchmark of existing controllable TTS
+methods.
+28

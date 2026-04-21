@@ -1,0 +1,1713 @@
+SpeechBrain: A General-Purpose Speech Toolkit
+MircoRavanelli1,2,TitouanParcollet3,16,PeterPlantinga4,AkuRouhe5,SamueleCornell6,
+LorenLugosch1,7,CemSubakan1,NaumanDawalatabad8,AbdelwahabHeba9,
+JianyuanZhong1,Ju-ChiehChou10∗,Sung-LinYeh11*,Szu-WeiFu12,Chien-FengLiao12,
+ElenaRastorgueva13†,FrançoisGrondin14,WilliamAris14,HwidongNa15,YanGao16,
+RenatoDeMori3,7,andYoshuaBengio1,2
+1Mila-QuebecAIInstitute
+2UniversitédeMontréal
+3LIA-AvignonUniversité
+4OhioStateUniversity
+5AaltoUniversity
+6UniversitàPolitecnicadelleMarche
+7McGillUniversity
+8IndianInstituteofTechnologyMadras
+9IRIT-UniversitéPaulSabatier
+10ToyotaTechnologicalInstituteatChicago
+11UniversityofEdinburgh
+12AcademiaSinica,Taiwan
+13NVIDIA
+14UniversitédeSherbrooke
+15Samsung-SAIT
+16CaMLSys-UniversityofCambridge
+Abstract
+SpeechBrain is an open-source and all-in-one speech toolkit. It is designed to
+facilitatetheresearchanddevelopmentofneuralspeechprocessingtechnologies
+bybeingsimple,flexible,user-friendly,andwell-documented.Thispaperdescribes
+thecorearchitecturedesignedtosupportseveraltasksofcommoninterest,allowing
+userstonaturallyconceive,compareandsharenovelspeechprocessingpipelines.
+SpeechBrainachievescompetitiveorstate-of-the-artperformanceinawiderange
+ofspeechbenchmarks. Italsoprovidestrainingrecipes,pretrainedmodels,and
+inferencescriptsforpopularspeechdatasets,aswellastutorialswhichallowanyone
+withbasicPythonproficiencytofamiliarizethemselveswithspeechtechnologies.
+1 Introduction
+Open-sourcetoolkitshaveplayedacriticalroleinthedevelopmentofspeechprocessingtechnology
+[1–5]. Kaldi[5],forinstance,isanestablishedspeechrecognitionframework,whichisimplemented
+inC++withrecipesbuiltontopofBash, Perl, andPythonscripts. Despitebeingefficient, itsuse
+ofC++canmakeprototypingofnewdeeplearningmethodsdifficult. Withtheadventofgeneral-
+purposedeeplearninglibrarieslikeTensorFlow[6]andPyTorch[7],moreflexiblespeechrecognition
+frameworks have quickly appeared, e.g., DeepSpeech [8], RETURNN [9], PyTorch-Kaldi [10],
+Espresso[11],Lingvo[12],Fairseq[13],ESPnet[14],andNeMo[15].
+∗WorkconductedwhileatNationalTaiwanUniversity.
+†WorkconductedwhileonaninternshipatMila-QuebecAIInstitute.
+Preprint.Underreview.
+1202
+nuJ
+8
+]SA.ssee[
+1v42640.6012:viXra
+
+Table1: ListofspeechtasksandcorporathatarecurrentlysupportedbySpeechBrain.
+Task Description Techniques Datasets
+Speechrecognition Speech-to-text. CTC[24] LibriSpeech[28]
+Transducers[25] CommonVoice[29]
+CTC+Attention[26] AISHELL[30]
+Shallowfusion[27] TIMIT[31]
+Speakerrecognition Speakerverification/ID. X-vectors[32] VoxCeleb1[34]
+ECAPA-TDNN[33] VoxCeleb2[35]
+Speakerdiarization Detectwhospokewhen. SpectralClustering[36] AMIcorpus[38]
+Neuralembeddings[37]
+Speechenhancement Noisytocleanspeech. MetricGAN+[39] VoiceBank[41]
+MimicLoss[40] DNS[42]
+Speechseparation Separateoverlappedspeech. ConvTasNet[43] WSJ-mix[46]
+DualPathRNNs[44] WHAM[47]
+SepFormer[45] WHAMR[48]
+LibriMix[49]
+Spokenlanguage Speechtointent/slots. Decoupled[50] TAS[50]
+understanding Multistage[51] SLURP[53]
+Direct[52] FSC[54]
+Multi-microphone Combininginputsignals. Delay-and-sum Dataset-
+processing MVDR[55] Independent
+GEV[56]
+GCC-PHAT[57]
+SRP-PHAT[58]
+MUSIC[59]
+Recently, task-specific libraries have also been released. Examples are Asteroid [16] for speech
+separation,pyannote[17]andsidekit[18]forspeakerdiarization,ands3prl[19]forself-supervised
+speechrepresentations. Whileexcellingatspecifictasks,theseframeworkshavedifferentcoding
+styles,standards,andprogramminglanguages,makingitchallengingandtime-consumingtomigrate
+fromonecodebasetoanother. Moreover,theircombinationincomplexspeechprocessingpipelines
+posesachallengeforinteroperability,asconnectingdifferentframeworksmightbeunnaturaland
+theircodebasescaninteractinunpredictableways.
+Ourexperiencesuggeststhathavingasingle,flexible,multi-tasktoolkitcansignificantlyspeedupthe
+developmentofspeechtechnologies. Duetogrowinginterestinend-to-endspokendialogsystems
+(e.g.,virtualassistants),implementingcompositepipelineswithinanintegratedtoolkitoffersmany
+advantages. Asingletoolkit,forinstance,encouragestheexplorationoftransferlearningandjoint
+training techniques across different tasks [20–23] and enables the creation of fully differentiable
+graphswheremultipletechnologiesaretrainedjointlyandlearntointeract.
+Inspired by this vision, we have developed SpeechBrain3, an all-in-one PyTorch-based toolkit
+designedtofacilitatethedevelopment,portability,andeaseofuseofspeechprocessingtechnologies.
+The name SpeechBrain highlights the need for a holistic system capable of performing multiple
+tasksatonce,forexample,recognizespeech,understandingitscontent,language,emotions,and
+speakers. Ourtoolkitisnotonlyintendedforspeechresearchers,butalsoforthebroadermachine
+learningcommunity,enablinguserstoeasilyintegratetheirmodelsintodifferentspeechpipelines
+andcomparethemwithstate-of-the-art(SotA)baselines. Ourmaincontributionsinthispaperare:
+• ThepresentationofSpeechBrain,withanemphasisonhowwedesignedittosupportmultiple
+taskswithoutsacrificingsimplicity,modularity,orflexibility.
+• Theimplementationandexperimentalvalidationofbothrecentandlong-establishedspeech
+processingmodelswithSotAorcompetitiveperformanceonavarietyoftasks(cf. Table1).
+Morebroadly,webelievetheSpeechBraintoolkithasthepotentialtosignificantlyaccelerateresearch
+andinnovationinthefieldofspeechprocessinganddeeplearning.
+3Thetoolkitwebsitecanbefoundatspeechbrain.github.io/.
+2
+
+2 RelatedWork
+Afewothertoolkitssupportmultiplespeechtasks. Ofthese,theonesweconsidermostrelatedto
+SpeechBrainareFairseq[13],NeMo[15],andESPnet[14]. FairseqisdevelopedbyFacebookto
+supportsequence-to-sequenceprocessing. ItincludesmodelssuchasConvS2S[60],transformers
+[61], and wav2vec [62]. However, speech processing encompasses several paradigms outside of
+sequence-to-sequencemodeling. SpeechBrainalsosupportsregressiontasks(e.g.,speechenhance-
+ment,separation),classificationtasks(e.g.,speakerrecognition),clustering(e.g.,diarization),and
+evensignalprocessingtechniques(e.g.,multi-microphonecombination).
+NeMoisatoolkitforconversationalAIdevelopedbyNVIDIA,whichprovidesusefulneuralmodules
+formanyspeechprocessingtasks,includingspeechrecognition,speakerdiarization,voice-activity
+detectionandtext-to-speech. Duetoitsindustrialorientation,NeMooffersefficientready-to-use
+models,suchasJasper[63],QuartzNet[64],andCitrinet[65]. SpeechBrainalsoprovidesseveral
+ready-to-usemodels,butfocusesmoreheavilyonresearchandeducationbyprovidingawidevariety
+ofbaselines,models,andrecipesthatuserscaneasilyinspectandmodifyintheexperiments.
+ESPnet,initscurrentform,istheclosesttoolkittoSpeechBrain. Bothareacademicallydrivenand
+support numerous speech tasks. ESPnet started as an end-to-end speech recognition library and
+progressivelygrewtosupportdifferenttasks. Bycontrast,wedesignedSpeechBraintoaddressa
+widevarietyoftasksfromtheoutset. Thismeansthatcombiningtechnologiesanddevelopingrecipes
+fornewtasksisextremelysimple.
+3 DesignPrinciples
+Beyondthemulti-taskvisionhighlightedintheintroduction,wedevelopedSpeechBrainwiththe
+followingdesignprinciplesinmind:
+Accessibility: SpeechBrainisdesignedtobeeasilyunderstandablebyalargeuserbase,including
+early students and practitioners. Therefore, we devoted considerable effort to develop intuitive
+modulesthatareeasytointerconnectwitheachother. OneremarkablepeculiarityofSpeechBrain
+isthatitserveseducationalpurposesaswell. Wethushavewrittenextensivedocumentationand
+tutorials with Google Colab to help newcomers become more familiar with speech technologies.
+Priorworkhasshowncodesnippetsaidinadoptingacodebase[66]. Motivatedbythis,SpeechBrain
+providesrunnablecodesnippetsindocstrings(documentinginteractionatthegranularlevel),tutorial
+notebooks(explainingsingletopics), andtemplatefiles(describingfullexperimentsondifferent
+tasks). Tomakeourtoolkitasaccessibleaspossible,wehavereleaseditunderaverypermissive
+license(Apache2.0).
+Easeofuse: SpeechBrainemploysasimplesoftwarestack(i.e.,Python→PyTorch→SpeechBrain)
+toavoiddealingwithtoomanylevelsofabstractions. ItisdevelopedontopofPyTorchdirectly,
+withoutanexternalAPI.PyTorch-compatiblecodeworksinourtoolkitwithoutanyfurthermodifica-
+tion. SpeechBrainhasaminimallistofexternaldependenciesthatareallinstallableviaPyPI.The
+installationprocesssimplyrequiresrunningthecommand pip install speechbrain andisdone
+withinafewminutes. ThecodeisPythonicandmaximizestheuseofPyTorchroutines.
+Replicability: SpeechBrainpromotesopenandtransparentscience. Wetrainedmostofourmodels
+withpubliclyavailabledata. Thisway,ourresultscanbeeasilyreplicatedbythecommunity. Several
+pre-trainedmodels,whichonlyrequireafewlinesofcodetouse,aredistributedviaHuggingFace
+[67]. Besidessharingthecodeandthetrainedmodels,wealsosharethewholeexperimentfolder,
+whichcontainsalltheneededdetails(e.g.,logs)toreproduceourresults.
+4 Architecture
+Fromanarchitecturalstandpoint,SpeechBrainsitsinbetweenalibraryandaframework. Where
+libraries require users to manage dataflow by calling library-defined functionality, frameworks
+primarilydefineacustomlifecycleinwhichuser-definedfunctionalitiesareinvokedinspecificplaces
+(inversionofcontrol). MostcodeinSpeechBrainfollowsalibrary-stylecollectionofmodularand
+standalonebuildingblocks,includingpracticalroutinesfordataloading,decoding,signalprocessing,
+andotherconvenientutilities. Howeverthecentral Brain class(see§4.4),usesinversionofcontrol
+3
+
+Training Script
+Brain.fit()
+Hyperparams
+self._compile_jit()
+Brain sub-class definition self.make_dataloader()
+self.on_fit_start() self.init_optimizers()
+for epoch in epoch_counter:
+Custom data pipeline definition
+self.on_stage_start(Stage.TRAIN)
+for batch in train_set:
+Main
+Load hyperparams Data Manifest self.fit_batch(batch)
+p = self.compute_forward(batch)
+loss = self.compute_objectives(p, batch)
+Make PyTorch Dataset # perform parameter update
+self.on_stage_end(Stage.TRAIN)
+Instantiate Brain sub-class self.on_stage_start(Stage.VALID)
+for batch in valid_set:
+Call brain.fit() Trained Model self.evaluate_batch(batch)
+p = self.compute_forward(batch)
+loss = self.compute_objectives(p, batch)
+Call brain.evaluate()
+self.on_stage_end(Stage.VALID)
+Figure1: Anoverviewofabasictrainingscript. Figure2: IllustrationofBrain.fit().
+todefineageneraltrainingloop. Therefore,SpeechBrainismostaccuratelydescribedasatoolkit.
+As shown in Figure 1, the code for training a model is contained within a single Python script.
+Trainingbeginsbycallingthescriptwithasetofhyperparameters: python train.py hparams.yaml.
+These hyperparameters, declared in human-readable YAML format, contain the location of one
+ormoredatamanifestfilesusingeitherCSVorJSONformats(seeAppendixA.4). Unlikemany
+othertoolkits,SpeechBrainorchestratesexperimentsinPythondirectly,withoutrelyingonexternal
+Bashscripts. Thisallowscodefordataloading,modeling,optimization,andevaluationtointeract
+naturally.Moreover,thetrainingscriptexposesthecomputationslikelytobechangedmostfrequently
+(e.g., forwardcomputations, datatransformations, etc.), makingthemeasytoaccessandmodify.
+SpeechBraintreatstheuser’scodeasafirst-classcitizen: allPyTorch-compatiblecodewrittenbythe
+useristreatedthesameasSpeechBraincode. Inthefollowingsub-sections,weexploretheanatomy
+ofatrainingscriptinmoredetail.
+4.1 Hyperparameters
+Themodelhyperparameters,inconjunctionwiththetrainingscript,regulatevariouspropertiesof
+thepipelinesuchasmodelarchitecture,training,anddecoding. SpeechBrainreliesonanextended
+versionofYAMLcalledHyperPyYAML,asshowninthefollowingexcerpt:
+1 dropout: 0.2
+2 features: !new:speechbrain.lobes.features.MFCC
+3 n_mels: 40
+4 left_frames: 5
+5 right_frames: 5
+6
+7 model: !new:torch.nn.LSTM
+8 input_size: 440
+9 hidden_size: 256
+10 num_layers: 4
+11 dropout: !ref
+
+12 bidirectional: True
+Listing1: AnexcerptofaYAMLfileforhyperparameterspecification.
+HyperPyYAMLisnotjustanordinarylistofhyperparameters,butallowsacomplexhyperparameter
+specification that defines objects along with their corresponding arguments. There is always an
+explicitreferencebetweenthehyperparameterdeclarationsandanyobjectusingthem,makingthe
+codemoreinterpretableandsimplertodebug. OverridingthecontentsoftheYAMLfile(e.g.,for
+hyperparametersearch)canalsobedoneeasilybypassingcommand-linearguments:
+1 $ python train.py hparams.yaml --learning_rate=0.1 --dropout=0.5
+4
+
+SpeechBrain initializes the classes automatically when reading the YAML file, thus eliminating
+boilerplateinitializationcodefromthetrainingscript. HyperPyYAMLisageneraltoolforspecifying
+hyperparameters. Toenablemodularreusuability,wehavereleaseditasaseparaterepositoryon
+PyPI4.
+4.2 Dataloading
+SpeechBrain complements standard PyTorch data loading by addressing the typical challenges
+that occur when working with speech, such as handling variable-length sequences, large
+datasets, and complex data transformation pipelines. Our DynamicItemDataset inherits from
+torch.utils.data.Dataset andcreatesadataset-interfacebasedonadata-manifestfile. Thedata-
+manifestfilecontainsstaticitems,suchasfilepathsorspeakerlabels. Then,dynamicitemsprovide
+transformationsbasedontheexistingitems(staticordynamic),asshowninthefollowingexample:
+1 @speechbrain.utils.data_pipeline.takes("file_path")
+2 @speechbrain.utils.data_pipeline.provides("signal")
+3 def audio_pipeline(file_path):
+4 return speechbrain.dataio.read_audio(file_path)
+Listing2: Anexampleofacustomdatapipeline.
+Thisfunctiontakesanaudiofilepath(astaticitem)andreadsitasatensorcalled"signal"(adynamic
+item). Anylibraryforreadingaudiofilecanbeusedhere,includingtorch.audio5. Theevaluation
+orderoftheitemsisdeterminedbyadependencygraph. Userscandefineoperationssuchasreading
+andaugmentinganaudiofile,encodingatextlabelintoaninteger,basictextprocessing,etc. The
+dynamic items are defined in the training script and are thus directly customizable by the users.
+Moreover, by leveraging the PyTorch DataLoader class, these data pipelines are automatically
+appliedinparallelacrossdifferentworkers.
+4.3 Batching
+Speech sequences for a given dataset typically vary in length and require zero-padding to create
+equal-lengthbatches. Thistendstoaddsomecomplicationduringthetrainingprocess. First,the
+length of each sentence within each batch must be tracked so we can later remove zero-padded
+elementsfromcomputationslikenormalization,statisticalpooling,losses,etc. Anotherissuethat
+arisesishowtoavoidwastingcomputationalresourcesprocessingzero-paddedelements.
+One approach to mitigate this issue is to sort data by sequence length before batching, which
+minimizeszero-paddingbutsacrificesrandomnessinthebatchcreationprocess.Amoresophisticated
+approachistoapplydynamicbatching[68,69],wheresentencesareclusteredbylengthandsampled
+withinthesamecluster,atrade-offbetweenrandomandsortedbatching. Thisallowsthebatchsize
+tobedynamicallychangedaccordingtosentencelength,leadingtoimprovedefficiencyandbetter
+managementofavailableGPUmemory. Alltheaforementionedbatchingstrategiesaresupportedby
+SpeechBrain,allowinguserstochoosetheapproachthatmeetstheirspecificneeds.
+4.4 The Brain class
+SpeechBrainimplementsageneraltrainingloopinthe Brain class. The Brain.fit() methodis
+inspiredbysimilarmethodsinlibrariessuchasScikit-learn[70],Scipy[71],Keras[72],fastai[73],
+andPyTorchLightning[74]. Figure2illustratesthebasiccomponentsofthe Brain.fit() method.
+Thefollowingisasimpledemonstration:
+1 import torch, speechbrain
+2
+3 class SimpleBrain(speechbrain.Brain):
+4 def compute_forward(self, batch, stage):
+5 return self.modules.model(batch["input"])
+4github.com/speechbrain/HyperPyYAML
+5https://github.com/pytorch/audio
+5
+
+18
+16
+Table2: PhonemeErrorRate(PER%)achieved
+with SpeechBrain on TIMIT using different 14
+speechrecognizers.
+12
+Technique #Params Dev Test
+10
+CTC 10M 12.34 14.15
+Transducer 10M 12.66 14.12 8
+CTC+Att 10M 12.74 13.83 2016 2017 2018 2019 2020 2021
+CTC+Att+SSL 318M 7.11 8.04
+)%REP(
+etaR
+rorrE
+enohP
+BiRNN
+RNN-CRF
+LiGRU
+LiGRU + Reg
+Vq-wav2vec*
+wav2vec*
+CTC+Att+SSL* (our recipe)
+Figure 3: Evolution of the SotA performance
+forTIMIT.Entriesmarkedwith*useextraunla-
+belleddatafromtheLibri-Lightdataset. Source:
+https://paperswithcode.com.
+6 def compute_objectives(self, predictions, batch, stage):
+7 return torch.nn.functional.l1_loss(predictions, batch["target"])
+8
+9 modules = {"model": torch.nn.Linear(in_features=10, out_features=10)}
+10 brain = SimpleBrain(modules, lambda x: torch.optim.SGD(x, 0.1))
+11 data = [{"input": rand(10, 10), "target": rand(10, 10)}]
+12 brain.fit(epoch_counter=range(15), train_set=data)
+Listing3: TrainingasimplemodelwithSpeechBrainusingtheBrainclass.
+Withonlyabouttenlinesofcode,wecantrainaneuralmodel. Repetitiveboilerplate,suchassetting
+train() and eval() flags,puttingthemodelsonthespecifieddevice,andcomputinggradientsare
+handledbythe Brain class. Userscanoverrideanystepoftheprocess,allowingthedefinitionof
+morecomplicated(e.g.,GAN[75])trainingprocedures. The Brain classalsohandlesvalidation,
+learningratescheduling,andfault-tolerantmodelcheckpointing,sothattrainingcanresumewhereit
+leftoffifexecutionisinterrupted(e.g.,bypreemptiononacluster). Furtherdetailsaboutthe Brain
+APIareprovidedin§A.4.4.
+4.5 Otherfeatures
+Beyondthefunctionalitiesmentionedintheprevioussections,additionalfeaturesinclude:
+Multi-GPU training: SpeechBrain supports both DataParallel and DistributedDataParallel
+modules,allowingtheuseofGPUsonthesameanddifferentmachines. Automaticmixed-precision
+canbeenabledbysettingasingleflagtoreducethememoryfootprintofthemodels. Moreover,the
+librarysupportsPyTorch’sJust-In-Time(JIT)compilerfornativecompilation.
+Large-scaleexperiments: SpeechBrainextendsWebDataset6withon-the-flydynamicbatchingand
+bucketing. Thisenablesefficientbatchinginsequentialshard-baseddatareading,whichisnecessary
+forprocessinglargecorporaonnetworkfilesystems.
+On-the-flyfeaturegeneration: Ratherthanserializingintermediatefeaturestodisk,SpeechBrain
+loadsrawwaveformsandsupportsawidevarietyofefficientstreamingoperationsforaudiopro-
+cessing. StandardfeaturesliketheShort-TermFourierTransform(STFT)andMel-filterbanksare
+computedattrainingtime,allowingdifferentiationandwaveform-levelaugmentation[76]. Many
+recipesincludeon-the-flyaugmentationssuchasaddingnoise,timewarping,orfeaturemasking.
+6https://github.com/webdataset/webdataset
+6
+
+5 Results
+ThissectiondescribesusecasesofSpeechBrain,highlightingthetechniquesimplementedandthe
+correspondingperformance. Formoredetailsondatasets,models,andexperimentalsettings,please
+refertotheappendix(§A.5).
+5.1 Speechrecognition
+The toolkit supports common techniques for end-to-end speech recognition with different levels
+of complexity. The simplest system employs an encoder trained with Connectionist Temporal
+Classification(CTC)[77]. AnalternativemodelistheTransducer[25],whichaugmentCTCwithan
+autoregressivecomponentandapredictionnetwork. Thetoolkitsupportsattention-basedencoder-
+decoder architectures as well [26]. In particular, CTC+Att systems rely on an encoder-decoder
+architecturewithanadditionalCTClossappliedonthetopoftheencoder. SpeechBrainisdesigned
+such that users can easily plug in any encoder and decoder modules into the speech recognition
+pipeline. Forinstance,weimplementedaneffectiveCRDNNencoder,whichcombinesconvolutional,
+recurrent(e.g.,LSTM[78],GRU[79],LightGRU[80]),andfullyconnectedneuralnetworks. Asan
+alternative,userscanpluginoneofthetransformersthatwehavemadeavailable. Pre-trainingbased
+onself-supervisedlearning(SSL)withwav2vec2.0[62]issupported.
+We also implemented an efficient GPU-based beam search that combines the acoustic and the
+languageinformationtoretrievethefinalsequenceofwords. Thetrainingscriptsforlanguagemodels
+and tokenizers (using SentencePiece [81]) are provided as well. In the following, we report the
+performanceachievedwithSpeechBrainrecipesonsomepopularspeechbenchmarks.
+5.1.1 TIMIT
+TIMIT[31]isasmallspeechdatasetwithexpert-labeledphonesequences. Table2reportsthePhone
+ErrorRate(PER)achievedwiththeaforementionedtechniques. AllsystemsuseaCRDNNencoder,
+exceptfortheCTC+Att+SSLonewhichusesapre-trainedwav2vec2.0encoder[62]. Wereportthe
+averageperformanceoutoffiverunswithdifferentrandomseeds. Thestandarddeviationranges
+between0.15%and0.2%inallthemodels.
+CTCandTransducersprovidesimilarresults,whilethecombinationofCTCandattention(CTC+Att)
+reaches the best performance. The results achieved by our best model (PER 13.8%) is SotA for
+TIMIT performance with no extra data. A considerable improvement in PER is observed when
+Light-GRUs[80]areusedinsteadofGRUs[79]orLSTMs[78]intheCRDNNencoder. Wealso
+observeaperformanceboostwhenusingself-supervisedpre-trainingwiththewav2vecmodeltrained
+onunlabelleddatafromtheLibri-Lightdataset(CTC+Att+SSL)[82]. OurresultwiththisLibri-Light
+self-supervisedpre-training(PERof8.04%)slightlyoutperformsthepreviousSotAperformance
+withthesamepre-trainingdata(PERof8.30%),asshowninFigure3.
+5.1.2 LibriSpeech
+LibriSpeech [28] is a popular speech recognition benchmark derived from audiobooks. Table 3
+reportstheresultsachievedwithdifferentSpeechBrainrecipesonthisdataset.
+Table3: WordErrorRate(WER%)achievedonLibriSpeechwithSpeechBrain.
+Technique Encoder Decoder #Params test-clean test-other
+CTC+Att CRDNN GRU 230M 2.91 8.07
+CTC+Att Transformer GRU 161M 2.46 5.77
+Ourbestsystemisatransformer[61]combinedwithaconvolutionalfront-endbasedonContextNet
+[83]. The autoregressive decoder estimates 5k subword tokens derived from running byte-pair
+encoding on top of the training transcriptions [81]. A transformer-based LM is trained on the
+LibriSpeechtextcorpusandusedwithinthebeamsearchtorescorepartialhypotheses. Thebest
+WERthatwehaveachievedonthetest-cleandatasetis2.46%. Thisperformanceiscomparable
+withtheresultsreachedintheliteraturewhenusingtransformerswithoutadditionaldata[84]. As
+7
+
+Table4: EqualErrorRate(EER%)achievedon Table5:DiarizationErrorRate(DER%)onthe
+VoxCeleb1-Cleaneddataset. evalsetoftheAMIcorpus.
+Technique EER(%) Technique Known Estim.
+#spks #spks
+VoxCeleb2baseline[35] 3.95
+Kaldix-vector[32] 3.10 MCGAN[88] 4.49 5.38
+ResNET-50[87] 1.19 ClusterGAN[88] 3.91 8.16
+xvector+MCGAN[88] 4.23 4.92
+ECAPA(originalpaper)[33] 0.87
+xvector+ClusterGAN[88]3.60 2.87
+SpeechBrainx-vector+PLDA 3.20 VBx(ResNet101)[89] — 4.58
+SpeechBrainECAPA 0.81
+SpeechBrainECAPA 2.82 3.01
+SpeechBrainECAPA(vox1+2) 0.69
+onecannote,theLibriSpeechtaskisalmostperfectlysolvedbymodernspeechrecognizers. Wethus
+focusonmorerealistictasksaswell,assuggestedinsomerecentworks[85,86]. Seetheappendix
+(§A.2)foramoredetailedcomparisonwithothertoolkitsonLibriSpeechandothertasks.
+5.1.3 CommonVoice
+TheCommonVoicecorpus[29]isamultilingualopen-sourcecollectionoftranscribedspeechbased
+oncrowdsourcingdatacollection. CommonVoiceischallengingduetosignificantaccentedspeech,
+hesitations,presenceofforeignwords,noise,reverberation,andotherrecordingartifacts.
+Table6reportstheresultsobtainedonfourdifferentlanguages. Nolanguagemodelsaretrainedfor
+thistask. Thebestresultsareobtainedwithawav2vec2.0encoderpre-trainedwith100khoursof
+multilingualdatafromtheVoxPopulidataset[90]. ExceptforEnglish,thebestsystemsuseaGRU
+decoderonthetopofthepre-trainedtransformer. CommonVoiceisanewerdataset,andtherehave
+beenrelativelyfewsystemsevaluatedonit. Tothebestofourknowledge,however,ourresultsare
+SotAfortheselanguages.
+Table6: WordErrorRate(WER%)achievedwithCommonVoiceCorpus6.1usingSpeechBrainon
+theEnglish(En),French(Fr),Italian(It),andKinyarwanda(Kw)subsets.
+Technique Encoder Decoder #Params En Fr It Kw
+CTC+Att CRDNN GRU 148M 24.89 17.70 16.61 24.27
+CTC+SSL Transformer - 320M 15.58 14.44 10.93 23.12
+CTC+Att+SSL Transformer GRU 330M 15.69 13.34 9.86 18.91
+5.2 Speakerrecognitionanddiarization
+SpeechBrain implements the functionalities needed to support speaker recognition and speaker
+diarization. ItsupportspopularembeddingsderivedfromTimeDelayNeuralNetworks(TDNNs)
+[91, 92], such as x-vectors [32] and the recent ECAPA-TDNN embeddings [33]. Furthermore,
+SpeechBrainprovidestraditionalProbabilisticLinearDiscriminantAnalysis(PLDA)forspeaker
+discrimination[93,94].
+Table 4 reports the performance achieved on a speaker verification task with models trained on
+VoxCeleb2 [35] and tested on VoxCeleb1-clean [34]. The best model for speaker embeddings
+available in SpeechBrain is the ECAPA-TDNN, which matches the performance achieved in the
+originalpaper[33]. Thismodeloutperformsboththex-vectors[32]andtheResNet-34[87]bya
+largemargin. Tothebestofourknowledge,theEERreachedsofarbySpeechBrainonVoxCelebis
+thebestsofarreachedbyanopen-sourcetoolkit.
+Table5reportstheperformanceachievedonspeakerdiarizationwiththeAMImeetingcorpus[38]
+whenusingtheembeddingsavailableinSpeechBrain. Inthiscase,theembeddingsareclustered
+withspectralclusteringtoassignarelativespeakerlabeltoeachsegmentoftherecording[37]. The
+results shown are obtained on the official Full-ASR split of the AMI corpus while keeping 0.25
+secofforgivenesscollar. ThebestdiarizationsystemavailableinSpeechBrainoutperformsrecent
+8
+
+3.2
+Table 7: Speech enhancement performance on
+VoiceBank-DEMAND. 3.0
+2.8
+Technique #Params PESQ COVL
+Facebook 2.6
+60.8M 3.07 3.63
+DEMUCS[95]
+2.4
+SpeechBrain
+22.3M 3.05 3.74
+MimicLoss
+2.2
+SpeechBrain
+1.9M 3.15 3.62 2018 2019 2020 2021
+MetricGAN+
+QSEP
+MetricGAN+ (our recipe)
+DEMUCS
+T-GSA
+PHASEN
+MetricGAN
+SERGAN
+MMSE-GAN
+SEGAN
+Figure4: Evolutionofthespeechenhancement
+performance(PESQ)forVoicebank-DEMAND.
+22
+Table 8: Scale-invariant signal-to-noise ratio 20
+improvement (SI-SNRi) in dB achieved with
+18
+SpeechBrainonWSJ2mixandWSJ3mix.
+16
+Technique 2-mix 3-mix
+14
+ConvTasnet 15.3 12.7
+DualPath-RNN 18.8 14.7 12
+SepFormer 20.4 17.6
+2018 2019 2020 2021
+SepFormer+DM 22.3 19.5
+)Bd(iRNS-IS
+SepFormer+DM (our recipe)
+Wavsplit
+Gated DualPath-RNN
+DualPath-RNN
+DeepCasa
+Hybrid-TasNet
+ConvTasNet
+TasNet
+Chimera++
+Figure5: EvolutionoftheSotAperformance(SI-
+SNRi)onthewsj2mixdataset. Source:
+https://paperswithcode.com.
+approachesbasedonmeta-learning(MCGAN/ClusterGAN)[88],andVariationalBayes(VBx)[89]
+whenthenumberofspeakersisknown(e.g.,inameeting). Wehavealsoobtainedcompetitiveresults
+whenthenumberofspeakersisunknown.
+5.3 Speechenhancementandseparation
+SpeechBrainsupportsspeechenhancementmodelswithdifferentinputfeatures(e.g.,spectraland
+waveformdomain)andtraininglosses(e.g.,L1,MSE,andSTOI).Inaddition,itsupportsavarietyof
+moresophisticatedmulti-modeltrainingtechniquessuchasMimicLoss[40]andMetricGAN+[39].
+InTable7wecomparethebestenhancementsystemsavailableinSpeechBrainagainsttheSotA
+DEMUCSmodel[95]ontheVoicebank-DEMANDcorpus[96].Themimiclosssystemusesaspeech
+recognitionmodeltoprovideaperceptualloss,achievingSotAperformanceontheCOVLmetric.
+Combiningmodelsfordifferenttasks(asdonehere)isnaturaltoimplementinSpeechBrain. Wealso
+re-implementedtherecentlyproposedMetricGAN+,whichperformsspeechenhancementwithan
+adversariallytrainedmetricnetwork[75]. Figure4showstheevolutionofthePESQperformanceon
+thiscorpusoverthelastfewyears. TheSpeechBrainimplementationofMetricGAN+achievesthe
+SotAPESQperformancewhennoextradataareused.
+SpeechBrainimplementspopularmodelsforspeechseparationaswell,namelyConvTasnet[43]and
+Dual-pathRNN[44]. Moreover,itsupportstherecentlyproposedSepFormer[45],whichusesa
+pipelineoftwotransformerswithinadual-pathframework. Table8reportstheresultsachievedon
+thestandardWSJ0-2mixandWSJ0-3mixdatasets[46],whichcontainmixturescomposedoftwoor
+threeoverlappedspeakers,respectively. Thelastrowcomparesperformanceachievedwithdynamic
+mixing,inwhichthetrainingdataaregenerateddynamicallyon-the-flyinsteadofusingafrozen
+dataset. AsshowninFigure5,SpeechBrain’sSepFormerimplementationachievesSotAonboth
+datasets.
+9
+
+6 LimitationsandFutureWork
+ThecurrentversionofSpeechBrainsupportsmanyothertasks,includingspokenlanguageunderstand-
+ing,keywordspotting,multi-microphonesignalprocessing,andlanguagemodeling. Thetoolkitalso
+supportscomplex[97]andquaternionneuralnetworks[98]. PleaserefertoA.3forfurtherdetails. It
+doesnotcurrentlysupporttext-to-speech,whichwillbeaddedshortly(pendingpull-requestsunder
+review). Inthefuture,weplantosupportdecodingwithFiniteStateTransducers(FSTs)[99]andare
+consideringtoadopttheFSTimplementationoftheongoingk2project[100]oncestable. Weplanto
+devotefurtherefforttoreal-timespeechprocessing,whichwasnotthemainfocusofthefirstrelease.
+Finally,ourgoalistoaddsupportforadditionallanguagesandfurtherexpandthesetofrecipesto
+open-sourcedatasetsnotyetavailableinthetoolkit(e.g.,TED-LIUM[101]).
+7 Conclusion
+ThispaperdescribedSpeechBrain,anovel,open-source,all-in-onespeechprocessingtoolkit. Our
+workillustratedthemaindesignprinciplesbehindthistoolkitandremarkedonthedesignprinciples
+thatledustosupportmultipletaskswithoutsacrificingsimplicity,modularity,orflexibility. Finally,
+we showed several use cases where the technology developed in SpeechBrain reaches SotA or
+competitiveperformance. Themaincontributiontothescientificcommunityisthedevelopmentofa
+noveltoolkitthatcansignificantlyacceleratefutureresearchinthefieldsofspeechprocessingand
+deeplearning. SpeechBrainisacoordinatedefforttowardsmakingspeechprocessingtechnology
+accessible,andareeagertoseewhereitsrapidlygrowingcommunityofuserstakestheprojectinthe
+future.
+AcknowledgmentsandDisclosureofFunding
+Wewouldliketosincerelythankourgeneroussponsors:Samsung,Dolby,Nvidia,Nuance,ViaDialog.
+Specialthankstoourinstitutionalpartners: Mila,LIA(AvignonUniversity),CaMLSys(University
+of Cambridge), Sherbrooke University, and Bio-ASP (Academia Sinica). We also would like to
+acknowledge Breandan Considine, Olexa Bilaniuk, Frederic Osterrath, Mirko Bronzi, Anthony
+Larcher,RalfLeibold,SalimaMdhaffar,YannickEstève,YuTsao,AbdelmoumeneBoumadanefor
+helpful comments and discussions. We would like to express our gratitude to all the pre-release
+beta-testersandtothewholecommunitythatwearebuildingaroundthisproject. ThankstoCompute
+Canadaforprovidingcomputationalresourcesandsupport. SpeechBrainwasalsograntedaccessto
+theHPCresourcesofIDRISundertheallocation2021-AD011012633madebyGENCI.
+References
+[1] S. Young, G. Evermann, T. Hain, D. Kershaw, G. Moore, J. Odell, D. Ollason, D. Povey,
+V.Valtchev, andP.Woodland. TheHTKBook. EntropicCambridgeResearchLaboratory,
+Cambridge,UnitedKingdom,2002.
+[2] D.Huggins-Daines,M.Kumar,A.Chan,A.W.Black,M.Ravishankar,andA.I.Rudnicky.
+Pocketsphinx: Afree,real-timecontinuousspeechrecognitionsystemforhand-helddevices.
+IninProc.ofICASSP,2006.
+[3] A. Lee, T. Kawahara, and K. Shikano. Julius: An open source realtime large vocabulary
+recognitionengine. InProc.ofEUROSPEECH,2001.
+[4] D.Rybach,S.Hahn,P.Lehnen,D.Nolden,M.Sundermeyer,Z.Tüske,S.Wiesler,R.Schlüter,
+andH.Ney. RASR-TheRWTHAachenUniversityOpenSourceSpeechRecognitionToolkit.
+InProc.ofASRU,2011.
+[5] D.Poveyetal. TheKaldiSpeechRecognitionToolkit. InProc.ofASRU,2011.
+[6] M.Abadi,P.Barham,J.Chen,Z.Chen,A.Davis,J.Dean,M.Devin,S.Ghemawat,G.Irving,
+M.Isard,M.Kudlur,J.Levenberg,R.Monga,S.Moore,D.G.Murray,B.Steiner,P.Tucker,
+V.Vasudevan,P.Warden,M.Wicke,Y.Yu,andX.Zheng. Tensorflow: Asystemforlarge-
+scalemachinelearning. InProc.of.USENIXSymposiumonOperatingSystemsDesignand
+Implementation,2016.
+10
+
+[7] A. Paszke, S. Gross, F. Massa, A. Lerer, J. Bradbury, G. Chanan, T. Killeen, Z. Lin,
+N.Gimelshein,L.Antiga,A.Desmaison,A.Kopf,E.Yang,Z.DeVito,M.Raison,A.Tejani,
+S.Chilamkurthy,B.Steiner,L.Fang,J.Bai,andS.Chintala. Pytorch: Animperativestyle,
+high-performancedeeplearninglibrary. InProc.ofNeurIPS,2019.
+[8] A.Hannun,C.Case,J.Casper,B.Catanzaro,G.Diamos,E.Elsen,R.Prenger,S.Satheesh,
+S.Sengupta,A.Coates,andA.Y.Ng. Deepspeech: Scalingupend-to-endspeechrecognition,
+2014. arXiv:1412.5567.
+[9] A. Zeyer, T. Alkhouli, and H. Ney. RETURNN as a generic flexible neural toolkit with
+applicationtotranslationandspeechrecognition. InProc.ofACML,2018.
+[10] M.Ravanelli,T.Parcollet,andY.Bengio. ThePyTorch-KaldiSpeechRecognitionToolkit. In
+Proc.ofICASSP,2019.
+[11] Y. Wang, T. Chen, H. Xu, S. Ding, H. Lv, Y. Shao, N. Peng, L. Xie, S. Watanabe, and
+S. Khudanpur. Espresso: A fast end-to-end neural speech recognition toolkit. In Proc. of
+ASRU,2019.
+[12] J. Shen, P. Nguyen, Y. Wu, Z. Chen, M. X. Chen, Y. Jia, A. Kannan, T. Sainath, Y. Cao,
+C.Chiu,etal. Lingvo: Amodularandscalableframeworkforsequence-to-sequencemodeling.
+2019. arXiv:1902.08295.
+[13] M.Ott,S.Edunov,A.Baevski,A.Fan,S.Gross,N.Ng,D.Grangier,andM.Auli. Fairseq: A
+fast,extensibletoolkitforsequencemodeling,2019. arXiv:1904.01038.
+[14] S.Watanabe,T.Hori,S.Karita,T.Hayashi,J.Nishitoba,Y.Unno,N.Soplin,J.Heymann,
+M.Wiesner,N.Chen,A.Renduchintala,andT.Ochiai. ESPnet:End-to-endspeechprocessing
+toolkit. InProc.ofInterspeech,2018.
+[15] O.Kuchaiev,J.Li,H.Nguyen,O.Hrinchuk,R.Leary,B.Ginsburg,S.Kriman,S.Beliaev,
+V.Lavrukhin,J.Cook,P.Castonguay,M.Popova,J.Huang,andJ.M.Cohen. NeMo: atoolkit
+forbuildingAIapplicationsusingNeuralModules,2019. arXiv:1909.09577.
+[16] M.Pariente,S.Cornell,J.Cosentino,S.Sivasankaran,E.Tzinis,J.Heitkaemper,M.Olvera,
+F. Stöter, M. Hu, J. M. Martín-Doñas, D. Ditter, A. Frank, A. Deleforge, and E. Vincent.
+Asteroid: the PyTorch-based audio source separation toolkit for researchers. In Proc. of
+Interspeech,2020.
+[17] H.Bredin,R.Yin,J.M.Coria,G.Gelly,P.Korshunov,M.Lavechin,D.Fustes,H.Titeux,
+W.Bouaziz,andM.Gill. pyannote.audio: neuralbuildingblocksforspeakerdiarization. In
+Proc.ofICASSP,2020.
+[18] A.Larcher,K.A.Lee,andS.Meignier. Anextensiblespeakeridentificationsidekitinpython.
+InProc.ofICASSP,2016.
+[19] S. Yang, P. Chi, Y. Chuang, C. Lai, K. Lakhotia, Y. Y. Lin, A. T. Liu, J. Shi, X. Chang,
+G.Lin,T.Huang,W.Tseng,K.Lee,D.Liu,Z.Huang,S.Dong,S.Li,S.Watanabe,A.Mo-
+hamed, and H. Lee. Superb: Speech processing universal performance benchmark, 2021.
+arXiv:2105.01051.
+[20] Z.WangandD.Wang. Ajointtrainingframeworkforrobustautomaticspeechrecognition.
+IEEE/ACMTransactionsonAudio,Speech,andLanguageProcessing,24(4):796–806,2016.
+[21] Z.Chen,S.Watanabe,H.Erdogan,andJ.R.Hershey. Speechenhancementandrecognition
+usingmulti-tasklearningoflongshort-termmemoryrecurrentneuralnetworks. InProc.of
+Interspeech,2015.
+[22] T. Gao, J. Du, L. Dai, and C. Lee. Joint training of front-end and back-end deep neural
+networksforrobustspeechrecognition. InProc.ofICASSP,2015.
+[23] M.Ravanelli, P.Brakel, M.Omologo, andY.Bengio. Batch-normalizedjointtrainingfor
+DNN-baseddistantspeechrecognition. InProc.ofSLT,2016.
+11
+
+[24] A.Graves,S.Fernández,F.Gomez,andJ.Schmidhuber. Connectionisttemporalclassification:
+labellingunsegmentedsequencedatawithrecurrentneuralnetworks. InProc.ofICML,2006.
+[25] A.Graves. Sequencetransductionwithrecurrentneuralnetworks. ICML—Workshopon
+RepresentationLearning,2012.
+[26] S.Watanabe,T.Hori,S.Kim,J.R.Hershey,andT.Hayashi. Hybridctc/attentionarchitecture
+forend-to-endspeechrecognition. IEEEJournalofSelectedTopicsinSignalProcessing,11
+(8):1240–1253,2017.
+[27] S. Toshniwal, A. Kannan, C. Chiu, Y. Wu, T. Sainath, and K. Livescu. A comparison of
+techniquesforlanguagemodelintegrationinencoder-decoderspeechrecognition. 2018.
+[28] V.Panayotov,G.Chen,D.Povey,andS.Khudanpur. LibriSpeech: AnASRcorpusbasedon
+publicdomainaudiobooks. InProc.ofICASSP,2015.
+[29] R.Ardila,M.Branson,K.Davis,M.Henretty,M.Kohler,J.Meyer,R.Morais,L.Saunders,
+F. M. Tyers, and G. Weber. Common Voice: a massively-multilingual speech corpus. In
+Proceedingsofthe12thConferenceonLanguageResourcesandEvaluation(LREC2020),
+2020.
+[30] H.Bu,J.Du,X.Na,B.Wu,andH.Zheng. Aishell-1:Anopen-sourcemandarinspeechcorpus
+andaspeechrecognitionbaseline. InOrientalCOCOSDA,2017.
+[31] J. S. Garofolo, L. F. Lamel, W. M. Fisher, J. G. Fiscus, D. S. Pallett, and N. L. Dahlgren.
+DARPATIMITAcousticPhoneticContinuousSpeechCorpusCDROM,1993.
+[32] D.Snyder,D.Garcia-Romero,G.Sell,D.Povey,andS.Khudanpur. X-vectors: RobustDNN
+embeddingsforspeakerrecognition. InProc.ofICASSP,2018.
+[33] B. Desplanques, J. Thienpondt, and K. Demuynck. ECAPA-TDNN: emphasized channel
+attention, propagation and aggregation in TDNN based speaker verification. In Proc. of
+Interspeech,2020.
+[34] A.Nagrani,J.S.Chung,andA.Zisserman. Voxceleb: alarge-scalespeakeridentification
+dataset. InProc.ofInterspech,2017.
+[35] J.S.Chung,A.Nagrani,andA.Zisserman. Voxceleb2: Deepspeakerrecognition. InProc.of
+Interspeech,2018.
+[36] U.Luxburg. Atutorialonspectralclustering. StatisticsandComputing,17(4),2007.
+[37] N.Dawalatabad,M.Ravanelli,F.Grondin,J.Thienpondt,B.Desplanques,andH.Na.ECAPA-
+TDNNembeddingsforspeakerdiarization,2021. arXiv:2104.01466.
+[38] J.Carletta,S.Ashby,S.Bourban,M.Flynn,M.Guillemot,T.Hain,J.Kadlec,V.Karaiskos,
+W. Kraaij, M. Kronenthal, G. Lathoud, M. Lincoln, A. Lisowska, I. McCowan, W. Post,
+D.Reidsma,andP.Wellner. TheAMImeetingcorpus: Apre-announcement. InProc.ofthe
+SecondInternationalConferenceonMachineLearningforMultimodalInteraction,2006.
+[39] S.Fu, C.Yu, T.Hsieh, P.Plantinga, M.Ravanelli, X.Lu, andY.Tsao. MetricGAN+: An
+ImprovedVersionofMetricGANforSpeechEnhancement. 2021. arXiv:2104.03538.
+[40] D.Bagchi,P.Plantinga,A.Stiff,andE.Fosler-Lussier. Spectralfeaturemappingwithmimic
+lossforrobustspeechrecognition. InProc.ofICASSP,2018.
+[41] C.Veaux, J.Yamagishi, andS.King. Thevoicebankcorpus: Design, collectionanddata
+analysis of a large regional accent speech database. In International Conference Oriental
+COCOSDAheldjointlywithConferenceonAsianSpokenLanguageResearchandEvaluation
+(O-COCOSDA/CASLRE),2013.
+[42] C.Reddy,V.Gopal,R.Cutler,E.Beyrami,R.Cheng,H.Dubey,S.Matusevych,R.Aichner,
+A.Aazami,S.Braun,P.Rana,S.Srinivasan,andJ.Gehrke. Theinterspeech2020deepnoise
+suppressionchallenge: Datasets,subjectivetestingframework,andchallengeresults. InProc.
+ofInterspeech,2020.
+12
+
+[43] Y.LuoandN.Mesgarani. Conv-tasnet: Surpassingidealtime-frequencymagnitudemasking
+forspeechseparation. IEEE/ACMTransactionsonAudio,Speech,andLanguageProcessing,
+27(8):1256–1266,2019.
+[44] Y. Luo, Z. Chen, and T. Yoshioka. Dual-path RNN: efficient long sequence modeling for
+time-domainsingle-channelspeechseparation,2020. arXiv:1910.06379.
+[45] C.Subakan,M.Ravanelli,S.Cornell,M.Bronzi,andJ.Zhong. Attentionisallyouneedin
+speechseparation. InProc.ofICASSP,2021.
+[46] J.Hershey,Z.Chen,J.LeRoux,andS.Watanabe.Deepclustering:Discriminativeembeddings
+forsegmentationandseparation. InProc.ofICASSP,2016.
+[47] G.Wichern,J.Antognini,M.Flynn,L.Zhu,E.McQuinn,D.Crow,E.Manilow,andJ.Le
+Roux. WHAM!: extendingspeechseparationtonoisyenvironments. InProc.ofInterspeech,
+2019.
+[48] M.Maciejewski,G.Wichern,E.McQuinn,andJ.LeRoux. Whamr!: Noisyandreverberant
+single-channelspeechseparation. InProc.ofICASSP,2020.
+[49] J.Cosentino,M.Pariente,S.Cornell,A.Deleforge,andE.Vincent. Librimix: Anopen-source
+datasetforgeneralizablespeechseparation,2020. arXiv:2005.11262.
+[50] L.Lugosch,P.Papreja,M.Ravanelli,A.Heba,andT.Parcollet. TimersandSuch: Apractical
+benchmarkforspokenlanguageunderstandingwithnumbers. CoRR,abs/2104.01604,2021.
+[51] P.Haghani,A.Narayanan,M.Bacchiani,G.Chuang,N.Gaur,P.Moreno,R.Prabhavalkar,
+Z.Qu,andA.Waters. FromAudiotoSemantics: Approachestoend-to-endspokenlanguage
+understanding. IEEESpokenLanguageTechnologyWorkshop(SLT),2018.
+[52] D. Serdyuk, Y. Wang, C. Fuegen, A. Kumar, B. Liu, and Y. Bengio. Towards end-to-end
+spokenlanguageunderstanding. InProc.ofICASSP,2018.
+[53] E. Bastianelli, A. Vanzo, P. Swietojanski, and V. Rieser. SLURP: A Spoken Language
+UnderstandingResourcePackage. InProc.ofEMNLP,2020.
+[54] L.Lugosch,M.Ravanelli,P.Ignoto,V.Tomar,andY.Bengio. Speechmodelpre-trainingfor
+end-to-endspokenlanguageunderstanding. InProc.ofInterspeech,2019.
+[55] E. Habets, J. Benesty, I. Cohen, S. Gannot, and J. Dmochowski. New insights into the
+MVDRbeamformerinroomacoustics. IEEETransactionsonAudio,Speech,andLanguage
+Processing,18(1):158–170,2009.
+[56] J.Heymann,L.Drude,andR.Haeb-Umbach. Neuralnetworkbasedspectralmaskestimation
+foracousticbeamforming. InProc.ofICASSP,2016.
+[57] C.H.KnappandG.C.Carter. Thegeneralizedcorrelationmethodforestimationoftimedelay.
+IEEETransactionsonAcoustics,Speech,andSignalProcessing,24(4):320–327,1976.
+[58] M.Cobos, A.Marti, andJ.Lopez. AmodifiedSRP-PHATfunctionalforrobustreal-time
+soundsourcelocalizationwithscalablespatialsampling. IEEESignalProcessingLetters,18
+(1):71–74,2010.
+[59] R.Schmidt. Multipleemitterlocationandsignalparameterestimation. IEEEtransactionson
+antennasandpropagation,34(3):276–280,1986.
+[60] J. Gehring, M. Auli, D. Grangier, D. Yarats, and Y. Dauphin. Convolutional sequence to
+sequencelearning. InProc.ofICML.PMLR,2017.
+[61] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N Gomez, Ł. Kaiser, and
+I.Polosukhin. Attentionisallyouneed. InProc.ofNeurIPS,2017.
+[62] A.Baevski,Y.Zhou,A.Mohamed,andM.Auli.wav2vec2.0:Aframeworkforself-supervised
+learningofspeechrepresentations. InProc.ofNeurIPS,2020.
+13
+
+[63] J.Li,V.Lavrukhin,B.Ginsburg,R.Leary,O.Kuchaiev,J.M.Cohen,H.Nguyen,andR.Teja
+Gadde. Jasper: Anend-to-endconvolutionalneuralacousticmodel. InProc.ofInterspeech,
+2019.
+[64] S. Kriman, S. Beliaev, B. Ginsburg, J. Huang, O. Kuchaiev, V. Lavrukhin, R. Leary, J. Li,
+andY.Zhang. Quartznet: Deepautomaticspeechrecognitionwith1dtime-channelseparable
+convolutions. InProc.ofICASSP,2020.
+[65] S.Majumdar,J.Balam,O.Hrinchuk,V.Lavrukhin,V.Noroozi,andB.Ginsburg. Citrinet:
+Closingthegapbetweennon-autoregressiveandautoregressiveend-to-endmodelsforauto-
+maticspeechrecognition,2021. arXiv:2104.01721.
+[66] G.Fairbanks,D.Garlan,andW.Scherlis. Designfragmentsmakeusingframeworkseasier.
+SIGPLANNot.,41(10),2006.
+[67] T.Wolf,L.Debut,V.Sanh,J.Chaumond,C.Delangue,A.Moi,P.Cistac,T.Rault,R.Louf,
+M.Funtowicz,J.Davison,S.Shleifer,P.vonPlaten,C.Ma,Y.Jernite,J.Plu,C.Xu,T.LeScao,
+S.Gugger,M.Drame,Q.Lhoest,andA.Rush. Transformers:State-of-the-artnaturallanguage
+processing. InProcofEMNLP,2020.
+[68] E.Variani,T.Bagby,E.McDermott,andM.Bacchiani.End-to-endtrainingofacousticmodels
+forlargevocabularycontinuousspeechrecognitionwithtensorflow. InProc.ofInterspeech,
+2017.
+[69] M.Morishita,Y.Oda,G.Neubig,K.Yoshino,K.Sudoh,andS.Nakamura. Anempirical
+studyofmini-batchcreationstrategiesforneuralmachinetranslation. InProc.oftheWNMT,
+2017.
+[70] F. Pedregosa, G. Varoquaux, A. Gramfort, V. Michel, B. Thirion, O. Grisel, M. Blondel,
+P.Prettenhofer,R.Weiss,V.Dubourg,etal. Scikit-learn: Machinelearninginpython. the
+JournalofmachineLearningresearch,12:2825–2830,2011.
+[71] P.Virtanen,R.Gommers,T.EOliphant,M.Haberland,T.Reddy,DavidCournapeau,Evgeni
+Burovski,PearuPeterson,WarrenWeckesser,JonathanBright,etal. SciPy1.0: fundamental
+algorithmsforscientificcomputinginPython. Naturemethods,17(3):261–272,2020.
+[72] A.GulliandS.Pal. DeeplearningwithKeras. PacktPublishingLtd,2017.
+[73] J.HowardandS.Gugger. Fastai: Alayeredapifordeeplearning. Information,11(2):108,
+2020.
+[74] W. Falcon et al. Pytorch Lightning. GitHub, 2019. https://github.com/
+PyTorchLightning/pytorch-lightning.
+[75] I.Goodfellow,J.Pouget-Abadie,M.Mirza,B.Xu,D.Warde-Farley,S.Ozair,A.Courville,
+andY.Bengio. Generativeadversarialnets. Proc.ofNIPS,2014.
+[76] D.Park,W.Chan,Y.Zhang,C.Chiu,B.Zoph,E.Cubuk,andQ.Le. SpecAugment: ASimple
+DataAugmentationMethodforAutomaticSpeechRecognition. InProc.ofInterspeech,2019.
+[77] A.GravesandN.Jaitly. End-to-endspeechrecognitionwithrecurrentneuralnetworks. In
+Proc.ofICML,2014.
+[78] S. Hochreiter and J. Schmidhuber. Long short-term memory. Neural Computation, 9(8):
+1735–1780,1997.
+[79] J.Chung,Ç.Gülçehre,K.Cho,andY.Bengio. Empiricalevaluationofgatedrecurrentneural
+networksonsequencemodeling. InProc.ofNIPS,2014.
+[80] M.Ravanelli,P.Brakel,M.Omologo,andY.Bengio. Lightgatedrecurrentunitsforspeech
+recognition. IEEE Transactions on Emerging Topics in Computational Intelligence, 2(2):
+92–102,2018.
+[81] T. Kudo and J. Richardson. SentencePiece: A simple and language independent subword
+tokenizeranddetokenizerforneuraltextprocessing. InProc.ofEMNLP,2018.
+14
+
+[82] J.Kahn,M.Rivière,W.Zheng,E.Kharitonov,Q.Xu,P.Mazaré,J.Karadayi,V.Liptchinsky,
+R. Collobert, C. Fuegen, T. Likhomanenko, G. Synnaeve, A. Joulin, A. Mohamed, and
+E. Dupoux. Libri-light: A benchmark for ASR with limited or no supervision. CoRR,
+abs/1912.07875,2019.
+[83] W.Han,Z.Zhang,Y.Zhang,J.Yu,C.Chiu,J.Qin,A.Gulati,R.Pang,andY.Wu. Contextnet:
+Improvingconvolutionalneuralnetworksforautomaticspeechrecognitionwithglobalcontext.
+2020. arXiv:2005.03191.
+[84] S.Karita,N.Chen,T.Hayashi,T.Hori,H.Inaguma,Z.Jiang,M.Someki,N.Soplin,R.Ya-
+mamoto, X. Wang, S. Watanabe, T. Yoshimura, and W. Zhang. A comparative study on
+transformervsrnninspeechapplications. InProc.ofASRU,2019.
+[85] P.Szyman´ski,P.Z˙elasko,M.Morzy,A.Szymczak,M.Z˙yła-Hoppe,J.Banaszczak,L.Au-
+gustyniak,J.Mizgajski,andY.Carmiel. WERweareandWERwethinkweare. InProc.of
+EMNLP,2020.
+[86] T.Likhomanenko,Q.Xu,V.Pratap,P.Tomasello,J.Kahn,G.Avidov,R.Collobert,andG.Syn-
+naeve. RethinkingevaluationinASR:areourmodelsrobustenough? CoRR,abs/2010.11745,
+2020.
+[87] H.Zeinali,S.Wang,A.Silnova,P.Mateˇjka,andO.Plchot. Butsystemdescriptiontovoxceleb
+speakerrecognitionchallenge2019. InProc.ofTheVoxCelebChallangeWorkshop,2019.
+[88] M.Pal,M.Kumar,R.Peri,T.Park,S.Kim,C.Lord,S.Bishop,andS.Narayanan. Meta-
+learningwithlatentspaceclusteringingenerativeadversarialnetworkforspeakerdiarization,
+2020. arXiv:2007.09635.
+[89] F.Landini,J.Profant,M.Diez,andL.Burget.BayesianHMMclusteringofx-vectorsequences
+(VBx)inspeakerdiarization: theory,implementationandanalysisonstandardtasks,2020.
+arXiv:2012.14952.
+[90] C.Wang,M.Rivière,A.Lee,A.Wu,C.Talnikar,D.Haziza,M.Williamson,J.Pino,and
+E.Dupoux. Voxpopuli: Alarge-scalemultilingualspeechcorpusforrepresentationlearning,
+semi-supervisedlearningandinterpretation. arXiv:2101.00390,2021.
+[91] K.J.LangandG.E.Hinton. Thedevelopmentofthetime-delayneuralnetworkarchitecture
+forspeechrecognition. TechnicalReportCMU-CS-88-152,Carnegie-MellonUniversity,1988.
+[92] A.Waibel,T.Hanazawa,G.Hinton,K.Shikano,andK.Lang. Phonemerecognitionusing
+time-delayneuralnetworks. IEEETransactionsonAcoustics,Speech,andSignalProcessing,
+37:328–339,1989.
+[93] P. Kenny, T. Stafylakis, P. Ouellet, Md. J. Alam, and P. Dumouchel. PLDA for speaker
+verificationwithutterancesofarbitraryduration. InProc.ofICASSP,2013.
+[94] D.Garcia-RomeroandC.Espy-Wilson. Analysisofi-vectorlengthnormalizationinspeaker
+recognitionsystems. InProc.ofInterspeech,2011.
+[95] A.Défossez,G.Synnaeve,andY.Adi.Realtimespeechenhancementinthewaveformdomain.
+Proc.ofInterspeech,2020.
+[96] C.Valentini-Botinhao. Noisyspeechdatabasefortrainingspeechenhancementalgorithms
+andTTSmodels. EdinburghDataShare,2017.
+[97] C.Trabelsi,O.Bilaniuk,Y.Zhang,D.Serdyuk,S.Subramanian,J.Santos,S.Mehri,N.Ros-
+tamzadeh,Y.Bengio,andC.Pal. Deepcomplexnetworks. InProc.ofICLR,2018.
+[98] T.Parcollet,M.Ravanelli,M.Morchid,G.Linarès,C.Trabelsi,R.DeMori,andY.Bengio.
+Quaternionrecurrentneuralnetworks. InProc.ofICLR,2019.
+[99] M.Mohri,F.Pereira,andM.Riley. Weightedfinite-statetransducersinspeechrecognition.
+ComputerSpeechandLanguage,16(1):69–88,2002.
+[100] D.Poveyetal. k2. https://github.com/k2-fsa/k2,2020.
+15
+
+[101] F.Hernandez,V.Nguyen,S.Ghannay,N.Tomashenko,andY.Estève.TED-LIUM3:Twiceas
+muchdataandcorpusrepartitionforexperimentsonspeakeradaptation. InProc.ofSPECOM,
+2018.
+[102] C.Li,J.Shi,W.Zhang,A.Subramanian,X.Chang,N.Kamo,M.Hira,T.Hayashi,C.Böd-
+deker, Z. Chen, and Shinji Watanabe. Espnet-se: End-to-end speech enhancement and
+separation toolkit designed for ASR integration. In Proc. of the IEEE Spoken Language
+TechnologyWorkshop,2021.
+[103] H.Erdogan,J.Hershey,S.Watanabe,M.Mandel,andJ.LeRoux. ImprovedMVDRbeam-
+formingusingsingle-channelmaskpredictionnetworks. InProc.ofInterspeech,2016.
+[104] F.Grondin,J.Lauzon,J.Vincent,andF.Michaud. GEVbeamformingsupportedbyDOA-
+basedmasksgeneratedonpairsofmicrophones. InProc.ofInterspeech,2020.
+[105] F.GrondinandF.Michaud. Lightweightandoptimizedsoundsourcelocalizationandtracking
+methodsforopenandclosedmicrophonearrayconfigurations. RoboticsandAutonomous
+Systems,2019.
+[106] M.OmologoandP.Svaizer. Acousticeventlocalizationusingacrosspower-spectrumphase
+basedtechnique. InProc.ofICASSP,1994.
+[107] J.Du,Q.Wang,T.Gao,Y.Xu,L.Dai,andC.Lee. Robustspeechrecognitionwithspeech
+enhanceddeepneuralnetworks. InProc.ofInterspeech,2014.
+[108] D.Bahdanau,K.Cho,andY.Bengio. Neuralmachinetranslationbyjointlylearningtoalign
+andtranslate. Proc.ofICLR,2015.
+[109] S. Seo, D. Kwak, and B. Lee. Integration of pre-trained networks with continuous token
+interfaceforend-to-endspokenlanguageunderstanding. arXiv:2104.07253,2021.
+[110] J.Thiemann,N.Ito,andE.Vincent. TheDiverseEnvironmentsMulti-channelAcousticNoise
+Database(DEMAND):Adatabaseofmultichannelenvironmentalnoiserecordings. In21st
+InternationalCongressonAcoustics,2013.
+[111] A.W.Rix, J.G.Beerends, M.P.Hollier, andA.P.Hekstra. Perceptualevaluationofspeech
+quality(pesq)-anewmethodforspeechqualityassessmentoftelephonenetworksandcodecs.
+InProc.ofICASSP,2001.
+[112] Y.HuandP.Loizou. Evaluationofobjectivequalitymeasuresforspeechenhancement. IEEE
+TransactionsonAudio,Speech,andLanguageProcessing,16(1):229–238,2007.
+[113] E.Vincent,R.Gribonval,andC.Fevotte. Performancemeasurementinblindaudiosource
+separation. IEEETransactionsonAudio,Speech,andLanguageProcessing,14(4):1462–1469,
+2006.
+16
+
+A Appendix
+A.1 Statementonsocialimpact
+Speechtechnologiescansupporthumansinavarietyofpositiveways(e.g.,helpinghearing-impaired
+individuals,detectingspeechpathologies,helpingpeoplelearningnewlanguages,allowingpeople
+with physical disabilities to control their home appliances, etc.). They can make our life safer
+(e.g., in-car speech recognition) or just more comfortable (e.g., with voice assistants, etc.). The
+growingdemandforspeechtechnologyobservedinthelastfewyearsconfirmstheimportanceofthis
+technologyineverydaylives. However,non-ethicalmisusesofthesetechnologiesarepossibleas
+well. Mostofthemarerelatedtowell-knownprivacyconcerns,whichcanbemitigatedwithmore
+rigidregulationssuchastheGeneralDataProtectionRegulation7(GDPR)adoptedinEurope.
+As with all other open-source toolkits, we cannot have full control over the actual use of the
+developed technologies. However, we strongly encourage ethical use of our toolkit, and we ask
+allSpeechBrainuserstofullyrespecttheMontrealDeclarationforaResponsibleDevelopmentof
+ArtificialIntelligence8. Moreover,wethinkthathavingopen-sourcetechnologyavailabletoeveryone
+isbetterthanleavingitinthehandsofafewplayersonly. Thiscanpotentiallymitigatethenegative
+consequencesofthisongoingsocietalchangetowardsanAI-aidedsociety.
+A.2 Performancecomparisonwithothertoolkits
+Comparingtheperformanceacrossspeechprocessingtoolkitsisoftenproblematicforseveralreasons
+andcanbedeceptiveifnotframedinamuchlargercontext. First, eachtoolkitfocusesmoreon
+sometasksormodelsandprovidesrecipesonlyforspecificdatasets. Secondly,thereareintrinsic
+differences in how these toolkits implement recipes for the same task on the same dataset. For
+example,Kaldireliesonlyonhybridspeechrecognition,whileotherssuchasSpeechBrain,ESPNet,
+and NeMo do not currently support hybrid speech recognition but instead provide more modern
+E2E speech recognition models. Thirdly, even across recipes concerning the same model on the
+same dataset, some differences arise due to different feature extraction, data loading pipelines,
+batchingmechanisms,andotherimplementationdetails. Finally,mostoftheaforementionedtoolkits
+are active projects, and the performance of a given task might change over time. We think that
+the comparison proposed in the section can only be used to probe whether a toolkit can provide
+reasonable performance compared to other open-source implementations. Table 9 compares the
+bestresultsreportedintheofficialrepositoryofeachtoolkitontasksanddatasetswehavefoundin
+common(asofMay2021).
+We can see that SpeechBrain achieves competitive performance with other pre-existing toolkits
+acrossdifferenttasksanddatasets. Itisworthmentioningthatallthetoolkitsconsideredherecan
+supportallthetasksanddatasetsreportedinTable9. Eachtoolkitcanpotentiallyfilltheperformance
+gap with the best-performing one just by implementing a better model with properly fine-tuned
+hyperparametersforthespecifictask. Wethusthinkthattheactualvalueofatoolkitmainlyliesinits
+usabilityandflexibility,whicharethemainprinciplesthatguidedthedesignofSpeechBrain.
+A.3 Additionaltasks
+Inthefollowing,wedescribesomeofthesupportedapplicationsnotdiscussedinthemainpaper.
+A.3.1 Multi-microphonesignalprocessing
+Multi-microphonesignalprocessingtechniquesareusefulindifferentwayswithinaspeechprocessing
+pipeline. Theinformationcapturedbydifferentmicrophonescanbeusedtoestimatethedirection
+ofarrival (DOA)of asound source. We canthen usebeamforming toenhancethe target source.
+SpeechBrainperformsmulti-channelprocessinginthefrequencydomain. ForbothDOAestimation
+andbeamforming,itisassumedthatthespatialcovariancematrices(SCMs)arecomputedforeach
+frequencybinkusingtheShort-TimeFourierTransform(STFT).WedenotetheSCMsforthetarget
+speech,theinterferingnoiseandtheresultingmixtureasR [k]∈CM×M,R [k]∈CM×M and
+SS NN
+7https://gdpr-info.eu
+8https://www.montrealdeclaration-responsibleai.com/
+17
+
+Table9: Performancecomparisonacrossspeechtoolkitsoncommontasks. Foreachtoolkit,dataset,
+andtaskwereportthebestperformanceonthetestset(asofMay2021). Thearrow↓indicatesthe
+lowerthebetter,while↑indicatesthehigherthebetter.
+Tasktype Metric Dataset SpeechBrain ESPNet NeMo Kaldi
+SpeechRec. WER(%)↓ CommonVoiceFr 13.34* 13.9a† 14.01b n.a
+SpeechRec. WER(%)↓ CommonVoiceIt 9.86* 16.1c† 15.22d n.a
+SpeechRec. WER(%)↓ LibriSpeechtest-clean 2.46 2.1e 2.00f 4.17g
+SpeechRec. CER(%)↓ AISHELL-1 5.58 4.7h† 5.55i 7.43j
+SpeechRec. PER(%)↓ TIMIT 8.04* 19.5k n.a. 18.4l
+SpeakerVer. EER(%)↓ Voxceleb1+2 0.69 n.a 2.05m 3.10n
+SpeechSep. SNRi(dB)↑ WSJ2-mix 22.3 17.9o n.a. n.a.
+*usesself-supervisedpre-trainingwithwav2vec2.0.
+†ESPNetusestransformerlanguagemodels(SpeechBraindoesnotforthesetasks).
+ahttps://github.com/espnet/espnet/blob/master/egs2/commonvoice/asr1/README.md
+bhttps://ngc.nvidia.com/catalog/models/nvidia:nemo:stt_fr_quartznet15x5
+chttps://github.com/espnet/espnet/blob/master/egs2/commonvoice/asr1/README.md
+dhttps://ngc.nvidia.com/catalog/models/nvidia:nemo:stt_it_quartznet15x5
+ehttps://github.com/espnet/espnet/tree/master/egs2/librispeech/asr1
+fResulttakenfrom[65].
+ghttps://github.com/kaldi-asr/kaldi/blob/master/egs/librispeech/s5/RESULTS
+hhttps://github.com/espnet/espnet/tree/master/egs2/aishell/asr1
+iResultstakenfrom[65].ItusesextradatafromMultilingualLibriSpeech.
+jhttps://github.com/kaldi-asr/kaldi/blob/master/egs/aishell/s5/RESULTS
+khttps://github.com/espnet/espnet/blob/master/egs2/timit/asr1/README.md
+lhttps://github.com/kaldi-asr/kaldi/blob/master/egs/timit/s5/RESULTS
+mhttps://ngc.nvidia.com/catalog/models/nvidia:nemo:speakerverification_speakernet/
+nhttps://kaldi-asr.org/models/m7
+oResultstakenfrom[102].
+R [k] ∈ CM×M,respectively,whereM standsforthenumberofmicrophones. TheSCMsfor
+XX
+speechandnoisecanbeobtainedusingtime-frequencymasks[56,103,104].
+TheDOAofthesoundcanbecomputedusingtheGeneralizedCross-CorrelationPhaseTransform
+(GCC-PHAT)[57],theSteered-ResponsePowerwithPhaseTransform(SRP-PHAT)[58],orthe
+the Multiple Signal Classification (MUSIC) algorithm. All of these techniques are implemented
+inSpeechBrainusingGPU-friendlyfunctions. TheGCC-PHATcomputestheDOAonapairof
+microphonesandreturnsthetimedifferenceofarrival(TDOA),whichcanbemappedtoaDOAon
+anarcfrom0◦ to180◦. SRP-PHATscanseachpotentialDOAonavirtualunitspherearoundthe
+arrayandcomputesthecorrespondingpower[105]. ForeachDOA(denotedbytheunitvectoru),
+thereisasteeringvectorA(k,u)∈CM×1inthedirectionofu:
+M M
+E(u)=(cid:88) (cid:88) (cid:88) R p,q[k]
+A (k,u)A (k,u)∗ (1)
+|R [k]| p q
+p,q
+p=1q=p+1 k
+where R [k] stands for the element at the p-th row and q-th column in the SCM, and A (k,u)
+p,q p
+and A (k,u) stands for the p-th and q-th elements of the steering vector. The DOA u with the
+q
+maximumpowerE(u)isselectedastheDOAofsound. ItisworthmentioningthatSRP-PHAT[58]
+isconceptuallythesameasanotherpopularlocalizationtechniquecalledGlobalCoherenceField
+(GCF)[106],whichprojectstheDOAinformationinto2Dor3Dplans. Thatwillbepossiblythe
+objectoffutureimplementationinSpeechBrain.
+ItisalsopossibletoestimatetheDOAusingtheMultipleSignalClassification(MUSIC)algorithms
+[59]. MUSICscanseachpotentialdirectionofarrivalonavirtualunitspherearoundthearrayand
+computesthecorrespondingpower. ThematrixU(k) ∈ CM×S containstheS eigenvectorsthat
+correspondtotheSsmallesteigenvaluesobtainedwhileperformingeigenvaluedecompositiononthe
+18
+
+SCM.Thepowercorrespondsto:
+(cid:88) A(k,u)HA(k,u)
+E(u)= (2)
+(cid:112)
+A(k,u)HU(k)U(k)HA(k,u)
+k
+where {...}H stands for the Hermitian operator, and the DOA corresponds to the unit vector u
+associatedwiththemaximumvalueofE(u).
+Speechcanbeenhancedwithbeamformingmethods. Themoststraightforwardapproachconsistsof
+usingadelay-and-sumbeamformertoproduceconstructiveinterferenceintheDOAofthetarget
+soundsource. Beamforminggeneratesfrequency-wisecoefficientsW(k)∈CM×1thatmultiplythe
+STFTofeachmicrophone(X(t,k)∈CM×T)andaddstheproductstoproducetheenhancedspeech
+STFT(Y(t,k)∈C1×T):
+Y(t,k)=WH(k)X(t,k) (3)
+Withdelay-and-sum,thecoefficientsareobtainedusingthesteeringvectorasfollows:
+1
+W(k)= A(k) (4)
+M
+Alternatively,theMinimumVarianceDistortionlessResponse(MVDR)beamformer[55]exploitsthe
+DOAbutalsotheSCMs,andgeneratesthefollowingcoefficients:
+R−1 (k)A(k)
+W(k)= XX (5)
+AH(k)R−1 (k)A(k)
+XX
+Finally,theGeneralizedEigenvalueDecomposition(GEV)beamformer[56]extractstheprincipal
+componentusinggeneralizedeigenvaluedecompositionusingthespeechandnoiseSCMstogenerate
+thecoefficients:
+R (k)W(k)=λR (k)W(k) (6)
+SS NN
+Speechenhancementusingbeamformingmethodsisappealingforspeechrecognitionasitimproves
+thesignal-to-distortionratio(SDR)withoutintroducingnonlinearitiesthatmighthurtthespeech
+recognitionperformance[107].
+A.3.2 Spokenlanguageunderstanding
+SpeechBrainhasseveralrecipesforspokenlanguageunderstanding(SLU).TheSLUrecipesdemon-
+stratemanyusefulcapabilitiesofthetoolkit,likecombiningpre-trainedtokenizers,languagemodels,
+andASRmodelsfromotherrecipes,andusingdifferentinputsources(audioortext)dependingon
+whetherthemodelistrainingortesting.
+Therearecurrentlyrecipesforthreeopen-sourceSLUdatasetswithdifferentlevelsofcomplexity:
+FluentSpeechCommands(FSC)[54],TimersandSuch[50],andSLURP[53]. Therecipesalluse
+attention-basedRNNsequence-to-sequencemodels[108]tomaptheinput(eitherthespeechsignal
+or a transcript) to the output (a semantic dictionary containing the intent/slots/slot values for the
+utterance,asasequenceofcharacters).
+Therecipesimplementboth“conventional”SLU(trainingonground-truthtranscripts)and“end-to-
+end”SLU(trainingonaudio). Theconventional“decoupled”recipeusestheLibriSpeechASRmodel
+describedin§5.1.2totranscribetheinputsignalattesttime,insteadofusingthetruetranscript.
+The “multistage” [51] end-to-end recipe uses the same ASR model but during both training and
+testing. The“direct”[52]recipeusesasinglemodeltomapaudiodirectlytosemanticswithoutan
+intermediatesearchstep. FortheASR-basedmodels,eitherthedefaultLibriSpeechlanguagemodel
+oralanguagemodeltrainedontheSLUdatasettranscriptscanbeused.
+ThetestaccuracyforourFSCrecipeis99.60%,whichisclosetotherecentSotACTImodelbasedon
+wav2vec2.0(99.7%in[109]). NocomparisonsforTimersandSuchwithotherpapersareavailable
+19
+
+Table10: PerformanceonSLURP(audioasinput).
+Model scenario action intent Word-F1 Char-F1 SLU-F1
+(accuracy) (accuracy) (accuracy)
+HerMiT[53] 85.69 81.42 78.33 69.34 72.39 70.83
+CTI[109] — — 86.92 — — 74.66
+SpeechBrain Direct 82.15 77.79 75.64 62.35 66.45 64.34
+(CRDNN)
+SpeechBrain Direct 89.49 86.40 85.34 72.60 76.76 74.62
+(wav2vec2.0)
+yet,asthedatasetwasonlyreleasedrecently[50]. TheperformancemetricsforSLURPwithaudio
+as input are given in Table 10. Our direct recipe using a wav2vec 2.0 encoder outperforms the
+HerMiTbaselineprovidedintheoriginalSLURPpaper[53]acrossallmetrics. Therecipeisslightly
+worsethanSotAperformanceachievedbyCTIfortheintentaccuracymetricandcloselymatches
+theSLU-F1metricreportedin[109]. NotethatunlikeCTI,ourrecipecurrentlydoesnotuseNLU
+pre-traininganddoesnottakeadvantageofanapplication-specificCRFarchitectureorword-aligned
+slotandslotvaluelabels;instead,therecipeusesaverysimpleseq2seqmodeltopredictthesemantic
+dictionarydirectly.Whenthisseq2seqmodelisapplieddirectlytotheground-truthtranscriptsinstead
+ofaudio,weachievestate-of-the-artresults(Table11).
+Table11: PerformanceonSLURP(NLU/ground-truthtranscriptsasinput).
+Model scenario action intent
+(accuracy) (accuracy) (accuracy)
+HerMiT[53] 90.15 86.99 84.84
+CTI[109] — — 87.73
+SpeechBrainNLU 91.45 89.46 88.68
+A.4 Architecturedetails
+Inthissection,weprovidemoredetailsontheSpeechBrainarchitectureoutlinedin§4.
+A.4.1 Datapreparation
+Thegoalofdatapreparationistoparseadatasetandcreatethedata-manifestfiles,whichcontain
+meta-informationabouttheinputdata(e.g.,filepath,annotation,etc.). SpeechBraindata-iosupports
+theCSVandJSONfileformats,ortheusercansimplyprovideadict. Listing4reportsanexcerptof
+aJSONdata-manifestfileforspeechrecognition:
+1 {
+2 "sentence001": {
+3 "wav": "{data_root}/file_snt001.wav",
+4 "length": 2.10,
+5 "words": "SWITCH OFF THE LIGHT"
+6 },
+7 }
+Listing4: AnexcerptofaJSONdata-manifestfileforspeechrecognition.
+Weuseadict(key-valuemap)structurewhereeachexampleorspokenutteranceisidentifiedand
+addressablebyauniquekeyorexampleID.Theentriesineachexamplevarybytaskanddataset. For
+example,inspeechrecognition,audiofilesandthecorrespondingtextareneeded,whereas,insource
+separation,wewouldexpecteachexampletocontaintheentriesformixtureandsourcessignals. The
+CSVformatcanalsobeused:
+20
+
+1 ID,length,wav,words
+2 sentence001,2.10,{data_root}/file_snt001.wav,"SWITCH OFF THE LIGHT"
+3 sentence002,2.70,{data_root}/file_snt002.wav,"SWITCH ON THE LIGHT"
+4 sentence003,3.20,{data_root}/file_snt003.wav,"PLEASE, TURN OFF THE
+LIGHT"
+Listing5: AnexcerptofaCSVdata-manifestfileforspeechrecognition.
+Datasetparsingscripts,whichcreatethedata-manifestfiles,areprovidedformanycommonly-used
+speechdatasets. Sincethedatamanifestscangenerallybemaderelativetothedatadirectoryroot,
+data-manifestfilescanevenbeprovidedfordownloaddirectly, skippingthedatasetparsing. All
+datasetsandtaskstendtohaveatleastsmallsubtledifferencesinformats,andthusSpeechBraindoes
+nothaveanyrequiredentriesbesidestheexampleID.
+A.4.2 HyperPyYAMLdetails
+OurprimaryadditionstotheYAMLformatareadditionofthefollowingspecialtags,whichareare
+addedbeforeanitemdefinition,andareprefixedwith !:
+• !new: instantiatespythonobjects. Theobjectiscreatedwiththeargumentspassedwithalist
+forpositionalargumentsorasadictionaryforkeywordarguments.
+• !name: createsfunctionobjects. Behindthescenes,itusesfunctools.partialtocreateanew
+functiondefinitionwiththedefaultargumentsprovided.
+• !ref: usedforreferringtoapreviously-defineditem. Itcansupportsimplearithmeticand
+stringconcatenationforbasichyperparametercombinations.
+• !copy: usedtoperformadeepcopyofaprevioslydefineobject.
+• !tuple: createstuples.
+• !include: usedtoinsertotherYAMLfiles.
+• !apply: loadsandexecutesapythonfunction,storingtheresult.
+A.4.3 Data-iodetails
+SpeechBrain data-io is built to extend PyTorch data.utils and provides the user with several
+abstractionsforreading,encoding,paddingandbatchingdata. Itisdesignedwithspeechprocessing
+in mind specifically, but most of the problems it solves are general to variable-length sequence
+processing.
+Most of the data-io is built around four abstractions: DynamicItemDataset, DynamicItem,
+PaddedBatch and SaveableDataloader. SpeechBrainalsoprovidesa CategoricalEncoder class
+whichimplementslabelencodingforclassificationtaskssuchasspeakerrecognition. TheSpeech-
+Braindata-ioisillustratedinFigure6.
+Basedonadata-manifest(fileordict),a DynamicItemDataset canbecreated.
+1 from speechbrain.dataio.dataset import DynamicItemDataset
+2 train_dataset = DynamicItemDataset.from_json("train.json")
+3 val_dataset = DynamicItemDataset.from_json("val.json")
+Listing6: DynamicItemDataset instantiation.
+Each entry in an example is an item, following the Python dict terminology. The items that the
+data-manifestprovidesstaticallyarecalledstaticitems: theyarekeptinmemoryandstayunchanged.
+Dynamicitemsarespecifiedbyatransformation(e.g.,afunction)ofanynumberofexistingitems.
+Thesedynamicitemsareevaluatedon-demand. Aclearcaseisadynamicitemthattakesapathto
+anaudiofileandprovidestheloadedaudiosignal. Dynamicitemscantakeotherdynamicitemsas
+inputs,andadependencygraphisusedtodetermineanevaluationorder. Thus,anotherdynamicitem
+21
+
+Define
+a dynamic item
+ReproducibleRandomSampler
+or
+DynamicBatchSampler
+Instantiate and fit a
+add_dynamic_item CategoricalEncoder
+PaddedBatch
+on the dataset sampler
+(optional) collate function
+Instantiate a
+DynamicItemDataset
+Instantiate a
+and call
+SaveAbleDataLoader
+set_output_keys
+Can be instantiated
+automatically in the Brain
+class
+Figure6: AnoverviewofSpeechBraindata-io.
+couldtaketheloadedaudiosignalandprovideanaugmentedversion. A GeneratorDynamicItem
+takesanynumberofinputsandprovidesachainofrelateddynamicitemsviathePythongenerator
+functionsyntax. Listings7and8showimplementationsoftheaforementionedexamples: first,a
+dynamicitemloadsanaudiofile,andthenachainofdynamicitemsaugmenttheloadedsignal.
+1 @speechbrain.utils.data_pipeline.takes("file_path")
+2 @speechbrain.utils.data_pipeline.provides("signal")
+3 def audio_input(file_path):
+4 sig = speechbrain.dataio.dataio.read_audio(file_path)
+5 return sig
+Listing7: Adynamicitemwhichloadsanaudiofile.
+1 import random
+2 speechbrain.utils.data_pipeline.takes("sig")
+3 @speechbrain.utils.data_pipeline.provides("rgain", "rgain_offset")
+4 def augmentation(sig):
+5 random_gain_sig = sig*random.rand()
+6 yield random_gain_sig
+7 sig_with_offset = random_gain_sig + 1
+8 yield sig_with_offset
+Listing8: Exampleofachainofdynamicitems,whichaugmentstheoutputofanotherdynamicitem.
+TheuserspecifieswhichitemsshouldbereturnedbytheDynamicItemDataset. Itemsareevaluated
+lazily: onlythestrictlynecessaryoperationsfortheuserrequesteditemsareperformed. Thisallows
+forsignificantcomputationalsavingsandfasterexecution. Forexampleinlisting9onlytheexample
+ID(id)andspeakerID(spkid)staticitemsandtherandomgainaugmentationdynamicitem(rgain)
+arerequested.
+1 speechbrain.dataio.dataset.set_output_keys(
+2 [train_dataset], ["id, "spkid", "rgain"],
+3 )
+Listing9: Settingoutputitemsforthetrain_dataset DynamicItemDataset
+Since the audio tensor with offset (rgain_offset) is not requested it is not computed at all in this
+example. Onthecontrarytheaudiotensorsigisneededforcomputingrgainandthusitisevaluated.
+The DynamicItemDataset canthusprovidemultipledifferentviewsofthesamedatasetondemand.
+Iteratingoverthedatasetcanbeextremelyfastiftheuseronlyneedsaparticularitem,e.g.,tofit
+a CategoricalEncoder. Listing10showsfittinga CategoricalEncoder inaspeakeridentification
+task,continuingtheaboveexamples.
+22
+
+1 from speechbrain.dataio.encoder import CategoricalEncoder
+2 spk_id_encoder = CategoricalEncoder()
+3 spk_id_encoder.update_from_didataset(dataset, "spkid")
+4 train_dataset.add_dynamic_item(spk_id_encoder.encode_label, takes="
+spkid", provides="spkid_enc")
+Listing10: Fittinga CategoricalEncoder forspeakerrecognition. Thisonlyevaluatesthespkid
+item.
+SpeechBrainalsoprovides CategoricalEncoder sub-classesforencodingtextandhandlespecial
+tokensforthetrainingofsequence-to-sequencemodels.
+A DynamicItemDataset objectcanbewrappedbyastandardPyTorch DataLoader orbySpeech-
+Brain SaveableDataloader. The Brain classcanhandlethisautomaticallyfortheuseranduses
+the SaveableDataloader bydefaultwith PaddedBatch asthedefaultcollatefunction. andinject-
+ing ReproducibleRandomSampler asthesamplerincase shuffle=True . Moreingeneral,custom
+PyTorchsamplersandcollatefunctionscanbeintegratedseamlesslyinSpeechBraindata-io.
+SaveableDataloader allowsforintra-epochcheckpointing,afeaturethatisusefulwhenrunning
+extremelycomputationallydemandingexperimentswhereeachepochcantakeseveralhours.
+PaddedBatch isbothacollatefunctionandabatchobject. Ithandlesfortheusertheratherannoying
+taskofpaddingexamplestogether. Bydefault,itbatchestogetheronlyPyTorchtensorsbyadding
+zerostotherightonthelastdimension. Otherdatatypesarenotbatchedtogetherbut,instead,are
+returnedinapythonlist. Italsoprovidesasemanticallymeaningfulinterface,asshowninlisting11.
+1 from speechbrain.dataio.dataloader import make_dataloader
+2 train_dataset.set_output_keys(["id", "rgain"])
+3 dataloader = make_dataloader(train_dataset, batch_size=8)
+4 for batch in dataloader:
+5 # Access a list of the example IDs in this batch
+6 batch.id
+7 # Access the speech data:
+8 batch.rgain.data
+9 # Access the relative lengths:
+10 batch.rgain.lengths
+Listing 11: Accessing in PaddedBatch each requested item as well as the relative lengths of the
+paddeddata
+A.4.4 Brain classdetails
+The Brain classimplementscustomizablemethodsformanagingthedifferentaspectsoftraining
+andevaluation. Table12describesmoreindetailtheseusefulmethods.
+TheBrainclassonlytakesthefollowingarguments:
+• modules: takesadictionaryofPyTorchmodulesandconvertsittoaPyTorch ModuleDict.
+provides a convenient way to move all parameters to the correct device, call train() and
+eval(),andwrapthemodulesintheappropriatedistributedwrapperifnecessary.
+• opt_class: takesafunctiondefinitionforaPyTorchoptimizer. Thereasonforchoosingthis
+asinputratherthanapre-constructedPyTorchoptimizeristhatthe Brain classautomatically
+handleswrappingthemoduleparametersindistributedwrappersifrequested. Thatneedsto
+happenbeforetheparametersgetpassedtotheoptimizerconstructor.
+• hparams: acceptsadictionaryofhyperparametersthatwillbeaccessibletoalltheinternal
+methods.
+23
+
+Table12: Mainmethodsimplementedinthe Brain class.
+Method Description
+fit Mainfunctionfortraining.Ititeratesepochsanddatasetstoimprovetheobjective.
+fit_batch Trainsabatch.Itcalls compute_forward, compute_objectives,andoptimizes
+theloss.
+compute_forward Definescomputationsfrominputtooutputpredictions.
+compute_objective Definescomputationsfrompredictionstoloss.
+on_stage_start Getscalledatthebeginningofaepoch.Usefulformetricinitialization.
+on_stage_end Getscalledattheendofaepoch.Usefulforstatistics,checkpointing,learningrate
+annealing.
+• run_opts: there are a large number of options for controlling the execution details for the
+fit() method, that can all be passed via this argument. Some examples include enabling
+debugmode,theexecutiondevice,andthedistributedexecutionoptions.
+• checkpointer: it is a pointer to the SpeechBrain checkpointer. This way, at the beginning
+oftraining,themostrecentcheckpointisloadedandtrainingisresumedfromthatpoint. If
+trainingisfinished,thismovesontoevaluation. Duringtraining,thecheckpointsaresaved
+every15minutesbydefault. Atthebeginningoftheevaluation,the"best"checkpointisloaded,
+asdeterminedbythelowestorhighestscoreonametricrecordedinthecheckpoints.
+A.4.5 Lobes
+Inneuroscience,thelobesareareasofthebrainassociatedwithsomespecifichigh-levelfunctionality.
+Similarly,inSpeechBrainwecollectcommonhigher-levelspeechprocessingfunctionalitiesinthe
+lobefolder. Forinstance,lobescontainpopularmodelsusedforspeechprocessing,asreportedin
+Table13. Moreover,weimplementheredataaugmentationstrategies,asdiscussedinTable14.
+A.4.6 Inference
+Tomakeinferencewithpre-trainedmodelseasier,weprovidesomeinferenceclassesabletosupport
+avarietyofspeechtasks. Forinstance,itispossibletotranscribeaninputsentenceusingaspeech
+recognizerwithjustafewlinesofcode:
+1 from speechbrain.pretrained import EncoderDecoderASR
+2
+3 asr_model = EncoderDecoderASR.from_hparams(
+4 source="speechbrain/asr-transformer-transformerlm-librispeech",
+savedir="pretrained_models/asr")
+5 asr_model.transcribe_file("example.wav")
+6 >>> ["THE BIRCH CANOE SLID ON THE SMOOTH PLANKS"]
+Listing12: Inferencewithaspeechrecognizer.
+TheinferenceAPIreliesonaYAMLsimilartothatusedfortraining. Anotherexampleforspeaker
+verificationisreportedinthefollowing:
+1 from speechbrain.pretrained import SpeakerRecognition
+2 file1= "speechbrain/spkrec-ecapa-voxceleb/example1.wav"
+3 file2= "speechbrain/spkrec-ecapa-voxceleb/example2.wav"
+4 verification = SpeakerRecognition.from_hparams(
+5 source="speechbrain/spkrec-ecapa-voxcebeb",
+6 savedir="pretrained_models/spkrec-ecapa-voxceleb")
+7 score, prediction = verification.verify_files(file1,file2)
+Listing13: Speakerverificationinference.
+24
+
+Table13: Mainmodelsimplementedinlobes.
+Method Mainuse Description
+CRDNN Speechrecognition Acombinationofconvolutional,recurrent,andfully-connectednetworks.
+Layerandbatchnormalizationareusedforfeedforwardlayers.Time-pooling
+canbeoptionallyusedfordownsampling.UserscanselectthetypeofRNN
+toplugin(e.g,LSTM[78],GRU[79],LiGRU[80],vanillaRNN).
+TransformerASR Speechrecognition Abasicsequence-to-sequencetransformer[61]forspeechrecognition.
+ECAPA-TDNN Speakerrecognition TheECAPA-TDNNmodel[33]employsachannel-andcontext-dependent
+attentionmechanism, MultilayerFeatureAggregation(MFA),aswellas
+Squeeze-Excitation(SE)andresidualblocks.
+X-vector Speakerrecognition EmploysaTDNN[91,92]followedbyastatisticalpoolinglayer.Itisused
+tocomputex-vectorembeddings[32].
+MetricGAN Speechenhancement ImplementsaLSTM-basedgeneratorfollowedbyadiscriminatorthatesti-
+matesthequalityofspeechusingPESQ.
+ConvTasNet Speechseparation Usesalinearencodertogeneratearepresentationofthespeechwaveform.
+Speakerseparationisachievedbyapplyingamasktotheencodedrepresen-
+tation. Themaskencodedrepresentationsarethenconvertedbacktothe
+waveformsusingalineardecoder[43].
+Dual-Path Speechseparation Splitslongspeechinputsintosmallerchunksandappliesintra-andinter-
+chunkoperationsoverthem[44].
+SepFormer Speechseparation CouplestheDual-Pathframeworkwithanefficientmulti-scaletransformers
+approach[45].
+Table14: Dataaugmentationtechniquesimplementedinlobes.
+Method Description
+SpecAugment It applies time and frequency masking as well as time warping to the input
+spectrum(frequency-domainimplementation)[76].
+Time-DomainSpecAugment Itappliestime/frequencymaskingandtimewarpingtotheinputwaveform(time-
+domainimplementation).Eachdisturbanceisrandomlyactivatedaccordingto
+thespecifiedactivationprobabilities.
+EnvironmentalCorruption Itaddsnoise,reverberation,andbubble(i.e.,noisyfrommanyspeakerstalking
+inthebackground).Eachcorruptiontechniqueisrandomlyactivatedaccording
+tothespecifiedactivationprobabilities.Theamountofnoiseaddediscontrolled
+withpropersettings.Whennotspecifieddirectly,weusethenoiseandimpulse
+responsesfromtheOpenRIRdataseta.
+ahttp://www.openslr.org/28/
+Inthiscase,wefeedtheverificationsystemwithtwoaudiofiles,andtheoutcomeis"0"ifthefiles
+arefromdifferentspeakersand"1"otherwise. Wehavesharedourbest-performingmodelsonthe
+HuggingFacehub9.
+A.5 Experimentdetails
+In the following, we provide more details on the datasets, evaluation metrics, and experimental
+settingsusedintheexperimentsreportedinthepaper.
+9huggingface.co/speechbrain
+25
+
+A.5.1 Datasets
+AsshowninTable1,SpeechBrainalreadyprovidesrecipesforseveralcommonspeechcorpora10:
+• TIMIT[31]: TheTIMITcorpuscontainsabout5hoursofspeechfrom630speakersofeight
+majordialectsofAmericanEnglish,eachreadingtenphoneticallyrichsentences. Itincludes
+audio signals sampled at 16kHz (16-bit) resolution and the phonetic transcription of each
+sentenceusingtheSAMPAphonemeset. TIMITislicensedbytheLinguisticDataConsortium
+(LDC).
+• LibriSpeech[28]: LibriSpeechisacorpusofapproximately1000hoursof16kHzreadEnglish
+speech. ThedataisderivedfromaudiobooksfromtheLibriVoxproject11. Thevolunteersgave
+theirconsenttodonatedtheirrecordingstothepublicdomain. Thetrainingdataissplitinto
+threepartitionsof100hr,360hr,and500hrsetswhilethedevandtestdataaresplitintothe
+‘clean’and‘other’categories,respectively. Eachofthedevandtestsetsisaround5hr. The
+corpusispubliclyavailablewiththeCreativeCommonsAttribution4.0License.
+• CommonVoice[29]: CommonVoiceisMozilla’sinitiativetocreateafreedatabaseforspeech
+recognitionsoftware. Theprojectissupportedbyvolunteerswhorecordsamplesentenceswith
+amicrophoneandreviewrecordingsofotherusers. Thewebsiteclearlyinformsthevolunteers
+ofthepurposeoftherecordings. Thetextisderivedfromdifferentopen-sourcetextsources,
+including Wikipedia. As of May 2021, the dataset contains 7.3k hours of transcribed and
+validated speech in 60 languages. Our paper uses the latest released version of the corpus
+(CommonVoice6.1). ThedatasetispubliclyavailablewiththeCreativeCommonsAttribution
+4.0License.
+• VoxCeleb[35]: VoxCelebisanaudio-visualdatasetconsistingofshortclipsofhumanspeech,
+extractedfrominterviewvideosuploadedtoYouTube. Inthispaper,weusedbothVoxCeleb1
+[34]andvoxceleb2[35]. VoxCeleb1containsover100,000utterancesfor1,251celebrities.
+VoxCeleb2containsoveramillionutterancesfor6,112identities. Thedatasetisavailableto
+downloadunderaCreativeCommonsAttribution4.0InternationalLicense.
+• AMI[38]: TheAMIMeetingCorpusisawidelyusedmulti-modaldatasetconsistingof100
+hoursofmeetingrecordings. Themeetingshavebeenrecordedwithbothclose-talkingand
+far-field microphones that are time-synchronized. The meetings are majorly divided into a
+scenarioandnon-scenariomeetings. Inascenariomeeting,fourparticipantsplayaspecificrole
+assignedtothem. Thenon-scenarioones,instead,includeageneraldiscussionbetweenthree
+tofourparticipants. TheAMIdatasetalsohasfixedofficialsplitsforvarioustaskstofoster
+replicability. Thesignals,transcription,andannotations,havebeenreleasedpubliclyunderthe
+CreativeCommonsAttribution4.0InternationalLicence(CCBY4.0).
+• Voicebank-DEMAND[96]: Itcontainsspeechof30cleanspeakersextractedfromtheVoice
+Bankcorpus[41]:28areincludedinthetrainingset,andtwoareinthevalidationset. Thenoisy
+speechissynthesizedbycontaminatingthecleansignalswithnoisefromDiverseEnvironments
+MultichannelAcousticNoiseDatabase(DEMAND)[110]. Bothspeakersandnoiseconditions
+in the test set are unseen by the training set. The training and test set contains 11572 and
+824noisy-cleanspeechpairs,respectively. Thedatasetisavailabletothecommunitywiththe
+CreativeCommonsAttribution4.0InternationalPublicLicense.
+• WSJ0-mix[46]: Itisasingle-channelspeechseparationdatasetderivedfromtheWallStreet
+Journalcorpus(licensedbyLDC).Itcontainsmixturesoftwoorthreespeakers. Thetraining
+setconsistsof30hoursofoverlappedspeechmaterialthatwasgeneratedbyrandomlyselecting
+utterances by different speakers from the WSJ0 training set si_tr_s, and by mixing them at
+varioussignal-to-noiseratios(SNR).
+10Thedatasetsusedforourresearchareanonymizedanddonotcontainpersonallyidentifiableinformationor
+offensivecontent.DatasetsavailablethroughLDCrequirethatparticipantsconsentedtosharetheirdataina
+corpus. Unlessexplicitlymentioned,wewerenotabletofindtheconsentinformationfortheotherdatasets.
+However,weonlyusepopularcorpora,andwehavereasontobelievethatcreatorsexplicitlyaskedforconsent
+fromthecontributors.
+11https://librivox.org/
+26
+
+A.5.2 Evaluationmetrics
+SpeechBrainsupportsallthestandardevaluationmetricsneededtoassesstheperformanceofthe
+proposedtasks. Inthefollowing,wereportashortdescriptionoftheevaluationmetricsusedinthis
+paper:
+• Word Error Rate (WER%): The WER(%) is derived from the Levenshtein distance and
+comparesareferenceandahypothesizedword-leveltranscription. Itiscomputedbysumming
+upthenumberofwordinsertions,deletions,substitutionsanddividingitbythetotalnumber
+ofwordsinthereferencetranscription. Listing14showsanexampleoftheWERsummary
+providedbySpeechBrain,wherethealignmentbetweenthereferenceandthehypothesized
+transcriptionareprovidedaswell.
+• PhoneErrorRate(PER%): ItisthesameastheWER,butitiscomputedusingphonemesas
+basicunitsratherthanwords.
+• EqualErrorRate(EER%):Itcorrespondstotheerrorrateachievedwhenthefalseacceptance
+rateandthefalserejectionrateareequal. ThelowertheEERis,thehigheristheaccuracyof
+thesystem.
+• Diarization Error Rate (DER%): Diarization error rate (DER) is the standard metric for
+evaluatingspeakerdiarizationsystems. Itisdefinedas:
+falsealarm+missed+confusion
+DER= (7)
+referencelength
+where false alarm is the length of non-speech incorrectly classified as speech, and missed
+detection is the length of segments that are considered as speech in reference, but not in
+hypothesis. confusion is the length of segments that are assigned to different speakers in
+hypothesisandreference,whilereference-lengthisthetotaldurationofspeechinthereference.
+ThelowerDERis,thebetterthediarizationsystemis.
+• PerceptualEvaluationofSpeechQuality(PESQ):Itisacomplexmetricdesignedtopredict
+subjectiveopinionscoresofadegradedaudiosample[111]. PESQ(fullreferencemodality)
+comparesthecleanandnoisysignalsandreturnsascorefrom4.5to-0.5,withhigherscores
+indicatingbetterquality.
+• MOSpredictorofoverallsignalquality(COVL):TheCOVLmetricispartofasetofthree
+commonmetricsofenhancementquality,alongwithCSIGandCBAK.Thesemetricsarea
+compositeofothercommonlyusedmetrics,likePESQandItakura-Saitodistancemeasure. The
+resultingmetricshowedamuchhighercorrelationwithhumanjudgmentsthananycontributing
+metric[112].
+• Scale-invariant signal-to-noise ratio improvement (SI-SNRi): Scale-invariant signal-to-
+noiseratioimprovement(SI-SNRi)isaperformancemetricforsourceseparation[43],proposed
+asanalternativetotheSource-to-DistortionRatio[113]. Itisdefinedasfollows:
+(s(cid:62)s)s
+s := (cid:98) ,
+target (cid:107)s(cid:107)2
+e :=s−s ,
+noise (cid:98) target
+(cid:107)s (cid:107)2
+SI-SNR:=10log target ,
+10 (cid:107)e (cid:107)2
+noise
+wheres∈RT isthegroundtruthsource,ands∈RT isthesourceestimatedbythemodel,and
+(cid:98)
+(cid:107)s(cid:107)2 =s(cid:62)s,denotesthel normoperation. Thescale-invarianceisensuredbyremovingthe
+2
+meanfromsands,anddividingthembytheirrespectivestandarddeviationsbeforecalculating
+(cid:98)
+theSNR.Finally,SI-SNRimprovement,(SI-SNRi)iscalculatedasfollows:
+SI-SNRi:=SI-SNR(s,s)−SI-SNR(s,x),
+(cid:98)
+wherex∈RT denotesthemixturesignalcorrespondingtothesources.
+27
+
+1 %WER 2.46 [ 1291 / 52576, 169 ins, 124 del, 998 sub ]
+2 %SER 28.55 [ 748 / 2620 ]
+3 Scored 2620 sentences, 0 not present in hyp.
+4 =========================================
+5 ALIGNMENTS
+6
+7 Format:
+8 , WER DETAILS
+9
+
+; reference ; on ; the ; first ; line
+10 I ; S ; = ; = ; S ; D
+11 and ; hypothesis ; on ; the ; third ;
+
+12 =========================================
+13 61-70968-0058, %WER 0.00 [ 0 / 5, 0 ins, 0 del, 0 sub ]
+14 WILL ; YOU ; FORGIVE ; ME ; NOW
+15 = ; = ; = ; = ; =
+16 WILL ; YOU ; FORGIVE ; ME ; NOW
+17 =========================================
+18 5142-33396-0000, %WER 20.00 [ 1 / 5, 0 ins, 0 del, 1 sub ]
+19 AT ; ANOTHER ; TIME ; HARALD ; ASKED
+20 = ; = ; = ; S ; =
+21 AT ; ANOTHER ; TIME ; HAROLD ; ASKED
+22 =========================================
+23 237-134500-0005, %WER 11.11 [ 1 / 9, 0 ins, 1 del, 0 sub ]
+24 OH ; BUT ; I’M ; GLAD ; TO ; GET ; THIS ; PLACE ; MOWED
+25 = ; = ; = ; = ; = ; = ; = ; = ; D
+26 OH ; BUT ; I’M ; GLAD ; TO ; GET ; THIS ; PLACE ;
+
+27 =========================================
+28 260-123288-0012, %WER 14.29 [ 1 / 7, 1 ins, 0 del, 0 sub ]
+29 THAT ; WILL ; BE ;
+
+; SAFEST ; NO ; NO ; NEVER
+30 = ; = ; = ; I ; = ; = ; = ; =
+31 THAT ; WILL ; BE ; THE ; SAFEST ; NO ; NO ; NEVER
+Listing14: ExcerptofthesummaryfilegeneratedbySpeechBrainfortheWERmetricdescribed
+above.
+A.5.3 Experimentalsetups
+Inthissection,wereportmoredetailsfortheexperimentsreportedinthepaper. Forlower-leveldetail,
+pleaserefertotheprojectrepositorydirectly12. Thehyperparametersofthemodelswereinitially
+basedonvaluesreportedintheliteratureforsimilarmodels. Then,severalexperimentswerecarried
+outtoprogressivelyderivebetterhyperparameters. Weuse32GBNVIDIAV100inourexperiments.
+Thebesthyperparametersfoundsofararesummarizedinthefollowingtables.
+12github.com/speechbrain/speechbrain
+28
+
+Table15: MainhyperparametersusedinthereportedLibriSpeechexperiments.
+Task Dataset Technique ExperimentalSetting
+Speechrecognition LibriSpeech CTC+Att Encoder:CRDNN(2CNNs,4LSTM,1DNNlayers)
+(RNN) Decoder:GRU(1layer)+Beamsearch+LM
+Augmentation:yes
+Features:40fbanks
+Pretraining:no
+Dropout:0.15(forbothencoderanddecoder)
+Batchnorm:yes
+Numberofepochs:25
+Batchsize:8
+Learningrate:1.0
+LRscheduler:newbob
+Optimizer:Adam
+Loss:CTC+NLL
+CTCweight:0.5
+Numberoftokens:5000
+TrainingTime:5h20m/epoch(onaNVIDIAV100)
+Speechrecognition LibriSpeech CTC+Att Encoder:ContextNet(3lay)+Transformer(12lay)
+(Transf.) Decoder:Transformer(6layers)+Beamsearch+LM
+Augmentation:yes
+Features:80fbanks
+Pretraining:no
+Dropout:no(forbothencoderanddecoder)
+Layernorm:yes
+Numberofepochs:110
+Batchsize:16
+Gradientaccumulation:4
+Gradientclipping:5.0
+Learningrate:1.0
+Learningrate(finetunewithSGD):0.000025
+LRscheduler:newbob
+Optimizer:Adam
+Loss:CTC+NLL
+CTCweight:0.4
+Numberoftokens:5000
+TrainingTime:1h50m/epoch(on2NVIDIAV100)
+29
+
+Table16: MainhyperparametersusedinthereportedTIMITexperiments.
+Task Dataset Technique ExperimentalSetting
+Speechrecognition TIMIT CTC Model:CRDNN(2CNNs,4LiGRUs,2DNNlayers)
+Augmentation:yes
+Features:40fbanks
+Pretraining:no
+Dropout:0.15(encoder),0.5(decoder)
+Batchnorm:yes
+Numberofepochs:50
+Batchsize:8
+Learningrate:1.0
+LRscheduler:newbob
+Optimizer:Adam
+Loss:CTC
+TrainingTime:2m25sec/epoch(onaNVIDIAV100)
+Speechrecognition TIMIT Transducer Model:CRDNN(2CNNs,4LiGRUs,2DNNlayers)
+Augmentation:yes
+Features:40fbanks
+Pretraining:no
+Dropout:0.15(encoder),0.5(decoder)
+Batchnorm:yes
+Numberofepochs:50
+Batchsize:8
+Learningrate:1.0
+LRscheduler:newbob
+Optimizer:Adadelta
+Loss:TransducerLoss
+TrainingTime:1m10sec/epoch(onaNVIDIAV100)
+Speechrecognition TIMIT CTC+Att Encoder:CRDNN(2CNNs,4LiGRUs,2DNNlayers)
+Decoder:GRU(1layer)+Beamsearch
+Augmentation:yes
+Features:40fbanks
+Pretraining:no
+Dropout:0.15(encoder),0.5(decoder)
+Batchnorm:yes
+Numberofepochs:20
+Batchsize:8
+Learningrate:0.0003
+LRscheduler:newbob
+Optimizer:Adam
+Loss:CTC+NLLLoss
+CTCweight:0.2
+TrainingTime:2m25sec/epoch(onaNVIDIAV100)
+Speechrecognition TIMIT CTC+Att+ Encoder:wav2vec(Transformer)
+SSL Decoder:GRU(1layer)+Beamsearch
+Augmentation:yes
+Features:40fbanks
+Pretraining:wav2vec2-large-lv60(HuggingFace)
+Dropout:0.1(encoder),0.5(decoder)
+Batchnorm:yes
+Numberofepochs:50
+Batchsize:8
+Learningrate:0.0003
+Learningrate:0.0001
+LRscheduler:newbob
+Optimizer:Adam
+Loss:CTC+NLLLoss
+CTCweight:0.1
+TrainingTime:3m14sec/epoch(onaNVIDIAV100)
+30
+
+Table17: MainhyperparametersusedinthereportedCommonVoiceexperiments.
+Task Dataset Technique ExperimentalSetting
+Speechrecognition Common CTC+Att Encoder:CRDNN(3CNNs,5LSTM,2DNNlayers)
+Voice Decoder:GRU(1layer)+Beamsearch
+Augmentation:yes
+Features:80fbanks
+Pretraining:no
+Dropout:0.15(forbothencoderanddecoder)
+Batchnorm:yes
+Numberofepochs:50
+Batchsize:12
+Learningrate:1.0
+LRscheduler:newbob
+Optimizer:Adadelta
+Loss:CTC+NLLLoss
+Numberoftokens:500
+CTCweight:0.3
+TrainingTime(En):6h40min/epoch(NVIDIAV100)
+TrainingTime(Fr):3h20min/epoch(NVIDIAV100)
+TrainingTime(It):1h00min/epoch(NVIDIAV100)
+TrainingTime(Kw):4h30min/epoch(NVIDIAV100)
+Speechrecognition Common CTC+Att + Encoder:(Transformer)
+Voice SSL Decoder:GRU(1layer)+Beamsearch
+Augmentation:yes
+Features:80fbanks
+Pretraining(En):2-large-lv60
+Pretraining(Fr):wav2vec2-large-100k-voxpopuli
+Pretraining(It):wav2vec2-large-100k-voxpopuli
+Pretraining(Kw):wav2vec2-large-100k-voxpopuli
+Dropout:0.15(fordecoder)
+Batchnorm:yes
+Numberofepochs:30
+Batchsize:12
+Learningrate:1.0
+Learningratewav2vec2:0.0001
+LRscheduler:newbob
+Optimizer:Adadelta
+Loss:CTC+NLLLoss
+Numberoftokens:500
+CTCweight:0.3
+TrainingTime(En):8h20min/epoch(2NVIDIAV100)
+TrainingTime(Fr):4h05min/epoch(2NVIDIAV100)
+TrainingTime(It):1h30min/epoch(NVIDIAV100)
+TrainingTime(Kw):6h00min/epoch(NVIDIAV100)
+31
+
+Table18: MainhyperparametersusedintheSpeakerRecognitionandDiarizationexperiments.
+Task Dataset Technique ExperimentalSetting
+Speakerrecognition Voxceleb2 x-vector + Model: x-vector(5TDNNlayers)+statisticalpool+
+PLDA MLPclass
+Augmentation:yes
+Features:80fbanks
+Pretraining:no
+Dropout:no
+Batchnorm:yes
+Numberofepochs:20
+Batchsize:256
+Learningrateinitial:0.001
+Learningratefinal:0.0001
+LRscheduler:lineardecay
+Optimizer:Adam
+Loss:NLLLoss
+TrainingTime(vox1+vox2):4h20min/epoch(NVIDIA
+V100)
+Speakerrecognition Voxceleb2 ECAPA- Model: ECAPA-TDNN(5tdnnlayers)+attpooling+
+TDNN + MLPclass
+cosinedist Augmentation:yes
+Features:80fbanks
+Pretraining:no
+Dropout:no
+Batchnorm:yes
+Numberofepochs:12
+Batchsize:32
+Learningbase:0.00000001
+Learningratemax:0.0001
+LRscheduler:CyclicLRScheduler
+Optimizer:Adam
+Loss:NLLLoss
+Training Time (vox1+vox2): 12h 10 min/epoch
+(NVIDIAV100)
+Speakerdiarization AMI ECAPA- Embeddings:ECAPA-TDNN
+TDNN + Clusteting:SpectralClustering
+spectral Splittype:full_corpus_asr
+clustering Skip_TNO:True
+Mictype:BeamformIt
+VADtype:oracle
+Maxsubsegdur:3.0
+Overlap:1.5
+Affinity:cos
+Maxnumspkrs:10
+Oracle#spkrs:True
+Ignoreoverlap:True
+Forgivenesscollar:0.25
+32
+
+Table19: Mainhyperparametersusedforthespeechenhancementexperiments.
+Task Dataset Technique ExperimentalSetting
+Speechenhancement Voicebank- MimicLoss EnhancedModel:CNN+Transformer
+DEMAND ASRModel:CRDNN
+Features:Spectrogram
+Pretraining:no
+Dropout:0.15(CRDNN)
+Batchnorm:yes
+Numberofepochs:20
+Batchsize:256
+Learningrate:0.0001
+Optimizer:Adam
+Loss:NLL+MSELoss
+Training Time (enhance): 26 min/epoch (NVIDIA
+V100)
+Training Time (perceptual): 11 min/epoch (NVIDIA
+V100)
+TrainingTime(ASR):5min/epoch(NVIDIAV100)
+Speechenhancement Voicebank- MetricGAN+ EnhancedModel:LSTM(2layers)
+DEMAND DiscriminatorModel:CNN(3layers)+DNN(3layers)
+Features:STFT
+Pretraining:no
+Batchnorm:yes
+Numberofepochs:600
+Batchsize:256
+Learningrate:0.0005
+Optimizer:Adam
+Loss:MSE+PESQLoss
+TrainingTime:11min/epoch(NVIDIAV100)
+33
+
+Table20: Mainhyperparametersusedinthespeechseparationexperiments.
+Task Dataset Technique ExperimentalSetting
+Speechseparation WSJ0-MIX ConvTasNET Model:ConvTasNET(Encoder,MaskNET,Decoder)
+Augmentation:yes
+Features:waveform
+Pretraining:no
+Dropout:no
+Normalization:GlobalLayerNorm
+Numberofepochs:200
+Batchsize:1
+Learningrate:0.00015
+LRscheduler:ReduceLROnPlateau
+Optimizer:Adam
+Loss:si-snrwithpit-wrapper
+TrainingTime:1h00min/epoch(NVIDIAV100)
+Speechseparation WSJ0-MIX DualPathRNN Model:DualPathRNN(Encoder,MaskNET,inter-intra
+RNNs,Decoder)
+Augmentation:yes
+Features:waveform
+Pretraining:no
+Dropout:no
+Normalization:GlobalLayerNorm
+Numberofepochs:200
+Batchsize:1
+Learningrate:0.00015
+LRscheduler:ReduceLROnPlateau
+Optimizer:Adam
+Loss:si-snrwithpit-wrapper
+TrainingTime:3h00min/epoch(NVIDIAV100)
+Speechseparation WSJ0-MIX SepFormer Model: SepFormer (Encoder, MaskNET, inter-intra
+Transformers,Decoder)
+Augmentation:yes
+Features:waveform
+Pretraining:no
+Dropout:no
+Normalization:LayerNorm
+Numberofepochs:200
+Batchsize:1
+Learningrate:0.00015
+LRscheduler:ReduceLROnPlateau
+Optimizer:Adam
+Loss:si-snrwithpit-wrapper
+TrainingTime:3h00min/epoch(NVIDIAV100)
+34

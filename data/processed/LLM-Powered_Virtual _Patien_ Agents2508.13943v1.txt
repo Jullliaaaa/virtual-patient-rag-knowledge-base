@@ -1,0 +1,755 @@
+LLM-Powered Virtual Patient Agents for Interactive
+Clinical Skills Training with Automated Feedback
+Henrik Voigt Yurina Sugamiya Kai Lawonn
+Department of Computer Science Department of Robotics Department of Computer Science
+University of Jena Tokyo Denki University University of Jena
+Jena, Germany Tokyo, Japan Jena, Germany
+henrik.voigt@uni-jena.de sugamiya@aoni.waseda.jp kai.lawonn@uni-jena.de
+Sina Zarrieß Atsuo Takanishi
+Department of Computational Linguistics Department of Robotics
+Bielefeld University Waseda University
+Bielefeld, Germany Tokyo, Japan
+sina.zarriess@uni-bielefeld.de takanisi@waseda.jp
+Abstract—Objective Structured Clinical Examinations on human actors and associated costs. However, two major
+(OSCEs) are essential for medical training, but they require limitations persist. Firstly, many existing patient simulators,
+significant resources, including professional actors and expert particularly those leveraging recent technological advances,
+medical feedback. Although Large Language Models (LLMs)
+arelimitedtotext-basedinteractions.Secondly,simulatingthe
+have introduced text-based virtual patients for communication
+nuanced role of an OSCE examiner — especially generating
+practice, these simulations often lack the capability for richer,
+non-textual interactions. This paper presents a novel framework high-quality,comprehensivefeedbackthatgoesbeyondsimple
+that significantly enhances LLM-based simulated patients by keyword matching for complex clinical skills — remains a
+equipping them with action spaces, thereby enabling more significant hurdle. Current automatic scoring systems often
+realistic and dynamic patient behaviors that extend beyond
+rely on predefined state graphs, which struggle to evaluate
+text. Furthermore, our system incorporates virtual tutors that
+intricate skills such as thorough symptom gathering.
+provide students with instant, personalized feedback on their
+performance at any time during these simulated encounters. The recent emergence of powerful LLMs, such as GPT-4,
+We have conducted a rigorous evaluation of the framework’s LlamaandMistral,hasopenedupnewpossibilitiesforhuman-
+real-time performance, including system latency and component machineinteraction.ThishasledtothedevelopmentofLLM-
+accuracy. Preliminary evaluations with medical experts assessed
+driven, text-based patient simulations in medical education.
+the naturalness and coherence of the simulated patients, as
+While these simulations allow students to practise commu-
+well as the usefulness and appropriateness of the virtual tutor’s
+assessments. This innovative system provides medical students nication skills, clinical practice involves richer interactions
+with a low-cost, accessible platform for personalized OSCE that go beyond text. For example, clinicians instruct patients
+preparation at home. to perform movements or observe their responses to actions,
+Index Terms—Medical Education, Clinical Skills Training,
+which are crucial for accurate diagnoses.
+OSCE, Simulated Patients, Intelligent Tutoring Systems
+This paper introduces a novel framework to enhance OSCE
+training simulators, addressing these limitations in two key
+I. INTRODUCTION
+areas.
+ObjectiveStructuredClinicalExaminations(OSCEs)playa • Enhanced Patient Behavior Simulation. We have ex-
+key role inmedical education, providing a meansof assessing tended the capabilities of patient simulators beyond text
+students’ clinical competencies in a variety of scenarios. by introducing functional action spaces. This enables
+However,ensuringthatstudentsreceivesufficientandeffective simulated patients (whether virtual or robotic, as our
+OSCEpracticeposesasignificantchallenge.Traditionaltrain- frameworkisimplementation-agnostic)toperformmove-
+ing requires substantial resources, such as professional actors ments and actions, resulting in more realistic and inter-
+to simulate patients and medical experts to provide real-time active encounters.
+feedback, which makes frequent, personalized practice costly • Advanced Automatic Feedback Generation. We move
+and difficult to implement on a large scale. beyond keyword-based scoring by using LLMs’ under-
+Varioussimulationtechnologieshavebeenexploredinmed- standingoflanguagetoprovidecomprehensivefeedback.
+ical education to mitigate these challenges. These range from We introduce virtual tutors that interact with students,
+digital patient simulators to physical robotic patients, which respondtoqueriesandprovidedetailedpost-sessioneval-
+offer more realistic and engaging training by physically em- uations. This dialogue-based assessment provides timely,
+bodyingpatients.Usingsimulatedpatientscanreducereliance targeted feedback to enhance student engagement and
+5202
+guA
+91
+]CH.sc[
+1v34931.8052:viXra
+
+Fig.1. TheBasicClinicalSkillsTrainingSimulatorInterface.Thisexampleillustratesatrainingsession,showcasing:(Left)themulti-modalchatwindow
+for student interaction (voice or text) with the simulated patient; (Top-Right) the interactive Unity-based virtual patient capable of performing actions; and
+(Bottom-Right)theOSCEtaskdescriptionguidingthestudent.
+learning. comprisesthefollowing:a)adetailedpatientprofiledescribing
+To validate our framework, we conducted a multifaceted symptoms and behavior; b) a task description outlining the
+evaluation.First,weassessedtheobjectiveperformanceofthe student’s objectives; and c) a checklist of actions for objective
+system, including the critical real-time applicability metrics evaluation by an examiner. OSCE scenarios, or stations, vary
+of latency and accuracy for the speech-to-text and language by clinical focus and student demands, but generally fall into
+modellingcomponents.Secondly,inapreliminarystudy,med- four categories.
+ical experts evaluated the quality of the patient simulation, • Clinical Examination:Systematicinvestigationofareal
+focusing on the naturalness and coherence of the responses in or simulated patient.
+aclinicalskillsscenario.Thirdly,theseexpertsprovidedinitial • Clinical Procedures: Performing skills like venipunc-
+feedback on the quality of the automatically generated feed- ture.
+back, particularly in terms of its alignment with professional • Communication Skills: Interactions such as history tak-
+judgement. The aim of this work is to provide students with a ing or patient information delivery.
+more realistic, interactive and effective platform for preparing • Data Interpretation: Analyzing X-rays or blood test
+for the OSCE. In the long term, this framework serves as a results.
+blueprint for simulators that can deliver standardised, repeat-
+While in-person OSCE training with human-simulated pa-
+able, and controlled training scenarios, thereby improving the
+tients (fellow students or professional actors) offers engaging
+consistency and reliability of OSCE evaluations.
+experiences, it is often constrained by the high cost of actors
+and the limited variety of readily enactable scenarios. These
+II. RELATEDWORK
+limitations highlight the need for more scalable and versatile
+This section first provides an overview of the principles of
+training solutions.
+OSCEs in medical assessment, before discussing technolog-
+ical advancements in medical education systems designed to
+B. Technological Advances in Medical Education
+improve OSCE training.
+To address the challenges of traditional OSCEs, various
+A. Medical Background: Objective Structured Clinical Exam-
+technologies have been employed to simulate patients and
+inations
+enhance the learning experience, focusing on reducing costs
+OSCEs provide an objective method for assessing the and increasing accessibility.
+clinical skills of medical students through standardised, sim- Virtual Patient Simulation. Virtual patient simulators aim
+ulated clinical scenarios [1], [2]. Each scenario typically to replicate patient behavior for training in various clinical
+
+Fig. 2. System Architecture Overview: Data Flow for Dynamic Prompt Generation. User interactions with the Robot or Simulator (frontend, e.g.,
+physicalrobotorvirtualenvironment)generateevents(text,actions).ThesearewrittentoaROSLog-inspiredmessagestream.TheConversationManager
+(backend)filtersthislogbasedontheagent’sdefinedAction/PerceptionSpacefunctions.ItthenupdatesandconstructsthedynamicPromptfortheLLMby
+incorporatingthePatientRoleDescription,Perception/ActionSpaceFunctions,currentObservedVariables,andtherecentMessageFeed(interactionhistory).
+TheLLM’sresponsethendrivesthesubsequentbehavioroftheRobotorSimulator,completingtheinteractionloop.
+skills, including history taking [3], [4] and clinical decision- Tutoring Systems. Automated tutoring systems strive to
+making [5]. Virtual reality environments can further enhance facilitate learning by offering immediate feedback and per-
+theperceivedrealismofthesesimulations[6],[7].Historically, formance assessment [21]. A prominent example is Khan
+many virtual patients operated on hard-coded logic, limiting Academy’s Khanmigo, an LLM-powered chatbot providing
+their response diversity to varied user inputs [8]. students with hints and feedback [22]. Research in this area
+has explored generating step-by-step instructional strategies
+The advent of LLMs, with their advanced capabilities in
+for LLM tutors [23] and their application in domains like
+nuanced role-playing and character consistency [9], has sig-
+mathematics[24].TheapplicationofLLMsextendstobroader
+nificantly changed this landscape. LLMs are now integrated
+skill training, including social skills like communication and
+to create more dynamic text-based patient simulations, lever-
+conflictresolution,whereAIagentscanactaspracticepartners
+aging their extensive knowledge to portray diverse character
+and mentors, providing tailored feedback [25].
+traits and conversational abilities [10], [11]. For instance,
+frameworks like CureFun [12] specifically leverage LLMs as Specific to OSCEs, [26] developed a state graph-based
+simulated patients for clinical education, facilitating natural systemforautomaticassessment,whereprogressionistracked
+conversation practice and providing feedback on students’ viaspeechrecognitionandkeywordmatching.Whileeffective
+inquiry skills. Some ambitious projects [13] even construct for structured procedures, this approach is less suited for
+entire simulated medical environments where LLM agents open-ended dialogue scenarios or complex skill evaluations.
+representing patients, doctors, and nurses interact, allowing Other LLM-based systems for medical education, such as
+doctoragentstolearnandevolvetheirdiagnosticandtreatment CureFun[12],alsoincorporatemechanismstoevaluatestudent
+capabilities through simulated experience. dialogue by offering suggestions. Our work is inspired by
+such automated scoring and feedback approaches but seeks to
+While these systems demonstrate the power of LLMs for
+enhance their capabilities by using LLMs to interpret the en-
+complexmedicalsimulationsandtext-baseddialoguetraining,
+tirety of the student-patient interaction (including non-textual
+many remain primarily confined to textual interactions. Our
+actions), thereby providing nuanced feedback applicable to a
+framework distinctively focuses on extending patient simula-
+broader range of clinical interactions without relying on pre-
+tion beyond text to include functional action spaces critical
+defined keywords.
+formanyOSCEexaminationscenarios,directlyaddressingthe
+need for interactive, non-textual patient behaviors in training
+for medical students.
+III. SYSTEMARCHITECTURE
+Robotic Patient Simulation. For skills involving phys-
+ical procedures (e.g. venipuncture, suturing and ultrasound
+scanning), robotic simulators offer valuable hands-on train- Our framework for enhanced clinical skills training is
+ing [14]–[16]. Dental robots, for example, simulate patient realized through an application divided into a frontend and
+behavior in a cost-effective way for dental training [17], and a backend. The backend (Section III-A) manages the core
+other systems teach therapeutic examination techniques [18], logic, utilizing an LLM to simulate dynamic patient and
+suturing [19] and surgical skills [20]. These systems excel tutor agents. The frontend (Section III-B) provides the user
+at simulating specific physical responses. Our work builds interface, including speech-to-text capabilities and a virtual
+upon this by combining the structured, state-based behavioral patient simulator built with Unity. Figure 2 provides a visual
+aspectsoftenseeninroboticswiththenuanced,context-aware overview. A key design principle is frontend independence,
+predictive power of LLMs. This enables more coherent and which allows the system to interface with either a virtual
+diverse simulated behaviors that extend beyond text-based simulator or a physical robot, provided that a generic com-
+interactions. munication protocol is adhered to.
+
+A. Backend: LLM-Powered Agent Simulation taking and communication practice is also supported,
+building on established LLM capabilities.
+The backend’s primary role is to simulate patient and tutor
+agent behaviors using prompts that instruct an LLM—in
+Tutor Agent: Providing Comprehensive, Contextual
+our implementation, Google’s Gemini 1.5 Flash model,
+Feedback. The tutor agent simulates an OSCE examiner,
+chosen for its balance of speed and quality in real-time
+offering assistance and detailed evaluations. It can be invoked
+interactions. The dialogue history management in the agent
+anytime and provides feedback via function calls executed
+architecture is inspired by the Robot Operating Systems’
+on the frontend. Its core function is to deliver a textual
+(ROS) publish-subscribe mechanism. This ensures platform
+evaluation and an OSCE score post-training, leveraging the
+modularity. The agents are accessible via a REST API.
+LLM’s understanding rather than simple keyword matching.
+The Tutor Agent’s prompt includes:
+Patient Agent: Enabling Dynamic and Interactive Be-
+haviors.Thepatientagentsimulatesrealisticpatientresponses • Tutor Role Description: Instructions on evaluation con-
+duct, response style, and score calculation.
+during clinical scenarios. Its behavior, manifested as func-
+tion calls executable by the frontend (virtual or robotic), • Student Task Description: The specific clinical task as-
+signed to the student.
+encompasses motion, text, or speech. The agent’s prompt
+(see Figure 3) is structured to facilitate natural and coherent • PatientRoleDescription:Providesthetutorwiththesame
+patient context the student has.
+interactions:
+• Student-Patient Message Feed: The complete transcript
+• Patient Role Description: Defines the patient’s medical of the student-patient interaction, including all dialogue
+history, symptoms, and behavioral cues for the specific
+and actions.
+OSCE scenario.
+• OSCE Checklist: The critical list of steps the student
+• Perception Space: A list of functions triggered by sensor should perform, with each correctly performed item typ-
+inputs. These inputs, logged via the pub-sub mechanism,
+ically scoring 1 point.
+updatetheagent’scontext,allowingtheLLMtogenerate
+This design empowers several key tutor features:
+relevant responses. For example, a perception space
+function such as def on_text_input(text: Interactive Help. Students can query the tutor (e.g., ”what
+str) would log the student’s utterance (e.g., next?”). The tutor, using its role description and knowledge
+perception::sensor::text_input("Please of the student’s task and patient profile, provides motivating,
+raise your arm.")) for the LLM to process and contextualhints.Scenario-specificknowledgecanbeaddedto
+incorporate into its situational awareness. the prompt for deeper support.
+• Action Space: A list of functions the agent Training Summary. Post-session, the tutor generates a
+can execute (e.g., movements, speech). Logging detailed summary highlighting positive and negative aspects
+these actions allows the LLM to consider recent of the student’s performance. By analyzing the full Student-
+behaviors when predicting subsequent actions. Patient Message Feed against the OSCE Checklist, the tutor
+For instance, an action space function like def identifiesaddressed,missed,orpoorlyexecutedsteps.Thisof-
+move_arm(action_type: str, parameters: fers far more nuanced feedback than keyword-based systems,
+dict) would be logged for the LLM (e.g., assessing conversational quality and thoroughness.
+action::patient::move_arm("left_arm", OSCE Score Calculation. The tutor systematically re-
+{"s":"left", "d":"up"})) and simultaneously views the OSCE Checklist against the interaction log (in-
+trigger the corresponding animation in the Unity spired by chain-of-thought reasoning [27]), assigning points
+simulator. This directly enables movement behavior, for completed items. This LLM-based scoring offers signif-
+where patients can be instructed to move limbs or icant advantages over keyword matching. LLMs can infer
+adopt postures for examination, going beyond text-only from conversational context whether checklist items are met,
+interactions. handling ambiguity better than keyword systems. New OSCE
+• Observed Variables: A subset of relevant state variables scenarios can be created rapidly by providing only the role
+(e.g., limb positions) made visible to the LLM, creating description,taskdescription,andchecklist,withoutneedingto
+a notion of the agent’s current state. programnewkeywordlogic.ThisiscrucialforOSCEscenario
+• Message Feed: A log of recent interactions of the pub- management, where training scenarios stored in the backend
+sub mechanism, providing a conversational and action can be easily updated.
+history. The combination of Perception Space, Observed
+Variables, and the Message Feed facilitates sophisticated
+B. Frontend: User Interaction and Simulation Environment
+reactive behavior. For instance, if a student manipulates
+the virtual patient’s arm, the agent perceives this change The frontend illustrated in Figure 1 comprises:
+viaitsobservedvariablesandmessagefeed,andcanthen Chat Component. Displays user, patient, and tutor mes-
+respond appropriately (e.g., indicating pain based on its sages. User messages prefixed with ”@tutor” are routed to
+role description). Standard chat interaction for history the tutor agent; tutor replies are color-coded.
+
+Fig. 3. Comparative Prompt Architectures for the Patient and Tutor
+Agents.ThefiguredetailsthedistinctpromptstructuresfedtotheLLMfor
+(Left)thePatient Agentand(Right)theTutor Agent.ThePatientAgent’s
+promptincludesitsRoleDescription,definablePerceptionandActionSpace
+Functions (with example function signatures), current Observed Variables Fig. 4. Example of the Virtual Tutor’s Automated OSCE Score Evalu-
+(e.g., ‘left_arm_pos‘), and a Message Feed of recent interactions. The ation. The display shows a detailed checklist for an OSCE scenario, where
+TutorAgent’spromptincorporatesitsownRoleDescription,theStudentTask eachitemismarkedbytheLLM-poweredtutorascompleted(greencheck)
+Description,thePatientRoleDescription(forcontext),thefullStudent-Patient ormissed(redcross)basedonitsanalysisofthestudent-patientinteraction.
+MessageFeed,andtheOSCEChecklistusedforevaluation.
+behavioral fidelity and the tutor agent’s feedback quality
+Speech Recognition. In-browser voice interaction is en- (Section IV-B).
+abled using a Whisper model [28] via transformers.js [29],
+ensuring low latency. A. Performance Benchmarks
+Virtual Patient Simulator. Implemented in Unity and Real-time interaction is crucial for an effective training
+exported to WebGL. The rigged patient model executes be- system. We quantified the latency and accuracy of speech
+havioralfunctions(e.g.movements)definedinitsactionspace recognition and language model components to select optimal
+and logs events using the ROS-inspired pub-sub mechanism. models for our application.
+1) SpeechRecognition: Toselectanoptimalspeech-to-text
+C. System Interaction Flow During a Training Session
+(STT)model,wecomparedthreeWhispermodelversions[28]
+A typical training interaction (see Figure 2) begins with
+on real-time factor (RTF; audio length to transcription time
+userinput(textorvoice)intothechat.Voiceistranscribedby
+ratio) and word error rate (WER). Benchmarking used a Lib-
+Whisper. The text is sent to the designated agent API (patient riSpeech corpus subset [30] (audio files ≤10s) on a standard
+ortutor)inthebackend.Thebackend’sconversationmanager
+Intel Core i7 CPU, reflecting our browser-based deployment.
+dynamically constructs the LLM prompt by:
+ResultsareshowninTableI.Thewhisper-tinymodel(39M
+• Accessing the agent’s defined action/perception spaces. parameters) achieved the best RTF (0.325), indicating real-
+• Filteringthepub-sublogstreamforrelevantfunctioncalls time transcription capability, with a WER (0.245) comparable
+and updating observed variables. to the larger whisper-base (74M params, RTF 0.567, WER
+• Appending the recent interaction history (message feed). 0.231) and whisper-small (244M params, RTF 1.91, WER
+• Including the agent’s role description and 0.243) models. Given its significantly smaller size, faster
+action/perception function definitions. loading,andsuperiorreal-timeperformance,whisper-tinywas
+• Inserting the current user query. selected for our application. The whisper-small model’s RTF
+The LLM is tasked to complete the prompt, typically by >1 disqualified it due to potential interaction delays.
+generating a function call (with arguments) from the agent’s 2) LLM Response Times: We evaluated the response
+action space in JSON format. This JSON is validated by the timesofthreeLLMs:Gemini-1.5-Pro,Gemini-1.5-Flash(both
+backend and sent to the frontend for execution by the virtual Google Cloud-inferred [31]), and the open-source, browser-
+patient simulator or a connected robot. This loop continues executable Qwen-1.5-0.5B [32]. Each generated a 50-word
+throughout the OSCE training session. story (approximating typical patient agent response length),
+repeated 10 times.
+IV. EVALUATION
+As detailed in Table II, Gemini-1.5-Flash was the fastest
+This section presents an evaluation of our framework. We (average response time: 2.07s ± 0.27), followed by Gemini-
+first assess quantitative performance benchmarks for critical 1.5-Pro (2.51s ± 0.13). The offline-capable Qwen-1.5-0.5B
+system components (Section IV-A) and then discuss a pre- was substantially slower (14.82s ± 0.32). These results un-
+liminary expert evaluation focusing on the patient agent’s derscore that current offline models struggle to meet the
+
+TABLEI
+SPEECHRECOGNITIONMODELCOMPARISON
+Model Real Time Factor Word Error Rate Params
+whisper-tiny 0.325 0.245 39M
+whisper-base 0.567 0.231 74M
+whisper-small 1.91 0.243 244M
+TABLEII
+LLMCOMPARISON
+Model Response Time Free Access Offline
+Qwen 1.5-0.5B-Chat 14.82s±0.32 ✓ ✓
+Gemini-1.5-Pro 2.51s±0.13 x x
+Gemini-1.5-Flash 2.07s±0.27 x x
+ 5 yrs exp.), 4 expected!”(E1)andresponsiveness:”Thepatientreactswellto
+medical assistants (3-5 yrs), 6 medical students (<3 yrs)) to the commands!” (E7). Reactive behavior (M=4.11, SD=0.81)
+assess the framework’s practical utility. and movement behavior (M=4.25, SD=1.02) received slightly
+lower, though still positive, ratings. Feedback indicated areas
+Scenario and Procedure. Participants engaged in a simu-
+for enhancement, such as simulating nuanced conditions (”Is
+lated OSCE scenario – an upper limb neurological examina-
+it difficult to simulate the senile behavior of patients?” - E11)
+tion – lasting approximately ten minutes. This common task
+andhandlingcomplexinstructions(”Ifpossible,letthepatient
+enabled the assessment of basic clinical skills. To illustrate,
+understand two commands in one sentence” - E5). For the
+checklist items included tasks such as introducing themselves
+virtualtutor,thehelpfulnessofthesummarywasratedhighest
+and stating the purpose of the examination, inspecting the
+(M=4.39, SD=0.68), while interactive assistance/help during
+upperlimbsforsignsofwastingorabnormalposture,ensuring
+thescenariowasratedslightlylower(M=4.22,SD=0.79).The
+correct patient posture, and performing a pronator drift test
+expertsshowedahighagreementwiththescoresgivenbythe
+(see Figure 4). Throughout the examination, experts rated the
+virtual tutor (M=4.39, SD=0.68).
+behavior of the virtual patient (chat interaction, movement
+and reactivity) and the feedback of the virtual tutor (chat Evaluation Summary and Future Directions. The results
+assistance, summary and appropriateness of OSCE score) on of the preliminary expert study illustrate our framework’s
+a 5-point Likert scale (1=poor, 5=very good) at each stage. potential for realistic OSCE training, particularly highlighting
+Alongside these quantitative ratings, qualitative feedback re- thesuccessofLLM-drivendialoguegenerationforbothpatient
+garding specific interactions and suggestions for improvement interaction and tutor feedback summaries. The quantitative
+was gathered from each expert through a structured post- benchmarks confirm the feasibility of real-time performance
+session questionnaire and encouraged during brief, open dis- with current cloud-based LLMs and optimized local STT.
+cussions. This mixed-methods approach aimed to provide a Key areas for future development, informed by expert
+comprehensive initial understanding of the system’s perceived feedback,includeenhancingthesophisticationofthepatient’s
+strengths and critical areas for future development. reactive and movement behaviors, such as improving multi-
+Overall Performance. The virtual patient received a high commandunderstandingandmodelingmorenuancedcommu-
+average rating of 4.38 (SD=0.74), and the virtual tutor aver- nication patterns associated with specific medical conditions.
+aged4.33(SD=0.71).Experiencedphysiciansratedthepatient Thisinvolvesrefiningpromptstoelicitmoresubtlebehavioral
+highest(4.56,SD=0.61),followedbystudents(4.43,SD=0.47) cues, thereby enriching the diagnostic challenge for students.
+and assistants (4.01, SD=0.99). Tutor ratings were more con- Furtherworkwillalsoexploreoptimizingtutorinteractionsto
+sistent across groups (physicians: 4.38, SD=0.79; assistants: provide even more effective in-scenario guidance. Addressing
+4.38,SD=0.62;students:4.16,SD=0.91).Thesescoressuggest these points will further strengthen the realism and pedagogi-
+experts perceived the system as ”good” to ”very good.” cal value of the training system.
+
+V. CONCLUSION [10] R. Furlan, M. Gatti, R. Mene´, D. Shiffer, C. Marchiori, A. G.
+Levra, V. Saturnino, E. Brunetta, and F. Dipaola, “A natural language
+This paper introduced a novel framework leveraging LLMs
+processing–based virtual patient simulator and intelligent tutoring
+to create dynamic patient and tutor agents, offering an en- system for the clinical diagnostic process: Simulator development
+hanced digital training environment for OSCE preparation. and case study,” JMIR Medical Informatics, vol. 9, 2020. [Online].
+Available:https://api.semanticscholar.org/CorpusID:232242828
+Our primary contributions advance existing OSCE training
+[11] J. S. Park, J. O’Brien, C. J. Cai, M. R. Morris, P. Liang, and M. S.
+methodologiesby:(1)endowingsimulatedpatientswithmove- Bernstein,“Generativeagents:Interactivesimulacraofhumanbehavior,”
+ment and reactive behaviors that extend beyond text-only in- inProceedingsofthe36thAnnualACMSymposiumonUserInterface
+SoftwareandTechnology,2023,pp.1–22.
+teractions, and (2) replacing simplistic keyword-based scoring
+[12] Y.Li,C.Zeng,J.Zhong,R.Zhang,M.Zhang,andL.Zou,“Leveraging
+with a comprehensive, LLM-driven evaluation of the entire largelanguagemodelassimulatedpatientsforclinicaleducation,”arXiv
+student-patient interaction, culminating in a detailed summary preprintarXiv:2404.13066,2024.
+[13] I.Steenstra,F.Nouraei,andT.Bickmore,“Scaffoldingempathy:Train-
+and an interpretable OSCE score. Performance benchmarks
+ingcounselorswithsimulatedpatientsandutterance-levelperformance
+confirmed the system’s capability for real-time interaction, visualizations,”inProceedingsofthe2025CHIConferenceonHuman
+with core LLM responses averaging around 2 seconds. Cru- FactorsinComputingSystems,2025,pp.1–22.
+[14] S. Marcos-Pablos and F. J. Garc´ıa-Pen˜alvo, “More than surgical tools:
+cially, preliminary evaluations by medical experts illustrated
+a systematic review of robots as didactic tools for the education
+the pedagogical potential of our approach. They rated the of professionals in health sciences,” Advances in Health Sciences
+virtual patient’s behavior as notably natural and coherent, and Education, vol. 27, pp. 1139 – 1176, 2022. [Online]. Available:
+https://api.semanticscholar.org/CorpusID:250146615
+the virtual tutor’s feedback as helpful and appropriate. Future
+[15] Z.Huang,C.Lin,M.Kanai-Pak,J.Maeda,Y.Kitajima,M.Nakamura,
+work will focus on several key areas: striving to integrate N. Kuwahara, T. Ogata, and J. Ota, “Robot patient design to simulate
+performantopen-source,offlineLLMstoimproveaccessibility various patients for transfer training,” IEEE/ASME Transactions on
+Mechatronics,vol.22,no.5,pp.2079–2090,2017.
+and reduce operational costs; further refining patient simula-
+[16] T.Hashimoto,S.Honma,T.Fujikura,Y.Hayasaka,T.Takeshita,Y.Ito,
+tions to capture the nuances of complex medical conditions K.Okubo,andH.Takemura,“Voicedialogsystemforsimulatedpatient
+and support more intricate action sequences; and continuing robotanddetectionofinterviewernodding,”in2021IEEESymposium
+SeriesonComputationalIntelligence(SSCI). IEEE,2021,pp.01–06.
+to enhance the sophistication of the virtual tutor’s interactive
+[17] H. Takanobu, A. Okino, A. Takanishi, M. Madokoro, Y. Miyazaki,
+guidance and assessment mechanisms. Ultimately, this line of and K. Maki, “Dental patient robot,” in 2006 IEEE/RSJ International
+research aims to provide medical students with increasingly ConferenceonIntelligentRobotsandSystems. IEEE,2006,pp.1273–
+realistic,accessible,andeffectivetoolsformasteringessential 1278.
+[18] S. Ishikawa, S. Okamoto, K. Isogai, Y. Akiyama, N. Yanagihara, and
+clinical skills.
+Y. Yamada, “Assessment of robotic patient simulators for training in
+manual physical therapy examination techniques,” Plos one, vol. 10,
+REFERENCES
+no.4,p.e0126392,2015.
+[1] R.M.Harden,M.Stevenson,W.W.Downie,andG.Wilson,“Assess- [19] J.Solis,N.Oshima,H.Ishii,N.Matsuoka,K.Hatake,andA.Takanishi,
+ment of clinical competence using objective structured examination.” “Developmentofasensorsystemtowardstheacquisitionofquantitative
+Britishmedicaljournal,vol.1,no.5955,p.447,1975. informationofthetrainingprogressofsurgicalskills,”in20082ndIEEE
+[2] K.Z.Khan,S.Ramachandran,K.Gaunt,andP.Pushkar,“Theobjective RAS & EMBS International Conference on Biomedical Robotics and
+structured clinical examination (osce): Amee guide no. 81. part i: an Biomechatronics. IEEE,2008,pp.959–964.
+historical and theoretical perspective,” Medical teacher, vol. 35, no. 9, [20] K. K. Howard, H. Makki, N. M. Novotny, M. Mi,
+pp.e1437–e1446,2013. and N. Nguyen, “Value of robotic surgery simulation for
+[3] D. R. Danforth, M. Procter, R. Chen, M. Johnson, and R. Heller, training surgical residents and attendings: a systematic review
+“Development of virtual patient simulations for medical education,” protocol,” BMJ Open, vol. 12, 2022. [Online]. Available:
+JournalForVirtualWorldsResearch,vol.2,no.2,2009. https://api.semanticscholar.org/CorpusID:249675756
+[4] L. Campillos-Llanos, C. Thomas, E. Bilinski, P. Zweigenbaum, [21] S.Feng,A.J.Magana,andD.Kao,“Asystematicreviewofliterature
+and S. Rosset, “Designing a virtual patient dialogue system based ontheeffectivenessofintelligenttutoringsystemsinstem,”2021IEEE
+on terminology-rich resources: Challenges and evaluation,” Natural Frontiers in Education Conference (FIE), pp. 1–9, 2021. [Online].
+Language Engineering, vol. 26, pp. 183 – 220, 2019. [Online]. Available:https://api.semanticscholar.org/CorpusID:245388778
+Available:https://api.semanticscholar.org/CorpusID:199008654 [22] M. U. Hadi, R. Qureshi, A. Shah, M. Irfan, A. Zafar, M. B. Shaikh,
+[5] J. McCallum, V. Ness, and T. M. Price, “Exploring nursing students’ N. Akhtar, J. Wu, S. Mirjalili et al., “Large language models: a
+decision-making skills whilst in a second life clinical simulation labo- comprehensive survey of its applications, challenges, limitations, and
+ratory.”Nurseeducationtoday,vol.317,pp.699–704,2011.[Online]. futureprospects,”AuthoreaPreprints,2023.
+Available:https://api.semanticscholar.org/CorpusID:207077332 [23] S. Sonkar, L. Liu, D. B. Mallick, and R. Baraniuk, “Class:
+[6] A. A. Rizzo, T. Bowerly, J. G. Buckwalter, D. Klimchuk, R. Mitura, A design framework for building intelligent tutoring systems
+and T. D. Parsons, “A virtual reality scenario for all seasons: The based on learning science principles,” in Conference on Empirical
+virtual classroom,” CNS Spectrums, vol. 11, pp. 35 – 44, 2009. Methods in Natural Language Processing, 2023. [Online]. Available:
+[Online].Available:https://api.semanticscholar.org/CorpusID:11918016 https://api.semanticscholar.org/CorpusID:258832520
+[7] C. Pensieri and M. Pennacchini, “Overview: Virtual reality in [24] J. Macina, N. Daheim, S. P. Chowdhury, T. Sinha, M. Kapur,
+medicine,” The Journal of Virtual Worlds Research, vol. 7, 2014. I. Gurevych, and M. Sachan, “Mathdial: A dialogue tutoring
+[Online].Available:https://api.semanticscholar.org/CorpusID:63776596 dataset with rich pedagogical properties grounded in math reasoning
+[8] L. Campillos-Llanos, C. Thomas, E. Bilinski, A. Neuraz, problems,” ArXiv, vol. abs/2305.14536, 2023. [Online]. Available:
+S. Rosset, and P. Zweigenbaum, “Lessons learned from the https://api.semanticscholar.org/CorpusID:258865403
+usability evaluation of a simulated patient dialogue system,” [25] D.Yang,C.Ziems,W.Held,O.Shaikh,M.S.Bernstein,andJ.Mitchell,
+Journal of Medical Systems, vol. 45, 2021. [Online]. Available: “Social skill training with large language models,” arXiv preprint
+https://api.semanticscholar.org/CorpusID:234684719 arXiv:2404.04204,2024.
+[9] X. T. Zhu, H. Cheerman, M. Cheng, S. R. Kiami, L. Chukoskie, and [26] Y.Sugamiya,T.Otani,R.Nakadate,andA.Takanishi,“Constructionof
+E. McGivney, “Designing vr simulation system for clinical commu- automaticscoringsystemtosupportobjectiveevaluationofclinicalskills
+nication training with llms-based embodied conversational agents,” in inmedicaleducation,”in201941stAnnualInternationalConferenceof
+ProceedingsoftheExtendedAbstractsoftheCHIConferenceonHuman theIEEEEngineeringinMedicineandBiologySociety(EMBC). IEEE,
+FactorsinComputingSystems,2025,pp.1–9. 2019,pp.4177–4181.
+
+[27] J.Wei,X.Wang,D.Schuurmans,M.Bosma,F.Xia,E.Chi,Q.V.Le,
+D. Zhou et al., “Chain-of-thought prompting elicits reasoning in large
+languagemodels,”Advancesinneuralinformationprocessingsystems,
+vol.35,pp.24824–24837,2022.
+[28] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak super-
+vision,” in International Conference on Machine Learning. PMLR,
+2023,pp.28492–28518.
+[29] T. Wolf, L. Debut, V. Sanh, J. Chaumond, C. Delangue, A. Moi,
+P.Cistac,T.Rault,R.Louf,M.Funtowiczetal.,“Transformers:State-
+of-the-art natural language processing,” in Proceedings of the 2020
+conferenceonempiricalmethodsinnaturallanguageprocessing:system
+demonstrations,2020,pp.38–45.
+[30] V.Panayotov,G.Chen,D.Povey,andS.Khudanpur,“Librispeech:anasr
+corpusbasedonpublicdomainaudiobooks,”in2015IEEEinternational
+conferenceonacoustics,speechandsignalprocessing(ICASSP). IEEE,
+2015,pp.5206–5210.
+[31] G.Team,R.Anil,S.Borgeaud,Y.Wu,J.-B.Alayrac,J.Yu,R.Soricut,
+J.Schalkwyk,A.M.Dai,A.Hauthetal.,“Gemini:afamilyofhighly
+capablemultimodalmodels,”arXivpreprintarXiv:2312.11805,2023.
+[32] J. Bai, S. Bai, Y. Chu, Z. Cui, K. Dang, X. Deng, Y. Fan, W. Ge,
+Y. Han, F. Huang et al., “Qwen technical report,” arXiv preprint
+arXiv:2309.16609,2023.
+
+LLM-Powered Virtual Patient Agents for Interactive Clinical
+Skills Training with Automated Feedback
+Supplementary Material
+Contents
+1 MedicalBackground 2
+2 ImplementationDetails 3
+2.1 SystemArchitectureOverview . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 3
+2.2 FeatureImplementations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+2.2.1 OSCEScenarioManagement . . . . . . . . . . . . . . . . . . . . . . . . . 4
+2.2.2 PatientFeatures . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+2.2.3 TutorFeatures . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+3 PromptingDetails 8
+3.1 PatientPrompt . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+3.2 TutorPrompt . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+4 ExpertEvaluationScenario 10
+
+1 Medical Background
+AnObjectiveStructuredClinicalExamination(OSCE)attemptstoobjectivelyassesstheclinicalskills
+ofmedicalstudentsusingrepresentative,simulatedclinicalscenarios[Hardenetal.,1975,Khanetal.,
+2013]. A scenario consists of the following artifacts: a) a detailed patient profile, which contains
+informationaboutthepatient’ssymptomsandbehavior,b)ataskdescription,whichconveyswhatthe
+studentmustdointhisassessment,andc)achecklist,whichcontainsalistofactionstobeperformed
+bythestudent. Theseactionsarerelevanttoanobjectiveassessmentbyanexaminer,suchasamedical
+professional. OSCEscenarios,alsoknownasstations,areconductedinavarietyofwaysdependingon
+theclinicalareatheytargetandthedemandstheyplaceonstudents[Hardenetal.,2015]. However,
+mostscenariosfallintooneofthefollowingfourcategories:
+• Clinical Examination involves performing a systematic investigation on a real or simulated
+patient.
+• ClinicalProcedures,includingtheperformanceofaclinicalskillsuchasvenipuncture.
+• CommunicationSkills,includinginteractionskillssuchastakingapatient’shistoryorcommu-
+nicatinginformationtoapatient.
+• DataInterpretation,suchastheinterpretationofX-raysorbloodtests.
+Nowadays,trainingcoursesandexaminationsbasedontheOSCEschemeareusuallyconductedin
+person. Patients are either simulated by fellow students or by professional actors. Although this
+providesanengaginglearningexperienceforstudents,theseformsofpracticeareverylimiteddueto
+thecostlyuseofactorsandthesmallvarietyofscenariosthatcanbere-enacted.
+Figure1: OverviewofanObjectiveStructuredClinicalExamination(OSCE)scenario. Thefigureillustrates
+thecorecomponentsofatypicalOSCEstation. Apatientisassignedarolewithspecificsymptoms(e.g.,John
+Miller,46,withneckpain). Astudentisgivenaclinicaltasktoperform,suchasanupperlimbneurological
+examination. Anexaminerusesachecklisttoassessthestudent’sperformanceonkeyactions.
+2
+
+2 Implementation Details
+2.1 SystemArchitectureOverview
+To illustrate the functionality of our framework, we implemented a basic clinical skills training
+application. The system architecture is divided into two parts: the frontend and the backend. The
+backend containsanAPIservicethatcoordinatesalanguagemodeltosimulatethebehaviorofpatient
+andtutoragents. Thefrontend hostsaspeech-to-textcomponentthattranscribesspokenwordsinto
+text,aswellasavirtualpatientsimulatorimplementedusingtheUnitygameengine[Haas,2014]. An
+overview of the system architecture is shown in Figure 2. The backend of the system is not bound
+toaspecificfrontendandcanbeusedeitherwithavirtualpatientsimulatorasthefrontendorwith
+a physical robot that then represents the patient, provided that the outlined generic communication
+protocolisused.
+Figure2: Systemarchitectureoverview. Thediagramillustratesthedataflowforauserinteraction. (1)Auser
+interactswiththepatientsimulationviathefrontend. (2)SpokeninputistranscribedtotextthroughAutomatic
+SpeechRecognition(ASR).(3)Theconversationmanagerassemblestheinteractionhistoryandcurrentstate
+intoaprompt. (4)ThispromptissenttoaLargeLanguageModel(LLM)viatheGoogleCloudVertexAPI,
+whichgeneratesafunctioncall. (5)Afterformatverification,theresultingJSON-RPCfunctioncallisexecuted
+bythefrontendtoupdatethesimulation.
+Theinteractionofthesimulatorfrontendwiththebackendduringatrainingsessionproceedsasfollows:
+Theusereithertypesorspeaksanintendedcommandintothechatcomponent. Ifthemicrophoneis
+used,theWhisperspeechrecognitionmodeltranscribestheaudiointotext. Thistextisthensenttothe
+appropriateagentAPI(patientortutor)inthebackendcomponent,dependingonwhichagentisbeing
+addressedintheconversation. Oncethemessageisreceived,thepromptisconstructed. Thedynamic
+promptconstructionprocessisperformedbytheconversationmanager. Theconversationmanagerhas
+accesstothefunctionsetsoftheagent’sactionandperceptionspace. Itthenfiltersthestreamoflogs
+resultingfromthepub-submechanismfromthesimulatorforthesefunctions. Whenachangeinthe
+3
+
+observedvariablesisdetected,theconversationmanagerupdatestheobservedvariablesobjectwith
+thosechanges(e.g.,achangeinthepositionofthearms,legs,orhead)andwritesthemtotheprompt.
+It then adds the last 20 messages from the filtered log to the prompt to provide the language model
+withtherecenthistoryoftheinteraction. Italsocopiestheroledescriptionandaction/perceptionspace
+functionsintotheprompt. Finally, theuserqueryisinsertedintotheprompt. Thetaskgiventothe
+LLMistocompletethepromptaftertheaction:: tokenwithanappropriatefunctionandarguments
+fromtheactionspace. Thisallowsthelanguagemodeltore-enactthegivenroleandreturnafunction
+call in JSON-RPC format. Once the function call string is generated, it is validated in the backend
+and then sent to the frontend where it is executed (in this case, the virtual agent in the Unity-based
+simulatorenvironment). Thiscompletestheinteractionloopandanewcycleisinitiateduntiltheend
+oftheOSCEtrainingsession.
+2.2 FeatureImplementations
+2.2.1 OSCEScenarioManagement
+ThesystemallowsthecreationandmanagementofOSCEscenarios,asillustratedinFigure3. Tocreate
+ascenariofortraining,itisnecessarytoprovideapatient’sroledescriptionandataskdescriptionfor
+thestudent. Inaddition,anOSCEchecklistmustbeprovidedsothatthetutorcanperformanevalua-
+tionafterthetraining. Trainingscenariosarestoredinthebackendandcanbeupdatedandmodifiedat
+anytime. Initsstandardconfiguration,thesystemcoversthecreationofcustomizedOSCEscenarios
+forwhichthenecessaryperceptionandactionfunctionsoftheunderlyingagenthavebeenimplemented.
+Theframeworkisdesignedtoseparatecontentcreationfromtechnicaldevelopmenttoensurescalability.
+Theprocessistwo-tiered:
+• Educator: Anon-technicalusercancreateanewscenariobyprovidingtext-basedassetsthrough
+a simple interface: the patient persona, the student tasks, the tutor persona, and the OSCE
+checklist. Ifmaterialsareprepared,thiscanbedoneinafewhours.
+• Developer: Ifascenariorequiresanovelphysicalactionnotalreadyinthelibrary(e.g.,aspecific
+movementorgesture),adevelopermustcodeandanimatethisfunction. Thisisamoreinvolved
+task,potentiallytakingafewdays.
+Thismodulardesignallowseducatorstorapidlycreatemanynewscenariosusingtheexisting,extensive
+libraryofcommonphysicalmovements,whileprovidingaclearpathforexpansion.
+2.2.2 PatientFeatures
+Thefirstgoaloftheproposedframeworkistoenhancethenaturalnessandcoherenceofthesimulated
+patient character in training by extending its action capabilities beyond text to include interactive
+behavior. Thefollowingthreefeaturesillustratethecapabilitiesofthesimulatedpatient:
+Chatinteraction. Chatinteractionwiththesimulatedpatientallowsforthepracticeofcommunication
+skills such as taking a patient’s history or providing information to the patient. This has also been
+coveredinpreviouswork[Danforthetal.,2009,Campillos-Llanosetal.,2019]. Thestudenttalksto
+4
+
+Figure3: InterfaceforcreatingcustomOSCEscenarios. Educatorscanauthornewtrainingscenariosusing
+thisstructuredform. Thefigureshowsthecreationofa"BreakingBadNewswithEmpathy"scenario,which
+fallsunderthe‘CommunicationSkills‘category. Theauthordefinesthestepsofthetaskforthestudent,creates
+a detailed role description for the patient (including history and emotional state), and specifies the OSCE
+checklistitemsfortheexaminertouseduringevaluation.
+thepatientusingeithervoiceortext,andresponsesarereturnedinthechat.
+Movementbehavior. Byintroducinganactionspaceoffunctionsinourframework,simulatedagents
+nowsupportinteractivemovementsinadditiontopuretext-basedinteraction. Toperformanexamina-
+tion,patientscanbeinstructedtomovetheirarms,legs,orjointstocertainpositionsandpostures,and
+thestudentsexaminethetrajectories.
+Reactivebehavior. Byintroducingaperceptionspace,aninternalstateofobservedvariablesaswell
+as a message feed of the recent history of the interaction, the simulated patient is now capable of
+reactivebehaviorwithrespecttoitsinternalstate. Forexample,astudentcanchangethepositionof
+5
+
+Figure4: Demonstrationofthepatientagent’smultimodalbehaviors. Thisfigureshowcasestheagent’s
+abilitytosimulateaclinicalencounterthroughthreedistinctinteractiontypes. First,theagentconductsrealistic
+chatinteractions(left)toanswerquestionsandinaconversation. Second,ittranslatescommandsintophysical
+actionsormovementbehaviors(center),allowingthestudenttodirectthepatientduringatrainingsession.
+Third,theagentpossessesreactivebehaviors(right),whereitreportsonsensoryinputbyaccessingitsinternal
+state,providingcrucialfeedbackforprocedureslikeaneurologicaltest.
+thearmorpushthepatient’sarminacertaindirection. Theagentnoticesthischangeinpositionand,
+whenasked,cantellifthemovementispainfulornot,dependingonthemedicalconditionspecified.
+2.2.3 TutorFeatures
+Thesecondgoaloftheproposedframeworkistoincreasethedetailandqualityoffeedbackprovidedby
+identifyingthestepsperformedinanOSCEchecklist. Thisextendsthekeywordmatchingofexisting
+work to a comprehensive performance assessment that encompasses the entirety of the interaction
+betweenthestudentandthepatientagent. Thefollowingthreefeaturesillustratethecapabilitiesofthe
+tutoragent:
+Interactivehelp. Atanypointduringatrainingsession,studentscanaskthetutorforhelp,suchas
+’whatsteptotakenext’. Thetutorispromptedwiththepatient’sroledescriptionandknowsthetask
+thestudentisabouttoperform. Inthetutor’sroledescription,thetutoragentisencouragedtorespond
+inamotivatingwaytohelpthestudentfigureouthowtoproceedbasedontheinformationgiven. Itis
+alsopossibletoincludeadditionalscenario-relatedknowledgeintothetutoragentprompttoallowfor
+evenmoredetailedcase-basedsupportandquestion-answering.
+Training summary. After a training session is completed, the tutor agent provides a detailed sum-
+mary of the training session. The summary is structured to list positive and negative aspects of the
+student’sperformance. BasedontheOSCEchecklistthetutoragentsummarizeswhichcheckpoints
+wereappropriatelytargeted, which wereforgotten, orwhichneedtobe improvedinthefuture(see
+Figure5). Byhavingaccesstothelogsoftheentireinteraction,theagentcantakeintoaccountevery-
+thingthatwassaidordonewhensummarizingthebehavior. Thisallowsformuchmorefine-grained
+feedbackthanascoringapproachthatonlycheckswhethercertainkeywordswereused. Inaddition,
+byusingtheLLM’slanguageunderstandingcapabilities,thequalityoftheconversationcanbeeval-
+uatedmuchmoredeeply,allowingstudentstoimprovetheirconversationalstyleandskillswithpatients.
+OSCE Score. Finally, after the training session has been summarized, the tutor agent distills the
+evaluation into an OSCE score. To do this, the agent is asked to think through the OSCE checklist
+6
+
+Figure5: Formativeandsummativefeedbackprovidedbythetutoragent. Theagentoffersbothon-demand
+guidance and post-session evaluation. (Left) During the simulation, it provides formative feedback through
+interactivehelp,guidingstudentswithSocraticquestionsratherthandirectanswers. (CenterandRight)After
+thesession,itdeliverssummativefeedback,includingatrainingsummarywithqualitativeobservationsanda
+detailedOSCEscorethatquantitativelymeasuresperformanceagainstachecklist.
+stepbystep[Weietal.,2022]. Eachsuccessfullycompletedchecklistitemisworth1point,andeach
+missed item is worth 0 points. The sum of all points is the OSCE score, which gives the student a
+concreteideaofhowwellithasperformed. Thestudentthenknowswhichscenariostheyaregood
+atandwhichneedfurtherstudy. Incontrasttoakeyword-matchingapproach,calculatingtheOSCE
+scorebasedontheentireinteractionlogsandtheOSCEchecklisthasseveraladvantages. First,new
+trainingscenarioscanbegeneratedveryeasilybyprovidingonlytheartifactsroledescription,task
+descriptionandchecklist,andnohard-codedkeywordmatchinghastobeprogrammed. Thismakes
+thetrainingapplicationveryflexibleandextensible. Second,newlygeneratedtrainingscenarioscan
+beautomaticallyevaluatedbyLLMsbecausethelanguageunderstandingcapabilitiesofLLMs,in
+combinationwiththeappliedstep-by-stepevaluationprocedure,allowthemtoinferfromthecontextof
+theconversationwhetheranOSCEchecklistitemhasbeenresolvedornot. Thisismuchmorepractical
+thanapproachesbasedonkeyword-matching,sincekeywordsmaybeambiguous.
+7
+
+3 Prompting Details
+3.1 PatientPrompt
+Thepatientpromptusedinthetrainingscenarioisasfollows:
+Imagineyou’rearealpatientinanOSCEmedicalexam.
+Yourgoal: Clearlyexplainyoursymptomsandconcernstothedoctorforanaccuratediagnosis
+andtreatmentplan.
+Background:
+{role_description}
+Thinklikearealperson:
+• Describeyourpainnaturally,usingyourownwords.
+• Answerquestionshonestlyandopenly.
+• Reacttothedoctor’sinstructionsandinquiriesinabelievablewaybasedonyouremotionalstate
+(usepromptsifneeded).
+Themorebelievableandnaturalyourresponsesare,thebetterthelearningexperiencewillbefor
+themedicalstudent.
+Remember:
+• Useyourbestjudgmenttostaytruetoyourcharacterandsituation.
+• Feelfreetoaskclarifyingquestionsifneeded.
+PatientState:
+{observed_variables}
+PerceptionSpace:
+{perception_space}
+ActionSpace:
+{action_space}
+PleasefollowtheinstructionsofthedoctoranduseonlytheactionsfromtheActionSpaceprovided
+toengageintheconversationeffectively.
+CurrentConversation:
+{history}
+8
+
+3.2 TutorPrompt
+Thetutorpromptusedinthetrainingscenarioisasfollows:
+Youareaseasonedmedicalteacherwithover20yearsofexperience,heretoguideastudentdoctor
+preparingfortheirOSCEexam.
+TheTaskatHand:
+Thestudentdoctoristaskedwith:
+{task_description}
+YourRoleasaMentor:
+• Youhaveaccesstotheassessmentchecklist,whichoutlineskeystepsfortheexamination.
+• Thestudentdoctorcanrequestyourhelpatanypoint.
+• Provide subtle hints based on the checklist to nudge them in the right direction. Don’t give
+awaytheanswer!
+• Focusonhelpingthestudentdoctordevelopessentialskillslikecriticalthinking,information
+recall,andeffectivecommunication.
+• Offerpositivereinforcementthroughoutthesimulationtokeepthedoctormotivated.
+Theassessmentchecklistfortheexaminationisasfollows:
+{checklist}
+CurrentConversation:
+Theconversationbetweenthestudentdoctorandthepatientisasfollows:
+{history}
+9
+
+4 Expert Evaluation Scenario
+ThissectioncontainsatranscriptoftheOSCEscenariooftheupperlimbneurologicalexamination
+usedtoconducttheexpertevaluation.
+Allresultswereobtainedusingthefollowing5-pointLikertscale:
+• (1)StronglyDisagree
+• (2)Disagree
+• (3)Neutral
+• (4)Agree
+• (5)StronglyAgree
+Thevirtualexamcontainsthefollowing5tasks:
+Task 1: History Taking. Imagine you are a physician performing a brief neurological exam on a
+patient,includingcheckingthefunctionofthenervesintheneckandshoulders.
+Thefirsttaskinthistrainingcycleistotakethepatient’smedicalhistory.
+Anexaminationmightincludethefollowingsteps:
+• Introducingyourselftothepatient.
+• Confirmingthepatient’snameanddateofbirth.
+• Explainwhattheexaminationwillentail.
+• Obtainingconsenttoproceedwiththeexamination.
+Q1: Thetextanswersgivenbythepatientagentarereasonableandgivetheimpressionofacoherent
+character.
+Task2: NeckPostureCheck. Aftertakingthepatient’shistory,ournextstepistoevaluatetheposture
+andmobilityoftheneck.
+Anexaminationmayincludethefollowingsteps:
+• Havingthepatientsitdown.
+• Havingthepatientperformheadmovementsandidentifypainfulmovements.
+Q2: Thepatientagentexecutesthegivencommandsasintended.
+Task3: PronatorDriftTest. Nowwewillexecuteapronatordrifttest,whichgivesusinsightabout
+upperlimbmuscleweakness.
+Anexaminationmayincludethefollowingsteps
+10
+
+• Havingthepatientstandup.
+• Havingthepatientmovetheirarmsstraightinfrontoftheirbodywhileeyesclosed.
+• Identifyingdriftingdirectionsinthearmsandcommunicatingtheobservationstothepatient.
+Q3: Thepatientagentexecutesthegivencommandsflawlessly.
+Task4: SensitivityTest. Inthispartofthetrainingwetestifthereareanydifferencesinsensitivity
+betweenthetwoarms.
+Anexaminationmayincludethefollowingsteps
+• Havingthepatientstandup.
+• Havingthepatientmovetheirarmsstraightinfrontoftheirbodywhileeyesclosed.
+• Touchingthearmsand/orhandsofthepatientandobservingifthetouchedareasaresensitive.
+• Communicatingtheresultstothepatient.
+Q4: Thepatientexecutesthegivencommandswellandgivesreasonableanswerstotherequests.
+Task 5: Training Summary. Now that you have completed thelast step, it is time to get feedback
+fromtheTutorAgent.
+Pleaseclicktheendsessionbuttonontheright.
+Apop-upwindowwillopenandtheTutorwillgiveyouasummaryofyourperformance.
+Q5: Thesummarygivenbytheteacherishelpfulandwouldhelpmeasastudenttoimprove.
+Task6: OSCEScore. TheOSCEScoreisanobjective,transparent,checklist-basedevaluationofa
+medicalstudent’sperformanceonaclinicalskillsexamination.
+To obtain the OSCE SCORE for the training you have completed, please click on the calculate
+OSCEscorebutton.
+Q6: TheOSCEscorecalculatedbytheteacheragentisfairandreasonableformyperformance.
+Task7: Assistance. Pleaseevaluatethequalityofthehelpofthetutorduringthetrainingsession.
+Q7: Theteacher’sanswerstomyquestionswerehelpfulandhelpedmetomoveforwardduringthe
+training.
+11
+
+References
+Leonardo Campillos-Llanos, Catherine Thomas, Eric Bilinski, Pierre Zweigenbaum, and Sophie
+Rosset. Designingavirtualpatientdialoguesystembasedonterminology-richresources: Challenges
+and evaluation. Natural Language Engineering, 26:183 – 220, 2019. URL https://api.
+semanticscholar.org/CorpusID:199008654.
+DouglasRDanforth,MikeProcter,RichardChen,MaryJohnson,andRobertHeller. Developmentof
+virtualpatientsimulationsformedicaleducation. JournalForVirtualWorldsResearch,2(2),2009.
+JohnKHaas. Ahistoryoftheunitygameengine. 2014.
+Ronald M Harden, Mary Stevenson, W Wilson Downie, and GM Wilson. Assessment of clinical
+competenceusingobjectivestructuredexamination. Britishmedicaljournal,1(5955):447,1975.
+RonaldMHarden,PatLilley,andMadalenaPatricio. TheDefinitiveGuidetotheOSCE:TheObjective
+StructuredClinicalExaminationasaperformanceassessment. ElsevierHealthSciences,2015.
+KamranZKhan,SankaranarayananRamachandran,KathrynGaunt,andPiyushPushkar. Theobjective
+structured clinical examination (osce): Amee guide no. 81. part i: an historical and theoretical
+perspective. Medicalteacher,35(9):e1437–e1446,2013.
+Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny
+Zhou,etal. Chain-of-thoughtpromptingelicitsreasoninginlargelanguagemodels. Advancesin
+neuralinformationprocessingsystems,35:24824–24837,2022.
+12

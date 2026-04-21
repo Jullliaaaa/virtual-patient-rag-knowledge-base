@@ -1,0 +1,371 @@
+EXPLORINGWAV2VEC2.0FINETUNINGFORIMPROVEDSPEECHEMOTION
+RECOGNITION
+Li-WeiChen,AlexanderRudnicky
+LanguageTechnologiesInstitute,CarnegieMellonUniversity
+ABSTRACT have been developed for speech processing. Wav2vec [9] is
+amulti-layerconvolutionalneuralnetwork(CNN)trainedto
+While Wav2Vec 2.0 has been proposed for speech recogni-
+predictfutureframesconditionedonpastframesbyminimiz-
+tion(ASR),itcanalsobeusedforspeechemotionrecognition
+ingacontrastiveloss. Ontheotherhand,wav2vec2.0[10]is
+(SER); its performance can be significantly improved using
+atransformer-basedmodelthatadoptsamaskedlearningob-
+differentfine-tuningstrategies.Twobaselinemethods,vanilla
+jectivetopredictmissingframesfromtheremainingcontext.
+fine-tuning (V-FT) and task adaptive pretraining (TAPT) are
+first presented. We show that V-FT is able to outperform
+Despite the success of these methods in ASR, speaker
+state-of-the-art models on the IEMOCAP dataset. TAPT,
+verification, and mispronunciation detection [10, 12, 13],
+an existing NLP fine-tuning strategy, further improves the
+only a few attempts [14, 15, 16] have been made to apply
+performance on SER. We also introduce a novel fine-tuning
+them on SER. Boigne et al. [14] find that wav2vec features
+methodtermedP-TAPT,whichmodifiestheTAPTobjective
+are superior to traditional spectral-based features on SER.
+tolearncontextualizedemotionrepresentations. Experiments
+Xiaetal.[15]comparefeaturesextractedwithdifferenttime
+show that P-TAPT performs better than TAPT, especially
+spansandconcludethatfeatureswithlongertemporalcontext
+under low-resource settings. Compared to prior works in
+such as wav2vec perform better on SER. Pepino et al. [16]
+this literature, our top-line system achieved a 7.4% absolute
+show that features extracted from a linear combination of
+improvement in unweighted accuracy (UA) over the state-
+layersoutperformsingelayerrepresentationsinwav2vec2.0
+of-the-art performance on IEMOCAP. Our code is publicly
+on SER. While these studies demonstrated the usefulness of
+available.1
+thepretrainedmodelsasfeatureextractors,littleresearchhas
+IndexTerms— Speechemotionrecognition,deepneural beenconductedonfine-tuningthemforSER.
+networks,wav2vec2.0,fine-tuning,pretrainedmodels
+One persistent issue on fine-tuning pretrained models is
+themismatchbetweenpretrainingandtargetdomain[17,18].
+1. INTRODUCTION
+Taskadaptivepretraining(TAPT)[17]isproposedtoresolve
+the domain shift by continuing the pretraining process on
+Speech emotion recognition (SER) remains one of the key
+the target dataset. Hsu et al. [18] show that TAPT greatly
+components in human-machine interaction and in human
+improves generalization and robustness on ASR when the
+communication systems. With the development of deep
+pretraining and fine-tuning data are dissimilar. Since the
+learning, several attempts [1, 2, 3] have been made to auto-
+speech in the pretraining ASR corpus differs from emotive
+matically learn emotion representations from audio signals
+speech in multiple regards [19], we consider TAPT a com-
+usingneuralnets. However, theimprovementofdeeplearn-
+pellingmethodforfine-tuningonSER.
+ing based systems is often limited by the lack of annotated
+data. Commonly used SER datasets [4, 5, 6] are relatively
+Inthispaper,weexploremethodsforfine-tuningwav2vec
+small in size in comparison to automatic speech recognition
+2.0onSER.Weshowthatbyaddingasimpleneuralnetwork
+(ASR)datasets. Moreover,systemstrainedonthesedatasets
+on top of wav2vec 2.0, vanilla fine-tuning (V-FT) outper-
+maynotgeneralizewelltootherdomainssuchascallcenters.
+formsstate-of-the-art(SOTA)methodsontheIEMOCAP[4]
+Self-supervised pretrained models [7, 8] provide a solu-
+dataset. In addition, with V-FT as a baseline, TAPT signifi-
+tion by first learning from a large scale speech corpus with-
+cantlybooststheperformanceoffine-tuningwav2vec2.0on
+out explicit labeling. The knowledge learned from pretrain-
+SER.Furthermore,motivatedbypreviousworksontheben-
+ingcanbetransferredtodownstreamtasksbyeitherusingthe
+efitsof segment-based emotionfeatures[1, 20,15]andself-
+modelasafeatureextractorordirectlyfine-tuningthewhole
+supervised representation learning [11, 21], we developed a
+model. Whilefirstintroducedforthepurposeofnaturallan-
+novelfine-tuningprocedureforSERwhichyieldsevenbetter
+guageprocessing(NLP),severalpretrainedmodels[9,10,11]
+performance, especially in low-resource conditions. Finally,
+1https://github.com/b04901014/FT-w2v2-ser weachievea7.4%absoluteincreaseonunweightedaccuracy
+(UA)overtheSOTAperformanceonIEMOCAP.
+3202
+beF
+12
+]SA.ssee[
+3v90360.0112:viXra
+
+Fig.1: Systemoverviewofourmethods. (a)EmotionstateestimationphaseofP-TAPT.AnadditionalCNNwithstride2is
+usedtoalignthetimestepsbetweenwav2vecandwav2vec2.0. Theoutputofclusterassignmentswillbeusedaspseudo-labels
+fortheP-TAPTobjective. (b)Modelarchitectureandpretrainingobjectiveofwav2vec2.0alongwithourP-TAPTobjective.
+2. METHOD onthefinallayerissimpleyeteffectiveforSER.Specifically,
+the final contextualized representation extracted by wav2vec
+We first review wav2vec 2.0, which serves as the backbone 2.0 is first processed by a global average pooling across the
+model for the methods we examine. We then present the timedimension,thenfollowedbytheReLUactivationanda
+two baseline methods we established. Finally, we introduce single linear layer to predict the emotion categories. In ad-
+pseudo-label task adaptive pretraining (P-TAPT), a novel dition, amodifiedversionofSpecAugment[22]proposedin
+methodwedesignedtofine-tunewav2vec2.0onSER. wav2vec 2.0 is applied during training for better generaliza-
+tion. We will use this architecture for the fine-tuning stage
+2.1. Thewav2vec2.0model
+of all three methods. We abbreviate the vanilla fine-tuning
+Wav2vec 2.0 is a transformer-based model trained to extract methodasV-FT.
+contextualized representations from raw audio signal. Fig- Task adaptive pretraining. Task adaptive pretraining
+ure1.bshowsthewav2vec2.0modelarchitectureanditspre- (TAPT) [17] is a simple but effective method to fine-tune
+training objective. It consists of three sub-modules, feature pretrained language models [7] on domain-specific tasks. It
+encoder,transformermodule,andquantizationmodule. Fea- bridgesthedifferencebetweenthepretrainingandtargetdo-
+ture encoder is a multi-layer CNN that processes the input mainbycontinuingtopretrainonthetargetdataset.Inthispa-
+signal into low-level features. Based on this representation, per, we examine TAPT as one of the methods of fine-tuning
+thetransformermoduleisfurtherappliedtoproducecontex- wav2vec 2.0 on SER. To distinguish from the original pre-
+tualizedrepresentation. Thequantizationmodule discretizes trainingandfine-tuningstage,wedefineanintermediatetask
+thelow-levelfeaturesintoatrainablecodebook. Totrainthe adaptationstageforthecontinualpretrainingprocess.
+model, part of the low-level features are masked from the
+transformermodule,andtheobjectiveistoidentifythequan- 2.3. Pseudo-labeltaskadaptivepretraining
+tizedversionofthemaskedfeaturesbasedonitscontext.2
+While TAPT adapts to emotive speech by continual training
+2.2. Comparingmethods with the pretraining objective, it does not make use of emo-
+tion labels. Essentially, the contextualized representations
+As there is no existing baseline system fine-tuning wav2vec
+obtained will be general features suitable for various down-
+2.0onSER,wecreatedtwobaselines.Oneistheconventional
+streamtasks. AsweonlyfocusonSER,weproposetoadapt
+fine-tuningmethod,andtheotheristaskadaptivepretraining
+thisobjectivetogenerateemotion-specificfeatures.Insteadof
+whichisfirstintroducedinNLP.
+identifying the missing low-level features, we focus on pre-
+Vanilla fine-tuning. Wav2vec 2.0 differs from its NLP
+dicting the emotion state of the masked sequence. One ad-
+counterparts[7]inthatthereisnoutterance-levelpretraining
+vantage it brings is better data efficiency. Reconstruction of
+tasktonaturallyformasentencerepresentation. Asaconse-
+missingaudiopartsisamorecomplicatedtask,whichmakes
+quence,aggregationacrosstimestepsisrequiredtofine-tune
+the model vulnerable to over-fitting. Additionally, it simpli-
+onutterancelevelclassificationtasks. Weexperimentedwith
+fies the fine-tuning stage as it already filters out information
+differentconfigurationsandfoundthatusingaveragepooling
+unrelatedtoemotionrecognitionfromthecontextualizedrep-
+resentation.
+2Thereisanadditionaldiversitylossinpretrainingwhichpromotesthe
+diversityofthequantizationcodebook. However, frame-level emotion states need to be recog-
+
+nizedtorealizeourmethod. Whileonlyutterance-levelemo- wav2vec 2.0 implementation on top of the huggingface im-
+tionlabelsaregivenformostoftheSERdataset,severalstud- plementation and adopt a pretrained model checkpoint from
+ies [15, 1, 20] indicate that frame-level emotion information Facebook AI4. Both models are pretrained on the unsuper-
+canstillbeinferredbytrainingwithasegment-basedclassifi- visedspeechofLibriSpeech960h[25]withouttranscriptions.
+cationobjective.Particularly,asshowninFigure1.a,wefine- Weevaluateoursystemsusingunweightedaccuracy(UA)[2]
+tune wav2vec to extract frame-level emotion representation under a speaker-independent setting; the speakers in the test
+thatisusefulforpredictinganutterance-levelemotionlabel. set are excluded from the training data. Additional imple-
+WefindthatusingCNNarchitecturessuchaswav2vecisim- mentation details are provided in our github repository. We
+portantsincethelocalityofCNNpreservessequentialstruc- run each experiment 5 times for the full IEMOCAP dataset
+ture.Aftertraining,werunk-meansclusteringalgorithm[23] and 20 times for SAVEE and on sub-sampled versions of
+onalloftheextractedrepresentationsfromthetargetdataset. IEMOCAP. Additionally, we observe that wav2vec 2.0 fails
+As Mathilde et al. [21] have shown, the k-means cluster as- to converge with some of the random seeds. Therefore we
+signmentsonintermediatelayersofCNNclassifierscancap- discardandrerunoutlierrunswheretheperformanceisout-
+ture information related to the target labels. Therefore, we sidetwostandarddeviationsfromthemean.
+interpretthisclusterassignmentasapseudo-labelthatrepre- IEMOCAP.Tohaveafaircomparisonwiththemajority
+sentsthelocalemotionstate. ofpreviousworks,wesplitthedatasetbyleavingonesession
+WethenreplacetheTAPTobjectivewithournewP-TAPT outastestset,theremainingfoursessionsareusedfortrain-
+objective. We add a position-wise linear head composed of ing. Note that most of the papers using IEMOCAP do not
+two linear layers to predict the k-means cluster assignments explicitly define their validation set [26]. We therefore train
+of the masked frames. In practice, we run multiple k-means withallfoursessionsforafixed15epochswithoutvalidation
+clusteringwithadifferentnumberofclusters,andourmodel using a batch size of 64. The number of epochs is chosen
+needstopredictanensembleofclusterassignmentswithmul- sothateachofourcompetingmethodsconvergesintermsof
+tiplelinearheads. Thisclusterensembletechniqueisshown trainingloss.
+tofacilitaterepresentationlearninginHuBERT[11],arecent SAVEE. A similar evaluation procedure is used for
+self-supervisedspeechrepresentationlearningmodel. SAVEE. In each fold, one speaker is left out for testing
+andtheremainingthreeareusedfortraining. Weincreasethe
+3. EXPERIMENTALSETUP
+numberoftrainingepochsto30andthebatchsizeishalved
+to32forthesmallertrainingset.
+3.1. Dataset
+We use two datasets for evaluation, IEMOCAP [4] and
+4. RESULTSANDDISCUSSION
+SAVEE[5]. Weonlyusethespeechmodality.
+IEMOCAP. Interactive Emotional Dyadic Motion Cap-
+4.1. Comparisonoffine-tuningmethods
+ture (IEMOCAP) is a popular dataset for evaluating SER
+systems. It contains five recording sessions, each with one Table1comparesperformanceforthefine-tuningmethodson
+male speaker and one female speaker. To compare with IEMOCAP.Forallsessionsexceptthefirst,TAPTyieldsano-
+previousworks,weusethedefaultlabelsprovidedbyIEMO- ticeableimprovementoverV-FT,andP-TAPTperformsbetter
+CAP.However,onlyfouremotioncategoriesareconsidered: thanTAPTforallsessions. Ontheotherhand,Table2shows
+neutral, sad, angry, and happy. In particular, the “excited” thatonSAVEE,bothTAPTandP-TAPToutperformV-FTby
+category is merged with “happy” due to its sparsity in the alargemargin. However,theperformanceofP-TAPTisvery
+dataset. Thetotalamountofspeechisabout7hours. closetothatofTAPTonSAVEE.Weanalyzetheseresultsby
+SAVEE. The Surrey Audio-Visual Expressed Emotion consideringthecharacteristicsofSAVEEandIEMOCAP.
+(SAVEE) dataset contains four male speakers: DC, JE, JK,
+Domain shift and linguistic content. We first quantify
+andKL.Eachspeakerreadsoutthesamesetof120sentences
+the domain shift between both datasets and the pretraining
+labeledwithoneofthe7emotioncategories: angry,disgust,
+dataset. We take the wav2vec 2.0 model pretrained on Lib-
+sad,fear,happy,surprise,andneutral. Weusealloftheemo-
+riSpeech and calculate the pretraining loss on both datasets
+tioncategories,whichresultsin480utteranceswithatotalof
+along with the test set of LibriSpeech. Table 3 verifies the
+30minutesofspeech.
+presence of domain shift on both datasets providing room
+for TAPT to improve. A smaller loss indicates that SAVEE
+3.2. Trainingandevaluationprocedure is closer to LibriSpeech as the model can already general-
+ize well to SAVEE. However, this improvement is larger on
+All experiments use the same learning rate 1 × 10−4 with
+SAVEEthanIEMOCAPdespitethesmallerdomainshift.We
+Adam optimizer [24]. For the wav2vec model, we use a
+observe a strong correlation between linguistic content and
+pretrained model developed by Facebook AI3. We build our
+3https://github.com/pytorch/fairseq/tree/master/examples/wav2vec 4https://huggingface.co/facebook/wav2vec2-base
+
+Table1: ComparisonofmethodsonIEMOCAPinUA(%) the wav2vec 2.0 model (using V-FT) outperforms wav2vec
+2.0 without fine-tuning[16] by 3.6% absolute UA. The P-
+Session 1 2 3 4 5 Mean TAPT method provides 7.4% absolute improvement over
+SOTAmodelsonIEMOCAP.Wealsoshowperformancefor
+V-FT 71.0 76.2 66.3 68.7 67.3 69.9
+methods that use both speech and text [27, 28]; our audio-
+TAPT 71.8 79.6 70.2 73.2 72.5 73.5
+onlymethodappearscomparable.
+P-TAPT 72.8 80.2 71.0 73.6 73.7 74.3
+Table4:ComparisonofmethodsondataefficiencyinUA(%)
+Table2: ComparisonofmethodsonSAVEEinUA(%) onthesession5ofIEMOCAP
+Speaker DC JE JK KL Mean Datasize ∼0.5hr ∼1hr ∼3hr ∼7hr
+V-FT 75.2 78.8 56.0 39.0 62.3 V-FT 56.8 60.9 66.4 67.3
+TAPT 81.6 83.3 69.9 49.7 71.1 TAPT 58.1 62.9 69.3 72.5
+P-TAPT 86.7 84.2 66.8 45.8 70.9 P-TAPT 58.8 64.1 70.0 73.7
+Human 73.7 67.7 71.2 53.2 66.5 Ratio(%) 65.0 62.5 80.6 81.3
+Table5: ComparisonwithpriorworksonIEMOCAP
+emotionlabelsinSAVEE.5Weconjecturethatthiscorrelation
+iscapturedbyourmodelandsurpasseshumanevaluatorswho
+Method Feature UA(%)
+annotateemotionfromonlypara-linguisticinformation. This
+also explains why P-TAPT does not further improve TAPT, FCN+Attention[3] Spectrogram 63.9
+as the TAPT objective is already suitable for modeling lin- Wav2vecw/o. FT[14] Wav2vec6 64.3
+guistic information. Nonetheless, in more naturally elicited Wav2vecw. FT[15] Waveform 66.9
+emotionalconversations(IEMOCAP),P-TAPTperformsbet- Wav2vec2.0w/o. FT[16] Wav2vec2.0 66.3
+terthanTAPT.
+Wav2vec2.0w. V-FT Waveform 69.9
+Dataefficiency. Wealsoinvestigatedthebehaviorofour
+Wav2vec2.0w. TAPT Waveform 73.5
+methods when presented with different amounts of training
+Wav2vec2.0w. P-TAPT Waveform 74.3
+data. Specifically,Wefixsession5ofIEMOCAPastheheld-
+out test set, and gradually halve the number of training ex- Audio+Text[27] MFCC+ALBERT7 72.1
+amples in the remaining four sessions by random selection. Audio+ASR[28] MFCC+BERT 75.9
+We compare TAPT and P-TAPT using the ratio of their cor-
+respondingimprovementsoverV-FT.Alowerratioindicates
+5. CONCLUSION
+that the improvement from P-TAPT is more significant than
+TAPT. As shown in Table 4, this ratio is lower under low-
+We describe different fine-tuning strategies for wav2vec 2.0
+resourcesettingswithonehourorlessoftrainingdata. Thus
+on SER. These strategies produce SOTA performance on
+P-TAPT is more data-efficient than TAPT. As mentioned in
+IEMOCAP,awell-studiedcorpus. Weverifythepresenceof
+Section2.3,weattributethistothechangeofobjectivefrom
+domain shift in SER and demonstrate that addressing it im-
+the reconstruction of audio frames to the prediction of emo-
+proves performance. We describe an algorithm for learning
+tion states which is less data-intensive though it requires la-
+contextualizedemotionrepresentationandshowitsadvantage
+beleddata.
+infine-tuningawav2vec2.0modelforSER.Webelievethat
+Table3: Wav2vec2.0pretraininglossondifferentdatasets these techniques can be generalized to other tasks and can
+provide a basis for research on the utility of contextualized
+emotionrepresentation. Weintendtocontinueexploringthe
+Dataset Libri.(test-clean) SAVEE IEMOCAP
+usefulnessofthisapproach,inamulti-modalsetting.
+Loss 32.04 41.37 55.42
+6. ACKNOWLEDGEMENTS
+4.2. Comparisonwithpriorworks WearegratefultoPwCUSAaswellastoTheDigitalTrans-
+formationandInnovationCenteratCarnegieMellonUniver-
+Table 5 compares our performance on IEMOCAP to that of
+sityforsupportingourresearch. WethankYangyangXiaand
+existing SOTA models. We only include methods that eval-
+RichardM.Sternforthediscussionsandfeedback.
+uate under speaker-independent settings. Simply fine-tuning
+6Weidentifyitasafeatureinsteadofmodelarchitecturesincetheyonly
+5Two-thirdsofthesentencesarespecifictooneemotionandsharedacross usewav2vec/wav2vec2.0asfeatureextractorwithoutfine-tuning.
+allspeakers. 7ReferringtothetextfeaturesextractedfromALBERT[8]andBERT[7].
+
+7. REFERENCES 2021,2021,pp.3370–3374.
+[16] L.Pepino,P.Riera,andL.Ferrer, “EmotionRecognitionfrom
+SpeechUsingwav2vec2.0Embeddings,”inProc.Interspeech
+[1] H. M. Fayek, M. Lech, and L. Cavedon, “Evaluating deep
+2021,2021,pp.3400–3404.
+learningarchitecturesforspeechemotionrecognition,”Neural
+Networks,vol.92,pp.60–68,2017. [17] S.Gururangan,A.Marasovic´,S.Swayamdipta,K.Lo,I.Belt-
+agy, D. Downey, and N. A. Smith, “Don’t stop pretraining:
+[2] K. Han, D. Yu, and I. Tashev, “Speech emotion recognition
+Adaptlanguagemodelstodomainsandtasks,” inProceedings
+usingdeepneuralnetworkandextremelearningmachine,” in
+ofACL,2020.
+Fifteenth annual conference of the international speech com-
+municationassociation,2014. [18] W.-N.Hsu,A.Sriram,A.Baevski,T.Likhomanenko,Q.Xu,
+V. Pratap, J. Kahn, A. Lee, R. Collobert, G. Synnaeve, and
+[3] Y. Zhang, J. Du, Z. Wang, J. Zhang, and Y. Tu, “Attention
+M. Auli, “Robust wav2vec 2.0: Analyzing Domain Shift
+basedfullyconvolutionalnetworkforspeechemotionrecogni-
+inSelf-SupervisedPre-Training,” inProc.Interspeech2021,
+tion,” in2018Asia-PacificSignalandInformationProcessing
+2021,pp.721–725.
+Association Annual Summit and Conference (APSIPA ASC),
+2018,pp.1771–1775. [19] M. D. Pell, “Influence of emotion and focus location on
+prosody in matched statements and questions.,” The Journal
+[4] C. Busso, M. Bulut, C.-C. Lee, A. Kazemzadeh, E. Mower,
+oftheAcousticalSocietyofAmerica,vol.1094,pp.1668–80,
+S. Kim, J. N. Chang, S. Lee, and S. S. Narayanan, “IEMO-
+2001.
+CAP:Interactiveemotionaldyadicmotioncapturedatabase,”
+Language resources and evaluation, vol. 42, no. 4, pp. 335– [20] S.Mao,P.Ching,C.-C.J.Kuo,andT.Lee, “AdvancingMul-
+359,2008. tipleInstanceLearningwithAttentionModelingforCategori-
+calSpeechEmotionRecognition,” inProc.Interspeech2020,
+[5] P.JacksonandS.ulhaq, “Surreyaudio-visualexpressedemo-
+2020,pp.2357–2361.
+tion(savee)database,”042011.
+[21] M. Caron, P. Bojanowski, A. Joulin, and M. Douze, “Deep
+[6] S. R. Livingstone and F. Russo, “The Ryerson audio-visual
+clusteringforunsupervisedlearningofvisualfeatures,” inEu-
+database of emotional speech and song (RAVDESS): A dy-
+ropeanConferenceonComputerVision,2018.
+namic,multimodalsetoffacialandvocalexpressionsinNorth
+AmericanEnglish,” PLoSONE,vol.13,2018. [22] D. S. Park, W. Chan, Y. Zhang, C.-C. Chiu, B. Zoph, E. D.
+Cubuk,andQ.V.Le,“SpecAugment:ASimpleDataAugmen-
+[7] J.Devlin,M.-W.Chang,K.Lee,andK.Toutanova, “BERT:
+tation Method for Automatic Speech Recognition,” in Proc.
+Pre-training of deep bidirectional transformers for language
+Interspeech2019,2019,pp.2613–2617.
+understanding,” inNAACL-HLT,2019.
+[23] S.Lloyd, “Leastsquaresquantizationinpcm,” IEEETrans-
+[8] Z. Lan, M. Chen, S. Goodman, K. Gimpel, P. Sharma, and
+actions on Information Theory, vol. 28, no. 2, pp. 129–137,
+R. Soricut, “Albert: A lite bert for self-supervised learning
+1982.
+oflanguagerepresentations,” inInternationalConferenceon
+LearningRepresentations,2020. [24] D.P.KingmaandJ.Ba, “Adam: Amethodforstochasticop-
+timization,”in3rdInternationalConferenceonLearningRep-
+[9] S. Schneider, A. Baevski, R. Collobert, and M. Auli,
+resentations,ICLR2015,SanDiego,CA,USA,May7-9,2015,
+“wav2vec: Unsupervised Pre-Training for Speech Recogni-
+ConferenceTrackProceedings,2015.
+tion,” inProc.Interspeech2019,2019,pp.3465–3469.
+[25] V. Panayotov, G. Chen, D. Povey, and S. Khudanpur, “Lib-
+[10] A. Baevski, Y. Zhou, A. Mohamed, and M. Auli, “wav2vec
+rispeech: An ASR corpus based on public domain audio
+2.0: Aframeworkforself-supervisedlearningofspeechrep-
+books,” in 2015 IEEE International Conference on Acous-
+resentations,” inAdvancesinNeuralInformationProcessing
+tics,SpeechandSignalProcessing(ICASSP),2015,pp.5206–
+Systems,2020,vol.33,pp.12449–12460.
+5210.
+[11] W.-N.Hsu,B.Bolte,Y.-H.H.Tsai,K.Lakhotia,R.Salakhutdi-
+[26] C. Etienne, G. Fidanza, A. Petrovskii, L. Devillers, and
+nov,andA.Mohamed,“Hubert:Self-supervisedspeechrepre-
+B.Schmauch,“CNN+LSTMArchitectureforSpeechEmotion
+sentationlearningbymaskedpredictionofhiddenunits,”2021.
+RecognitionwithDataAugmentation,” inProc.Workshopon
+[12] Z.Fan, M.Li, S.Zhou, andB.Xu, “Exploringwav2vec2.0 Speech,MusicandMind(SMM2018),2018,pp.21–25.
+onSpeakerVerificationandLanguageIdentification,” inProc.
+[27] M.ChenandX.Zhao, “AMulti-ScaleFusionFrameworkfor
+Interspeech2021,2021,pp.1509–1513.
+BimodalSpeechEmotionRecognition,” inProc.Interspeech
+[13] L.Peng,K.Fu,B.Lin,D.Ke,andJ.Zhan, “AStudyonFine- 2020,2020,pp.374–378.
+Tuning wav2vec2.0 Model for the Task of Mispronunciation
+[28] J. Santoso, T. Yamada, S. Makino, K. Ishizuka, and T. Hi-
+Detection and Diagnosis,” in Proc. Interspeech 2021, 2021,
+ramura, “Speech Emotion Recognition Based on Attention
+pp.4448–4452.
+WeightCorrectionUsingWord-LevelConfidenceMeasure,”in
+[14] J. Boigne, B. Liyanage, and T. O¨strem, “Recognizing more Proc.Interspeech2021,2021,pp.1947–1951.
+emotions with less data using self-supervised transfer learn-
+ing,” ArXiv,vol.abs/2011.05585,2020.
+[15] Y.Xia,L.-W.Chen,A.Rudnicky,andR.M.Stern, “Temporal
+ContextinSpeechEmotionRecognition,”inProc.Interspeech

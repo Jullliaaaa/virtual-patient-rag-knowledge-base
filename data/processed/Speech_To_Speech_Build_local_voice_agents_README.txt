@@ -1,0 +1,367 @@
+&nbsp;
+
+# Speech To Speech: Build local voice agents with open-source models
+
+## 📖 Quick Index
+* [Approach](#approach)
+
+- [Structure](#structure)
+
+- [Modularity](#modularity)
+* [Setup](#setup)
+* [Usage](#usage)
+
+- [Docker Server approach](#docker-server)
+
+- [Server/Client approach](#serverclient-approach)
+
+- [Local approach](#local-approach-running-on-mac)
+* [Command-line usage](#command-line-usage)
+
+- [Model parameters](#model-parameters)
+
+- [Generation parameters](#generation-parameters)
+
+- [Notable parameters](#notable-parameters)
+
+## Approach
+
+### Structure
+This repository implements a speech-to-speech cascaded pipeline consisting of the following parts:
+1. **Voice Activity Detection (VAD)**
+2. **Speech to Text (STT)**
+3. **Language Model (LM)**
+4. **Text to Speech (TTS)**
+
+### Modularity
+The pipeline provides a fully open and modular approach, with a focus on leveraging models available through the Transformers library on the Hugging Face hub. The code is designed for easy modification, and we already support device-specific and external library implementations:
+
+**VAD** 
+- [Silero VAD v5](https://github.com/snakers4/silero-vad)
+
+**STT**
+- Any [Whisper](https://huggingface.co/docs/transformers/en/model_doc/whisper) model checkpoint on the Hugging Face Hub through Transformers 🤗, including [whisper-large-v3](https://huggingface.co/openai/whisper-large-v3) and [distil-large-v3](https://huggingface.co/distil-whisper/distil-large-v3)
+- [Lightning Whisper MLX](https://github.com/mustafaaljadery/lightning-whisper-mlx?tab=readme-ov-file#lightning-whisper-mlx)
+- [MLX Audio Whisper](https://github.com/huggingface/mlx-audio) - Fast Whisper inference on Apple Silicon
+- [Parakeet TDT](https://huggingface.co/nvidia/parakeet-tdt-1.1b) - Real-time streaming STT with sub-100ms latency on Apple Silicon (CUDA/CPU via nano-parakeet, no NeMo)
+- [Paraformer - FunASR](https://github.com/modelscope/FunASR)
+
+**LLM**
+- Any instruction-following model on the [Hugging Face Hub](https://huggingface.co/models?pipeline_tag=text-generation&sort=trending) via Transformers 🤗
+- [mlx-lm](https://github.com/ml-explore/mlx-examples/blob/main/llms/README.md)
+- [OpenAI API](https://platform.openai.com/docs/quickstart)
+
+**TTS**
+- [MeloTTS](https://github.com/myshell-ai/MeloTTS)
+- [ChatTTS](https://github.com/2noise/ChatTTS?tab=readme-ov-file)
+- [Pocket TTS](https://github.com/kyutai-labs/pocket-tts) - Streaming TTS with voice cloning from Kyutai Labs
+- [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) - Fast and high-quality TTS optimized for Apple Silicon
+
+## Setup
+
+Clone the repository:
+```bash
+git clone https://github.com/huggingface/speech-to-speech.git
+cd speech-to-speech
+```
+
+Install dependencies with [uv](https://github.com/astral-sh/uv):
+```bash
+uv sync
+```
+
+The project now uses a single `pyproject.toml` with platform markers, so macOS and non-macOS dependencies are resolved automatically from one file.
+
+If you use Melo TTS, run this once after install:
+```bash
+uv run python -m unidic download
+```
+
+Apple Silicon MeloTTS note:
+- If MeloTTS fails on MPS with `Output channels > 65536 not supported at the MPS device`, update macOS first.
+- We reproduced this on an older macOS release and verified that the same environment worked after updating to macOS `26.3.1`.
+
+**Note on DeepFilterNet:** DeepFilterNet (used for optional audio enhancement in VAD) is currently incompatible with Pocket TTS due to numpy version constraints. DeepFilterNet requires `numpy =2`.
+
+If you want a DeepFilterNet-focused setup with `pyproject.toml`:
+1. Edit [`pyproject.toml`](./pyproject.toml): remove the `pocket-tts` dependency line.
+2. Add `deepfilternet>=0.5.6` and `numpy
+
+```
+
+### WebSocket Approach
+
+1. Run the pipeline with WebSocket mode:
+
+```bash
+
+python s2s_pipeline.py --mode websocket --ws_host 0.0.0.0 --ws_port 8765
+
+```
+
+2. Connect to the WebSocket server from your client application at `ws:// :8765`. The server handles bidirectional audio streaming:
+
+- Send raw audio bytes to the server (16kHz, int16, mono)
+
+- Receive generated audio bytes from the server
+
+### Local Approach (Mac)
+
+1. For optimal settings on Mac:
+
+```bash
+
+python s2s_pipeline.py --local_mac_optimal_settings
+
+```
+
+You can also specify a particular LLM model:
+
+```bash
+
+python s2s_pipeline.py \
+
+--local_mac_optimal_settings \
+
+--lm_model_name mlx-community/Qwen3-4B-Instruct-2507-bf16
+
+```
+
+This setting:
+
+- Adds `--device mps` to use MPS for all models.
+
+- Sets [Parakeet TDT](https://huggingface.co/nvidia/parakeet-tdt-1.1b) for STT (fast streaming ASR on Apple Silicon)
+
+- Sets MLX LM for the language model (uses `--lm_model_name` to specify the model)
+
+- Sets Qwen3-TTS for TTS
+
+- `--tts melo`, `--tts pocket`, and `--tts kokoro` are also valid TTS options on macOS.
+
+- Qwen3 on Apple Silicon uses `mlx-audio` and defaults to the `6bit` MLX variant unless you explicitly select a different quantization or model suffix.
+
+- To compare the MLX variants locally, run:
+
+```bash
+
+.venv/bin/python benchmark_tts.py \
+
+--handlers qwen3 \
+
+--iterations 3 \
+
+--qwen3_mlx_quantizations bf16 4bit 6bit 8bit
+
+```
+
+### Docker Server
+
+#### Install the NVIDIA Container Toolkit
+
+https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
+
+#### Start the docker container
+```docker compose up```
+
+### Recommended usage with Cuda
+
+Leverage Torch Compile for Whisper with Pocket TTS for a simple low-latency setup:
+
+```bash
+python s2s_pipeline.py \
+ --lm_model_name microsoft/Phi-3-mini-4k-instruct \
+ --stt_compile_mode reduce-overhead \
+
+--tts pocket \
+
+--recv_host 0.0.0.0 \
+ --send_host 0.0.0.0 
+```
+
+### Multi-language Support
+
+The pipeline currently supports English, French, Spanish, Chinese, Japanese, and Korean.
+
+Two use cases are considered:
+
+- **Single-language conversation**: Enforce the language setting using the `--language` flag, specifying the target language code (default is 'en').
+- **Language switching**: Set `--language` to 'auto'. In this case, Whisper detects the language for each spoken prompt, and the LLM is prompted with "`Please reply to my message in ...`" to ensure the response is in the detected language.
+
+Please note that you must use STT and LLM checkpoints compatible with the target language(s). For multilingual TTS, use Melo (English, French, Spanish, Chinese, Japanese, and Korean) or Chat-TTS.
+
+#### With the server version:
+
+For automatic language detection:
+
+```bash
+python s2s_pipeline.py \
+
+--stt whisper-mlx \
+
+--stt_model_name large-v3 \
+
+--language auto \
+
+--llm mlx-lm \
+
+--lm_model_name mlx-community/Qwen3-4B-Instruct-2507-bf16
+```
+
+Or for one language in particular, chinese in this example
+
+```bash
+python s2s_pipeline.py \
+
+--stt whisper-mlx \
+
+--stt_model_name large-v3 \
+
+--language zh \
+
+--llm mlx-lm \
+
+--lm_model_name mlx-community/Qwen3-4B-Instruct-2507-bf16
+```
+
+#### Local Mac Setup
+
+For automatic language detection (note: `--stt whisper-mlx` overrides the default parakeet-tdt from optimal settings, since Whisper `large-v3` has broader language coverage):
+
+```bash
+python s2s_pipeline.py \
+
+--local_mac_optimal_settings \
+
+--stt whisper-mlx \
+
+--stt_model_name large-v3 \
+
+--language auto \
+
+--lm_model_name mlx-community/Qwen3-4B-Instruct-2507-bf16
+```
+
+Or for one language in particular, chinese in this example
+
+```bash
+python s2s_pipeline.py \
+
+--local_mac_optimal_settings \
+
+--stt whisper-mlx \
+
+--stt_model_name large-v3 \
+
+--language zh \
+
+--lm_model_name mlx-community/Qwen3-4B-Instruct-2507-bf16
+```
+
+### Using Pocket TTS
+
+Pocket TTS from Kyutai Labs provides streaming TTS with voice cloning capabilities. To use it:
+
+```bash
+python s2s_pipeline.py \
+
+--tts pocket \
+
+--pocket_tts_voice jean \
+
+--pocket_tts_device cpu
+```
+
+Available voice presets: `alba`, `marius`, `javert`, `jean`, `fantine`, `cosette`, `eponine`, `azelma`. You can also use custom voice files or HuggingFace paths.
+
+## Command-line Usage
+
+> **_NOTE:_** References for all the CLI arguments can be found directly in the [arguments classes](https://github.com/huggingface/speech-to-speech/tree/d5e460721e578fef286c7b64e68ad6a57a25cf1b/arguments_classes) or by running `python s2s_pipeline.py -h`.
+
+### Module level Parameters 
+See [ModuleArguments](https://github.com/huggingface/speech-to-speech/blob/d5e460721e578fef286c7b64e68ad6a57a25cf1b/arguments_classes/module_arguments.py) class. Allows to set:
+- a common `--device` (if one wants each part to run on the same device)
+- `--mode` `local` or `server`
+- chosen STT implementation 
+- chosen LM implementation
+- chose TTS implementation
+- logging level
+
+### VAD parameters
+See [VADHandlerArguments](https://github.com/huggingface/speech-to-speech/blob/d5e460721e578fef286c7b64e68ad6a57a25cf1b/arguments_classes/vad_arguments.py) class. Notably:
+- `--thresh`: Threshold value to trigger voice activity detection.
+- `--min_speech_ms`: Minimum duration of detected voice activity to be considered speech.
+- `--min_silence_ms`: Minimum length of silence intervals for segmenting speech, balancing sentence cutting and latency reduction.
+
+### STT, LM and TTS parameters
+
+`model_name`, `torch_dtype`, and `device` are exposed for each implementation of the Speech to Text, Language Model, and Text to Speech. Specify the targeted pipeline part with the corresponding prefix (e.g. `stt`, `lm` or `tts`, check the implementations' [arguments classes](https://github.com/huggingface/speech-to-speech/tree/d5e460721e578fef286c7b64e68ad6a57a25cf1b/arguments_classes) for more details).
+
+For example:
+```bash
+--lm_model_name google/gemma-2b-it
+```
+
+### Generation parameters
+
+Other generation parameters of the model's generate method can be set using the part's prefix + `_gen_`, e.g., `--stt_gen_max_new_tokens 128`. These parameters can be added to the pipeline part's arguments class if not already exposed.
+
+## Citations
+
+### Silero VAD
+```bibtex
+@misc{Silero VAD,
+
+author = {Silero Team},
+
+title = {Silero VAD: pre-trained enterprise-grade Voice Activity Detector (VAD), Number Detector and Language Classifier},
+
+year = {2021},
+
+publisher = {GitHub},
+
+journal = {GitHub repository},
+
+howpublished = {\url{https://github.com/snakers4/silero-vad}},
+
+commit = {insert_some_commit_here},
+
+email = {hello@silero.ai}
+}
+```
+
+### Distil-Whisper
+```bibtex
+@misc{gandhi2023distilwhisper,
+
+title={Distil-Whisper: Robust Knowledge Distillation via Large-Scale Pseudo Labelling},
+
+author={Sanchit Gandhi and Patrick von Platen and Alexander M. Rush},
+
+year={2023},
+
+eprint={2311.00430},
+
+archivePrefix={arXiv},
+
+primaryClass={cs.CL}
+}
+```
+
+### Parler-TTS
+```bibtex
+@misc{lacombe-etal-2024-parler-tts,
+
+author = {Yoach Lacombe and Vaibhav Srivastav and Sanchit Gandhi},
+
+title = {Parler-TTS},
+
+year = {2024},
+
+publisher = {GitHub},
+
+journal = {GitHub repository},
+
+howpublished = {\url{https://github.com/huggingface/parler-tts}}
+}
+```

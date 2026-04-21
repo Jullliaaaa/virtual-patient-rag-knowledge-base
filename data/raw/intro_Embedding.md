@@ -1,0 +1,110 @@
+# Embedding Model — 語意向量模型
+
+## 什麼是 Embedding？
+
+Embedding（嵌入）是將文字、音訊或圖像等資料轉換為**高維數值向量**的技術。轉換後的向量能夠捕捉資料的語意特徵，使語意相似的內容在向量空間中距離相近。
+
+- **核心概念**：「語意相似 → 向量相近」
+- **應用場景**：RAG 檢索、語意搜尋、分類、聚類、跨語言對齊
+
+```
+"Whisper 是語音辨識模型" → [0.23, -0.41, 0.87, 0.12, ...]  ← 384 維向量
+"ASR model for speech"  → [0.21, -0.39, 0.85, 0.14, ...]  ← 向量接近！
+"今天天氣很好"           → [-0.55, 0.72, -0.13, 0.60, ...]  ← 向量遠
+```
+
+## Embedding 在虛擬病人系統中的角色
+
+在 Cascade Pipeline 的 RAG 模組中，Embedding Model 承擔兩個關鍵任務：
+
+1. **索引階段（Indexing）**：將知識庫中所有 chunks 轉為向量，存入 pgvector
+2. **查詢階段（Querying）**：將使用者問題轉為向量，與知識庫向量計算相似度
+
+**兩個階段必須使用同一個 Embedding Model**，否則向量空間不一致，搜尋結果會完全錯誤。
+
+## 相似度計算
+
+最常見的相似度指標是 **Cosine Similarity**：
+
+```
+cosine_similarity(A, B) = (A · B) / (|A| × |B|)
+```
+
+- 值域：-1 到 1，越接近 1 代表越相似
+- 優點：不受向量長度影響，只看方向
+- pgvector 中對應的運算子：`<=>` （cosine distance = 1 - cosine similarity）
+
+## 常見免費 Embedding 模型比較
+
+| 模型 | 向量維度 | 語言支援 | 模型大小 | 適合場景 |
+|---|---|---|---|---|
+| `all-MiniLM-L6-v2` | 384 | 英文為主 | ~80MB | 純英文資料，速度優先 |
+| `paraphrase-multilingual-MiniLM-L12-v2` | 384 | 50+ 語言含中文 | ~420MB | **中英混合資料首選** |
+| `all-mpnet-base-v2` | 768 | 英文 | ~420MB | 英文資料，品質優先 |
+| `BGE-m3` | 1024 | 100+ 語言 | ~570MB | 多語言 SOTA，較重 |
+| `text-embedding-3-small` | 1536 | 多語言 | — | OpenAI API（付費）|
+
+## 本系統選型：paraphrase-multilingual-MiniLM-L12-v2
+
+本系統選擇 `paraphrase-multilingual-MiniLM-L12-v2`，理由如下：
+
+1. **中英混合支援**：知識庫同時包含英文 arXiv 論文與中文個人筆記，此模型對中文語意的捕捉效果遠優於英文 only 模型
+2. **完全免費**：本地執行，無需 API Key，無速率限制，無費用
+3. **輕量可用**：384 維向量在準確度與計算速度之間取得平衡，CPU 推論速度可接受
+4. **sentence-transformers 生態**：由 HuggingFace 維護，`pip install sentence-transformers` 即可使用，首次執行自動下載約 420MB，之後完全離線
+
+```python
+from sentence_transformers import SentenceTransformer
+
+model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+
+# 單筆 embedding
+vec = model.encode("Whisper 使用 encoder-decoder Transformer 架構")
+# vec.shape → (384,)
+
+# 批次 embedding（效率更好）
+vecs = model.encode(["文字一", "文字二", "text three"], batch_size=32)
+```
+
+## Lexical Gap 問題與 HyDE 解法
+
+### 問題描述
+當使用者查詢語言與知識庫文件用詞不一致時，即使語意相同，向量距離也可能偏大，導致相關 chunks 無法被正確檢索。
+
+**範例**：
+- 查詢：「怎麼使用 whisper?」
+- 文件內容：`## Python usage` / `model = whisper.load_model("turbo")`
+
+查詢向量和文件向量距離較遠，因為「怎麼使用」和 `Python usage` 的表面用詞差距大。
+
+### HyDE（Hypothetical Document Embeddings）
+
+HyDE 是解決 lexical gap 的有效方法：
+
+```
+原始查詢
+    ↓
+LLM 生成「假設性技術說明」（100字內，風格類似論文）
+    ↓
+用假設說明做 Embedding，而非原始查詢
+    ↓
+向量搜尋（此時向量空間與知識庫更接近）
+    ↓
+取回相關 chunks → 送入 LLM 生成最終回答
+```
+
+**效果**：同樣查詢「怎麼使用 whisper?」，HyDE 將其轉換為「Whisper 可透過 `whisper.load_model()` 載入模型，再呼叫 `model.transcribe()` 進行轉錄...」，cosine similarity 從 0.55 提升至 0.76。
+
+## 評估 Embedding 品質
+
+| 方法 | 說明 |
+|---|---|
+| **Similarity Score 分布** | 觀察 retrieved chunks 的 similarity 分數，低於 0.6 通常代表 retrieval 品質不佳 |
+| **MTEB Benchmark** | HuggingFace 維護的多任務 Embedding 評測排行榜，可依語言與任務選擇最佳模型 |
+| **人工檢查** | 對已知答案的問題查看是否撈到正確 chunk |
+
+## Embedding 的限制
+
+1. **Token 長度上限**：`paraphrase-multilingual-MiniLM-L12-v2` 最大輸入為 128 tokens，超過會截斷，這也是 chunking 的必要性之一
+2. **跨模態限制**：文字 Embedding 模型無法直接處理音訊或圖像，語音系統需要先透過 ASR 轉為文字
+3. **領域遷移**：通用 Embedding 模型對高度專業的醫療術語（如 ICD 診斷碼）語意捕捉效果有限，醫療領域可考慮使用 BioBERT 等領域特化模型

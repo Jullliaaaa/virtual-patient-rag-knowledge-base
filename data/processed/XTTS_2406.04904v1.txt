@@ -1,0 +1,393 @@
+XTTS: a Massively Multilingual Zero-Shot Text-to-Speech Model
+EdressonCasanova1∗,KellyDavis2,ErenGo¨lge3∗,Go¨rkemGo¨knar2,IulianGulea2,LoganHart3∗,
+AyaAljafari1∗,JoshuaMeyer2,ReubenMorais4∗,SamuelOlayemi2,andJulianWeber3∗
+1 Nvidia,2 Coqui.ai,3 Cantina.ai,4 voizeGmbH
+ecasanova@nvidia.com
+Abstract performanceoftheVALL-Emodelwithtwoordersofmagni-
+tudelesstrainingdataandhasmorethan20×fastersampling
+MostZero-shotMulti-speakerTTS(ZS-TTS)systemssupport speed. HierSpeech++ [16] is an efficient hierarchical speech
+onlyasinglelanguage.AlthoughmodelslikeYourTTS,VALL- synthesisframeworkthatconsistsofahierarchicalspeechsyn-
+E X, Mega-TTS 2, and Voicebox explored Multilingual ZS- thesizer,text-to-vec,andspeechsuper-resolutionmodel.Toim-
+TTStheyarelimitedtojustafewhigh/mediumresourcelan- provespeakersimilaritytheauthorsintroducedabidirectional
+guages,limitingtheapplicationsofthesemodelsinmostofthe normalizingflowTransformernetworkusingAdaLN-Zero. To
+low/mediumresourcelanguages. Inthispaper,weaimtoalle- improveaudioquality,theyhaveproposedadual-audioacous-
+viatethisissuebyproposingandmakingpubliclyavailablethe tic encoder to enhance the acoustic posterior. HierSpeech++
+XTTSsystem.OurmethodbuildsupontheTortoisemodeland achievedZS-TTSSOTAresults,enhancingespeciallythegen-
+addsseveralnovelmodificationstoenablemultilingualtraining, eratedaudioquality.
+improvevoicecloning,andenablefastertrainingandinference.
+MostZS-TTSmodelssupportonlyasinglelanguage.How-
+XTTSwastrainedin16languagesandachievedstate-of-the-art
+ever, there is current interest in training models in multiple
+(SOTA)resultsinmostofthem.
+languages, reducing the number of speech hours and speak-
+Index Terms: Speech Synthesis, Text-to-Speech, Multilin-
+ers needed to have a ZS-TTS model in a target language.
+gualZero-shotMulti-speakerTTS,SpeakerAdaptation,Cross-
+YourTTS [4] was the first multilingual ZS-TTS model. The
+lingualTTS
+authors proposed several changes to VITS model [17] archi-
+tecture to support multilingual training and ZS-TTS. The au-
+1. Introduction
+thorstrainedthemodelusingapproximately1kspeakersinthe
+Text-to-Speech(TTS)systemshavereceivedalotofattention Englishlanguage,5speakersinFrench,and1speakerinPor-
+inrecentyearsduetothegreatadvancesindeeplearning.Most tuguese. ThemodelachievedSOTAresultsintheEnglishlan-
+TTS systems were tailored from a single speaker’s voice, but guageandpromisingresultsintheFrenchandPortugueselan-
+there is current interest in synthesizing voices for new speak- guages. It can also do cross-lingual TTS producing a native
+ers(notseenduringtraining)employingonlyafewsecondsof accent in the target language. YourTTS model has shown the
+speech. This approach is called zero-shot multi-speaker TTS viability of training ZS-TTS models in scenarios where only
+(ZS-TTS)asin[1,2,3,4,5,6]. a few speakers are available, enabling synthetic data gener-
+MonolingualZS-TTSwasfirstproposedby[7]whichex- ation for low-resource scenarios [18]. VALL-E X [19] was
+tendedtheDeepVoice3model[8]. Meanwhile,Tacotron2[9] built upon VALL-E; however, the authors introduced a lan-
+was adapted using external speaker embeddings, allowing for guage ID to support multilingual TTS and speech-to-speech
+speech generation that resembles the target speaker [1, 10]. translation. VALL-EXcanalsodocross-lingualTTS,produc-
+SC-GlowTTS [3] explored a flow-based architecture and im- inganativeaccentinthetargetlanguage. Mega-TTS2[6]is
+provedvoicesimilarityforunseenspeakersintrainingwithre- a ZS-TTS model capable of handling arbitrary-length speech
+spect to previous studies while maintaining comparable qual- prompts.Themodelwastrainedon38khoursofmulti-domain
+ity. VALL-E [5] was the pioneer in exploring the language language-balancedspeechinEnglishandChinese. Mega-TTS
+modeling approach for ZS-TTS. It is a text-conditioned lan- 2achievedSOTAperformancewithshortspeechpromptsand
+guage model trained on Encodec [11] tokens. Encodec en- alsoproducedbetterresultswithlongerspeechprompts.Inpar-
+codeseachaudioframewith8codebooksata75Hzframerate. allelwithourwork,Voicebox[20]wasproposed. Voiceboxis
+VALL-Eimprovedvoicesimilarityandnaturalnessforunseen a non-autoregressive continuous normalizing flow model. In
+speakers. Tortoise [12] also explored the language modeling contrast to auto-regressive models (e.g. VALL-E), Voicebox
+approach for ZS-TTS. It was trained with 49k hours of En- canconsumecontextnotonlyinthepastbutalsointhefuture.
+glish speech and it achieved promising ZS-TTS performance, TheVoiceboxmodelwastrainedin6languagesanditachieved
+enhancing naturalness. StyleTTS 2 [13] was built upon the SOTAresultsincross-lingualZS-TTS.
+StyleTTSframeworkanditleveragesstylediffusionandadver- Although some papers explored multilingual ZS-TTS as
+sarialtrainingwithlargespeech-languagemodels(e.g.WavLM in [4, 19, 20, 6] the number of supported languages is still
+[14]) to achieve human-level TTS and SOTA ZS-TTS perfor- low. YourTTS model was trained with only three languages,
+mance. P-Flow[15]combinesapromptedtextencoderwitha VALL-EXandMega-TTS2exploredonlytwolanguages,and
+low-matching generative decoder to sample high-quality mel- Voiceboxexplored sixlanguages. Giventhat, thecurrentZS-
+spectrogramsefficiently.P-Flowmatchesthespeakersimilarity TTS models are limited to a few medium/high resource lan-
+guages, limiting the applications of these models in most of
+*MostoftheworkwasdoneatCoqui.ai. thelow/mediumresourcelanguages. Inthispaper, weaimto
+4202
+nuJ
+7
+]SA.ssee[
+1v40940.6042:viXra
+
+solve this issue by proposing a massive multilingual ZS-TTS
+modelthatsupports16languages,includingEnglish(en),Span-
+ish(es),French(fr),German(de),Italian(it),Portuguese(pt),
+Polish (pl), Turkish (tr), Russian (ru), Dutch (nl), Czech (cs),
+Arabic (ar), Chinese (zh), Hungarian (hu), Korean (ko), and
+Japanese(ja).
+Thecontributionsofthisworkareasfollows:
+• WeintroducedXTTS,anewmultilingualZS-TTSmodelthat
+achievesSOTAresultsin16languages;
+• XTTSisthefirstmassivelymultilingualZS-TTSmodelsup-
+portinglow/mediumresourcelanguages;
+• Our model can perform cross-language ZS-TTS without
+needingaparalleltrainingdataset. Figure1:XTTStrainingarchitectureoverview.
+• XTTSmodelandcheckpointsarepubliclyavailableatCoqui
+Table1:NumberofhoursforeachlanguageinXTTSdataset.
+TTS1andalsoonHuggingFaceXTTS2repository.
+Theaudiosamplesforeachofourexperimentsareavailable
+Language Hours Language Hours
+onthedemowebsite3.
+English 14,513.1 Czech 52.4
+German 3,584.4 Korean 539.1
+2. XTTSmodel Spanish 1,514.3 Hungarian 62.0
+French 2,215.5 Japanese 57.3
+XTTS builds upon Tortoise [12], but includes several novel Italian 1,296.6 Turkish 165.3
+modificationstoenablemultilingualtraining,improveZS-TTS, Portuguese 2,386.8 Arabic 240.9
+and enable faster training and inference. Figure 1 shows an Russian 147.1 Chinese 233.9
+overviewoftheXTTSarchitecture.XTTSiscomposedofthree Dutch 74.1 Polish 198.8
+Total 27,281.6
+components:
+VQ-VAE: A Vector Quantised-Variational AutoEncoder VAE,reconstructingtheaudiodirectlyfromtheVQ-VAEcodes
+(VQ-VAE) with 13M parameters receives a mel-spectrogram leads to pronunciation issues and artifacts. To avoid this is-
+asinputandencodeseachframewith1codebookconsistingof sue,wefollow[12]andwehaveusedtheGPT-2encoderlatent
+8192codesata21.53Hzframerate.Thearchitectureandtrain- spaceas inputtothedecoder insteadofVQ-VAEcodes. Our
+ingprocedureofVQ-VAEisthesameastheoneusedin[12]; proposeddecoderisalsoconditionedwithspeakerembedding
+however,afterVQ-VAEtrainingwehavefilteredthecodebook fromtheH/ASPmodel[24].Thespeakerembeddingwasadded
+keepingonlythefirst1024mostfrequentcodes.Inpreliminary ineachupsamplinglayervialinearprojection. Inspiredby[4],
+experiments, we verified that filtering the less frequent codes to improve the speaker similarity, we also added the Speaker
+improvedthemodel’sexpressiveness. ConsistencyLoss(SCL).
+Encoder: The GPT-2 encoder is a decoder-only trans- TospeedupinferencewehavetrainedtheVQ-VAEandthe
+formerthatiscomposedof443Mparameters, similarto[12]. encoder using22.5 kHz audiosignals. However, we trainthe
+Itreceivesasinputstexttokensobtainedviaa6681-tokencus- decoderbyupsamplingtheinputvectorslinearlytothecorrect
+tom Byte-Pair Encoding (BPE) [21] tokenizer and as output lengthtoproduce24khzaudio.
+predictstheVQ-VAEaudiocodes. TheGPT-2encoderisalso
+conditionedbyaConditioningEncoder, describedbelow, that 3. Experiments
+receivesmel-spectrogramsasinputandproduces321024-dim
+3.1. XTTSdataset
+embeddingsforeachaudiosample. TheConditioningEncoder
+iscomposedofsix16-headScaledDot-ProductAttentionlay- TheXTTSdatasetiscomposedofpublicandinternaldatasets.
+ersfollowedbyaPerceiverResampler[22]toproduceafixed MostofourinternaldataisinEnglishandonlypublicdatais
+numberofembeddingsindependentlyoftheinputaudiolength. usedformanylanguages.Table1presentsthenumberofhours
+Note that in [12] the authors didn’t use the Perceiver Resam- foreachlanguageintheXTTSdataset. ForEnglish, wehave
+pler, instead, they used only a single 1024-dim embedding to used541.7hoursfromLibriTTS-R[25]and1812.7hoursfrom
+conditiontheGPT-2encoder. Inourpreliminaryexperiments, LibriLight[26].TherestoftheEnglishdatawasfromtheinter-
+we noticed that in massive multilingual training, the use of a naldataset thatwas composedof mostlyaudiobook-likedata.
+single embedding leads to a decrease in the model’s speaker For other languages, most of the data are from the Common
+cloning capability. We also have romanized the texts before Voice[27]dataset.
+tokenizationfortheKorean, Japanese, andChineselanguages
+using hangul-romanize4, Cutlet5, and Pypinyin6 packages re- 3.2. Experimentalsetup
+spectively.
+Previousworks[13,28,5,15]thatexploredmonolingualZS-
+Decoder: ThedecoderisbasedontheHiFi-GANvocoder
+TTShavecomparedtheirmodelswiththeYourTTSmodelus-
+[23]with26Mparameters. Itreceivesthelatentvectorsoutof
+ing the multilingual checkpoint released by the authors. This
+theGPT-2encoder.DuetothehighcompressionrateoftheVQ-
+comparisonisnotfairbecausethenumberofhoursofspeech
+andthenumberofspeakersarereallyimportantduringZS-TTS
+1https://github.com/coqui-ai/TTS
+2https://huggingface.co/coqui/XTTS-v2/tree/v2.0.2 modeltraining. AlthoughtheYourTTSmultilingualmodelhas
+3https://edresson.github.io/XTTS/ beentrainedwithmorethan1kspeakersinEnglish,themodel
+4https://pypi.org/project/hangul-romanize/ was trained with only 5 speakers in French and 1 speaker in
+5https://github.com/polm/cutlet Portuguese. ConsideringthattheYourTTSauthorshaveuseda
+6https://pypi.org/project/pypinyin/ languagebatchbalanceritmeansthatduringthetraining66%
+
+ofthebatchwillbecomposedofsamplesfromonly6speak- Table2: CER,UTMOS,andSECSforallourexperimentsand
+ers.Thiscanleadtooverfittingreducingtheperformanceinthe relatedworksintheEnglishlanguage.
+Englishlanguage(FormoredetailsseeSection4.1).
+Model Hours CER(↓) UTMOS(↑) SECS(↑)
+In this paper we have trained YourTTS on both LibriTTS
+Groundtruth - - 4.2775±0.15 0.8952
+[29]andXTTSdatasetstoavoidtheseissues. Inthisway,we
+Tortoise[12] 49k 1.0934 4.0883±0.31 0.5492
+can compare YourTTS trained on only LibriTTS with current StyleTTS2[13] 245 0.6789 4.4260±0.07 0.4728
+EnglishZS-TTSSOTAs.Wecanalsocompareitwiththeorig- Mega-TTS2[6] 38k(all) 1.4269 4.184±0.17 0.6428
+27.5k(en)
+inal multilingual YourTTS checkpoint to exhibit the problem
+HierSpeech++[16] 2.7k 0.7741 4.457±0.06 0.6530
+withthecomparisondoneinpreviousworks.Wecanalsofairly Original 474(all)
+2.8736 3.6034±0.29 0.4621
+compare YourTTS trained with the XTTS dataset in 16 lan- YourTTS[4] 289(en)
+guageswithourproposalmodel.ForbothXTTSandYourTTS YourTTS(Exp.1) 245 1.091 4.102±0.25 0.7120
+27k(all)
+trainedwiththeXTTSdataset,wehaveusedalanguagebatch YourTTS(Exp.2) 3.4803 3.6821±0.29 0.5651
+14k(en)
+balancer. 27k(all)
+XTTS(Exp.3) 0.5425 4.007±0.25 0.6423
+Wecarriedoutthreetrainingexperiments: 14k(en)
+• Experiment1: YourTTSmodeltrainedonlyonEnglishus- speaker, we randomly selected one audio segment between 3
+ing LibriTTS train-clean-460 subset (the same data used in and8secondstouseasareferenceduringthetestsentencegen-
+[13])withthebugonSCLfixed7. Wetrainedthemodelfor eration. Wehaveusedthesesamplestoevaluatealllanguages,
+405ksteps; thatwayfornon-Englishlanguagesthemodelsarecomparedin
+• Experiment2: YourTTStrainedon16languagesusingthe across-lingualway.
+XTTSdatasetwithSCLfixedfor1.96Msteps; ForYourTTSinferencewehaveusedalengthscaleequal
+to1.0,anoisescaleequalto0.3,andadurationpredictornoise
+• Experiment3: XTTSmodeltrainedwiththeXTTSdataset
+scaleequalto0.3.ForXTTSinferencewehaveusedatempera-
+forapproximately2.5Msteps.
+tureequalto0.75,lengthpenaltyequalto1.0,repetitionpenalty
+equalto10.0,topkequalto50,andtoppequalto0.85.ForTor-
+3.3. Trainingsetup
+toise inference, we used the open-source available checkpoint
+ForYourTTStrainingwehaveusedtheCoquiTTSrepository8. withtheparametersnum autoregressive samplesequalto
+XTTSandYourTTSweretrainedusinganNVIDIAA100with 256, diffusion iterations equal to 200, and for the rest of
+80GBGPUs.YourTTSexperimentswererunonasingleGPU. theparameterswehaveusedthedefaultvalues.ForStyleTTS2,
+XTTSwastrainedon4GPUs. wehaveusedtheopen-sourcecheckpoint11trainedontheLib-
+FortheYourTTSgeneratortrainingandforthediscrimina- riTTS train-clean-460 subset, and for inference we have used
+tionofvocoderHiFi-GANweusetheAdamWoptimizerwith the default parameters. For HierSpeech++, we have used the
+betas0.8and0.99, weightdecay0.01, andaninitiallearning originalmodelreleasedbytheauthorsonGitHub12,andforin-
+rateof0.0002decayingexponentiallybyagammaof0.999875. ference,wehaveusedthedefaultparameters.ForMega-TTS2,
+Wehaveusedbatchsizeequalto64.TospeedupYourTTSex- wehaveusedsampleskindlyprovidedbytheauthors.
+perimentsweusedtransferlearningfromthecheckpointsmade Fortheobjectiveevaluation, following[16]wehaveused
+publiclyavailableat[30]. theUTMOSmodel[32]topredicttheNaturalnessMeanOpin-
+For XTTS training, we used the AdamW optimizer with ion Score (nMOS). In [16], the authors have used the open-
+betas0.9and0.96, weightdecay0.01, andaninitiallearning source version of UTMOS13, and the presented results of hu-
+rate of 5e−05 with a batch size equal to 4 with grad accu- mannMOSandUTMOSarealmostaligned.Althoughthiscan
+mulationequalto16stepsforeachGPU.Following[12], we notbeconsideredanabsoluteevaluationmetric,itcanbeused
+onlyappliedweightdecayforweightsandwealsodecayedthe toeasilycomparemodelsinqualityterms.Tocomparethesim-
+learningrateusingMultiStepLRbyagammaof0.5usingthe ilaritybetweenthesynthesizedvoiceandtheoriginalspeaker,
+milestones5000,150000,and300000. wecomputetheSpeakerEncoderCosineSimilarity(SECS)[3]
+usingtheSOTAECAPA2[33]speakerencoder.Followingpre-
+4. ResultsandDiscussion
+vious works [5, 15, 16], we evaluate pronunciation accuracy
+usinganASRmodel. Forit,wehavecomputedtheCharacter
+We compared our model with the SOTAs ZS-TTS models:
+ErrorRate(CER)usingtheWhisperLargev3[34]model.
+StyleTTS2,Tortoise,YourTTS,HierSpeech++,andMega-TTS
+For subjective evaluation, we have measured user prefer-
+2.WealsocomparedourmodelwithaYourTTSmodeltrained
+encescoresbycomparingXTTSwithpreviousmodels.
+onourdatasetformultilingualZS-TTS.Tomakeourworkmore
+reproducible,theevaluationcodeandalltheaudiosamplesare
+4.1. Englishevaluation
+availableattheZS-TTS-Evaluation9repository.
+To compare the models we have used 240 sentences for Table 2 presents CER, UTMOS, and SECS for all our exper-
+eachsupportedlanguagefromFLORES+[31]. Thesentences iments and related works in the English language. YourTTS
+werechosenrandomlyfromthedevtestsubset. Wehavecho- monolingual(Exp.1)presentsbetterresultsinspeakersimilar-
+sentheFLORES+datasetbecauseithasparalleltranslationsfor ity (SECS) it also shows competitive results in CER and UT-
+alllanguagessupportedbyourmodel.Inthisway,wecancom- MOSmetrics. However,itachievedtheworstCERamongthe
+pareallthelanguageresultsusingthesamevocabulary. Totest monolingual models. In fact, YourTTS prosody is not great
+theZS-TTScapabilitywedecidedtouseall20speakers(10M because it sometimes produces unnatural durations. Compar-
+and10F)fromthecleansubsetoftheDAPSdataset10.Foreach ingMonolingualYourTTS(Exp. 1)withtheoriginalmultilin-
+gual YourTTS we can see a huge improvement. In that way,
+7https://github.com/Edresson/YourTTS#erratum
+8https://github.com/coqui-ai/TTS 11https://github.com/yl4579/StyleTTS2#inference
+9https://github.com/Edresson/ZS-TTS-Evaluation 12https://github.com/sh-lee-prml/HierSpeechpp
+10https://zenodo.org/records/4660670 13https://github.com/tarepan/SpeechMOS
+
+Table3:UserpreferencescoresbycomparingXTTSwithHier- Table 4: CER and SECS for YourTTS (Exp. 2), XTTS, and
+Speech++andMega-TTS2models. Mega-TTS2modelsforallsupportedlanguages.
+Comparison CMOS(↑) SMOS(↑) YourTTS XTTS Mega-TTS2
+Lang.
+XTTSvsHierSpeech++ 0.41±0.26 -0.31±0.36 CER(↓) SECS(↑) CER(↓) SECS(↑) CER(↓) SECS(↑)
+ar 11.1713 0.4400 3.3503 0.5007 - -
+XTTSvsMega-TTS2 0.92±0.22 -0.39±0.38
+cs 4.0174 0.4496 1.3295 0.4655 - -
+de 2.2411 0.4612 3.1694 0.5175 - -
+en 2.9727 0.5651 0.5425 0.6423 1.4269 0.6428
+confirming the over-fitting issue, and showing that previous
+es 1.0926 0.4879 1.4606 0.5371 - -
+models miss-compared their model with YourTTS. Compar- fr 3.3965 0.4376 1.4937 0.4799 - -
+ingMonolingualYourTTS(Exp. 1)withtheYourTTStrained hu 4.5098 0.4819 1.4622 0.4570 - -
+on the XTTS dataset (Exp. 2) we can see a huge gap, in all it 1.7010 0.4520 0.7982 0.5008 - -
+ja 10.2808 0.4873 5.3748 0.5207 - -
+themetricsindicatingthatcomparingmultilingualmodelswith ko 8.8567 0.4836 4.0647 0.4760 - -
+monolingual models is not fair. It also shows that YourTTS nl 3.4228 0.4269 0.946 0.4825 - -
+had difficulties to learn all 16 languages well. XTTS model pl 1.5925 0.4561 0.7593 0.4833 - -
+pt 1.5481 0.4693 1.1068 0.5033 - -
+(Exp. 3)achievedthebetterCERanditachievedcompetitive ru 2.8566 0.4606 0.932 0.5012 - -
+results in all the other metrics. It is impressive especially be- tr 2.6367 0.4855 1.042 0.5031 - -
+causeourmodelwastrainedin16languagesandwearecom- zh-cn 14.4220 0.4825 5.2016 0.5023 6.1031 0.4529
+Avg. 4.7949 0.4704 2.0646 0.5046 - -
+paring it with related works that were trained only in the En-
+glish language. Considering the monolingual-related works,
+Wefine-tunedusingthesespeakersandweevaluatedthemodel
+HierSpeech++ achieved better results. It achieved better UT-
+usingthecross-lingualapproachusedinSection4;however,we
+MOS,italsoachievedthesecondbetterSECSandthirdbetter
+replacedtheDAPSspeakerswiththechosenspeakers.Thefine-
+CER.Consideringthemultilingual-relatedworks,Mega-TTS2
+tunedmodelimprovestheSECSfrom0.5852to0.7166when
+achieved better results than the original YourTTS on English
+cloning these voices in a cross-lingual way. It indicates that
+Language.
+theXTTSfine-tuningimprovedthespeakersimilarityalotin
+We also measure user preference scores by comparing
+cross-lingualspeakertransfersettings.Theresultsareavailable
+XTTS with HierSpeech++ and Mega-TTS 2 models. Follow- onthedemopage14.
+ing [15], We evaluate the preference for naturalness, acoustic
+quality,andhumanlikenessusingacomparativemeanopinion 6. Conclusionsandfuturework
+score (CMOS). Preference tests for speaker similarity are re-
+portedusingcomparativespeakersimilaritymeanopinionscore In this work, we presented XTTS, which achieved SOTA re-
+(SMOS).SMOSevaluatorsareprovidedwiththespeakerref- sults in Multilingual zero-shot multi-speaker TTS in 16 lan-
+erence used to generate the model outputs. The CMOS and guages. Furthermore,weshowedthatXTTScanbefine-tuned
+SMOSvaluesrangeonagradualscalevaryingfrom-2(mean- withasmallportionofspeechandachievesimpressiveresults
+ingthatXTTSisworsethantheothermodel)to+2(meaning inprosodyandstylemimicking,beingabletomimicawhisper-
+theopposite). Weobtainevaluationscoreswithaminimumof ing voice style in all 16 languages even though it was trained
+8 samples from each evaluator with at least 15 evaluators per withonly10minutesofawhisperingEnglishvoice.TheXTTS
+comparison experiment. Table 3 demonstrates that XTTS ex- modelisalsofasterthanVALL-Ebecauseourencoderproduces
+hibitssignificantlybetterresultsintermsofnaturalness,acous- tokensata21.53Hzframerateascomparedwith75Hzfrom
+ticquality, andhumanlikeness(CMOS)thanpreviousworks. theVALL-Emodel.Infuturework,weintendtoseekimprove-
+It also shows that XTTS is a little worse than previous mod- mentstoourVQ-VAEcomponenttobeabletogeneratespeech
+elsintermsofspeakersimilarity(SMOS).Wethinkthatthisis with the VQ-VAE decoder instead of using the current XTTS
+expected due to the complexity of massive multilingual train- Decoder component. We also intend to disentangle speaker
+ing.Theseresultsarealsoalignedwiththeobjectiveevaluation andprosodyinformationtobeabletodocross-speakerprosody
+presentedinTable2. transfer.
+4.2. Multilingualevaluation 7. Acknowledgments
+ForMultilingualevaluation,wecomparedYourTTSandXTTS WewouldliketothankallCoquiTTS15contributors,thiswork
+trainedontheXTTSdataset(respectively,Exp. 2andExp. 3) was only possible thanks to the commitment of all. Also, we
+withtheoriginalMega-TTS2model.Table4presentsCERand wanttothankHierSpeech++,Tortoise,andStyleTTS2authors
+SECS for XTTS, YourTTS, and Mega-TTS 2 models. XTTS formakingtheirworkopen-sourceandeasilyaccessibletothe
+modelwasabletoachievebetterCERandspeakersimilarityin community. In addition, we want to thank Ziyue Jiang, for
+almostalllanguages. kindlygeneratingMega-TTS2modelsamplesusedinthispa-
+per.
+5. SpeakerAdaptation
+8. References
+Thedifferentrecordingconditionsareachallengeforthegener-
+[1] Y.Jia,Y.Zhang,R.Weiss,Q.Wang,J.Shen,F.Ren,P.Nguyen,
+alizationoftheZS-TTSmodels[4].Speakerswhohaveavoice
+R. Pang, I. L. Moreno, Y. Wu et al., “Transfer learning from
+that differs greatly from those seen in training also become a
+speakerverificationtomultispeakertext-to-speechsynthesis,”in
+challenge[35].Nevertheless,toshowthepotentialoftheXTTS Advances in neural information processing systems, 2018, pp.
+modelforadaptationtonewspeakers/recordingconditions,we 4480–4490.
+selectedsamplesofapproximately10minofspeechfromwell-
+[2] S.Choi,S.Han,D.Kim,andS.Ha,“Attentron:Few-ShotText-to-
+known or unique-style voices (e.g. whispering voices) in dif-
+ferentlanguages. Wechoose3speakersofEnglish,3speakers 14https://edresson.github.io/XTTS
+ofPortuguese,1speakerofChinese,and1speakerofArabic. 15https://github.com/coqui-ai/TTS
+
+SpeechUtilizingAttention-BasedVariable-LengthEmbedding,” [18] E. Casanova, C. Shulby, A. Korolev, A. C. Junior,
+inProc.Interspeech2020,2020,pp.2007–2011. A. da Silva Soares, S. Alu´ısio, and M. A. Ponti, “ASR data
+[3] E.Casanova,C.Shulby,E.Go¨lge,N.M.Mu¨ller,F.S.deOliveira, augmentation in low-resource settings using cross-lingual
+A.CandidoJr.,A.daSilvaSoares,S.M.Aluisio,andM.A.Ponti,
+multi-speakerTTSandcross-lingualvoiceconversion,”inProc.
+“SC-GlowTTS: An Efficient Zero-Shot Multi-Speaker Text-To-
+INTERSPEECH2023,2023,pp.1244–1248.
+SpeechModel,”inProc.Interspeech2021,2021,pp.3645–3649. [19] Z.Zhang,L.Zhou,C.Wang,S.Chen,Y.Wu,S.Liu,Z.Chen,
+[4] E.Casanova,J.Weber,C.D.Shulby,A.C.Junior,E.Go¨lge,and
+Y.Liu,H.Wang,J.Lietal.,“Speakforeignlanguageswithyour
+ownvoice:Cross-lingualneuralcodeclanguagemodeling,”arXiv
+M.A.Ponti, “Yourtts: Towardszero-shotmulti-speakerttsand
+zero-shotvoiceconversionforeveryone,” inInternationalCon-
+preprintarXiv:2303.03926,2023.
+ferenceonMachineLearning. PMLR,2022,pp.2709–2720. [20] M. Le, A. Vyas, B. Shi, B. Karrer, L. Sari, R. Moritz,
+M.Williamson,V.Manohar,Y.Adi,J.Mahadeokaretal.,“Voice-
+[5] C.Wang,S.Chen,Y.Wu,Z.Zhang,L.Zhou,S.Liu,Z.Chen,
+Y. Liu, H. Wang, J. Li et al., “Neural codec language mod- box: Text-guided multilingual universal speech generation at
+els are zero-shot text to speech synthesizers,” arXiv preprint
+scale,”inThirty-seventhConferenceonNeuralInformationPro-
+arXiv:2301.02111,2023.
+cessingSystems,2023.
+[21] P.Gage,“Anewalgorithmfordatacompression,”CUsersJour-
+[6] Z. Jiang, J. Liu, Y. Ren, J. He, Z. Ye, S. Ji, Q. Yang,
+nal,vol.12,no.2,pp.23–38,1994.
+C. Zhang, P. Wei, C. Wang, X. Yin, Z. MA, and Z. Zhao,
+“Mega-tts 2: Boosting prompting mechanisms for zero-shot [22] J.-B.Alayrac,J.Donahue,P.Luc,A.Miech,I.Barr,Y.Hasson,
+speech synthesis,” in The Twelfth International Conference on K.Lenc,A.Mensch,K.Millican,M.Reynoldsetal.,“Flamingo:
+Learning Representations, 2024. [Online]. Available: https: avisuallanguagemodelforfew-shotlearning,”AdvancesinNeu-
+//openreview.net/forum?id=mvMI3N4AvD ralInformationProcessingSystems,vol.35,pp.23716–23736,
+2022.
+[7] S.Arik,J.Chen,K.Peng,W.Ping,andY.Zhou,“Neuralvoice
+cloningwithafewsamples,”inAdvancesinNeuralInformation [23] J. Kong, J. Kim, and J. Bae, “Hifi-gan: Generative adversarial
+ProcessingSystems,2018,pp.10019–10029. networksforefficientandhighfidelityspeechsynthesis,”arXiv
+preprintarXiv:2010.05646,2020.
+[8] W. Ping, K. Peng, A. Gibiansky, S. O. Arik, A. Kannan,
+S. Narang, J. Raiman, and J. Miller, “Deep voice 3: 2000- [24] H.S.Heo,B.-J.Lee,J.Huh,andJ.S.Chung,“Clovabaselinesys-
+speaker neural text-to-speech,” in International Conference on temforthevoxcelebspeakerrecognitionchallenge2020,”arXiv
+Learning Representations, 2018. [Online]. Available: https: preprintarXiv:2009.14153,2020.
+//openreview.net/forum?id=HJtEm4p6Z [25] Y.Koizumi,H.Zen,S.Karita,Y.Ding,K.Yatabe,N.Morioka,
+[9] J.Shen, R.Pang, R.J.Weiss, M.Schuster, N.Jaitly, Z.Yang, M.Bacchiani, Y.Zhang, W.Han, andA.Bapna, “LibriTTS-R:
+Z. Chen, Y. Zhang, Y. Wang, R. Skerrv-Ryan et al., “Natural ARestoredMulti-SpeakerText-to-SpeechCorpus,”inProc.IN-
+tts synthesis by conditioning wavenet on mel spectrogram pre- TERSPEECH2023,2023,pp.5496–5500.
+dictions,” in2018IEEEInternationalConferenceonAcoustics, [26] J. Kahn, M. Rivie`re, W. Zheng, E. Kharitonov, Q. Xu, P.-E.
+SpeechandSignalProcessing(ICASSP). IEEE,2018,pp.4779– Mazare´, J. Karadayi, V. Liptchinsky, R. Collobert, C. Fuegen
+4783. etal., “Libri-light: Abenchmarkforasrwithlimitedornosu-
+[10] E. Cooper, C.-I. Lai, Y. Yasuda, F. Fang, X. Wang, N. Chen, pervision,”inICASSP2020-2020IEEEInternationalConference
+and J. Yamagishi, “Zero-shot multi-speaker text-to-speech with onAcoustics,SpeechandSignalProcessing(ICASSP). IEEE,
+state-of-the-art neural speaker embeddings,” in ICASSP 2020- 2020,pp.7669–7673.
+2020 IEEE International Conference on Acoustics, Speech and [27] R.Ardila,M.Branson,K.Davis,M.Kohler,J.Meyer,M.Hen-
+SignalProcessing(ICASSP). IEEE,2020,pp.6184–6188. retty, R. Morais, L. Saunders, F. Tyers, and G. Weber, “Com-
+[11] A. De´fossez, J. Copet, G. Synnaeve, and Y. Adi, “High monvoice:Amassively-multilingualspeechcorpus,”inProceed-
+fidelity neural audio compression,” Transactions on Machine ingsofthe12thLanguageResourcesandEvaluationConference,
+LearningResearch,2023,featuredCertification,Reproducibility 2020,pp.4218–4222.
+Certification.[Online].Available: https://openreview.net/forum? [28] W.Wang,Y.Song,andS.Jha,“GeneralizableZero-ShotSpeaker
+id=ivCd8z8zR2 AdaptiveSpeechSynthesiswithDisentangledRepresentations,”
+[12] J. Betker, “Better speech synthesis through scaling,” arXiv inProc.INTERSPEECH2023,2023,pp.4454–4458.
+preprintarXiv:2305.07243,2023. [29] H.Zen,V.Dang,R.Clark,Y.Zhang,R.J.Weiss,Y.Jia,Z.Chen,
+[13] Y.A.Li,C.Han,V.Raghavan,G.Mischler,andN.Mesgarani, andY.Wu,“Libritts:Acorpusderivedfromlibrispeechfortext-
+“Styletts2:Towardshuman-leveltext-to-speechthroughstyledif- to-speech,”Interspeech2019,2019.
+fusionandadversarialtrainingwithlargespeechlanguagemod- [30] F.S.Oliveira,E.Casanova,A.C.Junior,A.S.Soares,andA.R.
+els,”AdvancesinNeuralInformationProcessingSystems,vol.36, Galva˜oFilho, “Cml-tts: Amultilingualdatasetforspeechsyn-
+2024. thesisinlow-resourcelanguages,”inText,Speech,andDialogue,
+[14] S. Chen, C. Wang, Z. Chen, Y. Wu, S. Liu, Z. Chen, J. Li, K.Eksˇtein,F.Pa´rtl,andM.Konop´ık,Eds. Cham:SpringerNa-
+N.Kanda,T.Yoshioka,X.Xiaoetal.,“Wavlm:Large-scaleself- tureSwitzerland,2023,pp.188–199.
+supervised pre-training for full stack speech processing,” IEEE [31] NLLBTeam,M.R.Costa-jussa`,J.Cross,O.C¸elebi,M.Elbayad,
+JournalofSelectedTopicsinSignalProcessing, vol.16, no.6, K.Heafield,K.Heffernan,H.Kalbassi,...,andJ.Wang,“Nolan-
+pp.1505–1518,2022. guageleftbehind:Scalinghuman-centeredmachinetranslation,”
+[15] S.Kim,K.J.Shih,R.Badlani,J.F.Santos,E.Bakhturina,M.T. 2022.
+Desta,R.Valle,S.Yoon,andB.Catanzaro,“P-flow: Afastand [32] T. Saeki, D. Xin, W. Nakata, T. Koriyama, S. Takamichi, and
+data-efficientzero-shotttsthroughspeechprompting,”inThirty- H. Saruwatari, “Utmos: Utokyo-sarulab system for voicemos
+seventhConferenceonNeuralInformationProcessingSystems, challenge2022,”Interspeech2022,2022.
+2023.
+[33] J.ThienpondtandK.Demuynck,“Ecapa2: Ahybridneuralnet-
+[16] S.-H.Lee,H.-Y.Choi,S.-B.Kim,andS.-W.Lee,“Hierspeech++: workarchitectureandtrainingstrategyforrobustspeakerembed-
+Bridgingthegapbetweensemanticandacousticrepresentationof dings,”arXivpreprintarXiv:2401.08342,2024.
+speechbyhierarchicalvariationalinferenceforzero-shotspeech
+[34] A.Radford,J.W.Kim,T.Xu,G.Brockman,C.McLeavey,and
+synthesis,”arXivpreprintarXiv:2311.12454,2023.
+I.Sutskever,“Robustspeechrecognitionvialarge-scaleweaksu-
+[17] J.Kim,J.Kong,andJ.Son,“Conditionalvariationalautoencoder pervision,”2022.
+withadversariallearningforend-to-endtext-to-speech,”inInter-
+[35] X. Tan, T. Qin, F. Soong, and T.-Y. Liu, “A survey on neural
+nationalConferenceonMachineLearning. PMLR,2021,pp.
+speechsynthesis,”arXivpreprintarXiv:2106.15561,2021.
+5530–5540.
