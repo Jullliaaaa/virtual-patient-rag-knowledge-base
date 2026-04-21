@@ -26,8 +26,8 @@ PROCESSED_DIR = Path("data/processed")
 HASH_STORE = Path("data/.file_hashes.json")
 
 # ── Chunking 設定 ─────────────────────────────────────────
-CHUNK_SIZE = 500        # 每個 chunk 的字元數
-CHUNK_OVERLAP = 50      # 相鄰 chunk 的重疊字元數
+CHUNK_SIZE = 400        # 每個 chunk 的字元數（中英混合約 200 個中文字）
+CHUNK_OVERLAP = 80      # 相鄰 chunk 的重疊字元數（chunk_size 的 20%，依 W6 建議）
 
 
 # ═════════════════════════════════════════════════════════
@@ -313,9 +313,28 @@ def main():
 
     # 逐檔處理
     updated = 0
+    current_sources = set()
     for f in sorted(files):
+        current_sources.add(f.name)
         if process_file(f, model, conn, args.rebuild, hash_store):
             updated += 1
+
+    # ── 冪等性保證：刪除 DB 中已不存在於 data/raw/ 的資料 ──
+    if not args.rebuild:
+        with conn.cursor() as cur:
+            cur.execute("SELECT DISTINCT source FROM documents;")
+            db_sources = {row[0] for row in cur.fetchall()}
+        orphans = db_sources - current_sources
+        if orphans:
+            logger.info(f"清除已刪除的檔案資料：{orphans}")
+            for orphan in orphans:
+                delete_chunks_by_source(conn, orphan)
+                hash_store.pop(orphan, None)
+                # 同步清除 processed/ 的對應檔案
+                processed_path = PROCESSED_DIR / (Path(orphan).stem + ".txt")
+                if processed_path.exists():
+                    processed_path.unlink()
+                    logger.info(f"  已刪除 processed：{processed_path.name}")
 
     save_hash_store(hash_store)
     conn.close()
